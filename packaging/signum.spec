@@ -49,6 +49,7 @@ a = Analysis(
     pathex=[str(ROOT / "src")],
     binaries=[],
     datas=[
+        (str(ROOT / "src" / "signum" / "ai" / "vjev_bootstrap.py"), "signum/ai"),
         (str(ROOT / "src" / "signum" / "ui" / "resources" / "signum.ico"), "signum/ui/resources"),
         (str(ROOT / "src" / "signum" / "ui" / "resources" / "signum.png"), "signum/ui/resources"),
     ],

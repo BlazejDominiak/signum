@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "labels_sha256": "b75a9cc7b09eff0711d0dacdaa53d1e7e469f04d85de77fdcd131c0033a23cce",
+  "model": "yah01/vjev-vision@2fa8b58e40e5bc351a7d6dd39b953469a8f3ded2",
+  "feature": "tiles5.max_mean",
+  "threshold": 0.535,
+  "calibration": {
+    "intercept": -1.2752369584469005,
+    "slope": 4.525887113758848,
+    "input_transform": "4*(score-0.5)",
+    "ridge": 0.1
+  },
+  "spec": {
+    "requests": 5,
+    "keys": [
+      [
+        "full",
+        "default"
+      ],
+      [
+        "tl",
+        "default"
+      ],
+      [
+        "tr",
+        "default"
+      ],
+      [
+        "bl",
+        "default"
+      ],
+      [
+        "br",
+        "default"
+      ]
+    ],
+    "description": "max(mean4) over fixed views"
+  },
+  "selected_on": "Pre-defined development-trained candidate selected after exploratory original test; confirm on new documents before claiming generalisation",
+  "development": {
+    "n": 60,
+    "tp": 30,
+    "tn": 30,
+    "fp": 0,
+    "fn": 0,
+    "accuracy": 1.0,
+    "recall": 1.0,
+    "specificity": 1.0,
+    "balanced_accuracy": 1.0
+  }
+}

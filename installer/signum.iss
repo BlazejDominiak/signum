@@ -1,4 +1,4 @@
-; Skrypt Inno Setup 6 dla Signum.
+﻿; Skrypt Inno Setup 6 dla Signum.
 ; Wersja jest przekazywana z scripts/build_installer.ps1: /DMyAppVersion=x.y.z
 ; Budowanie ręczne: ISCC.exe installer\signum.iss /DMyAppVersion=1.0.0
 
@@ -33,6 +33,7 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
+WizardSizePercent=130,130
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 AppMutex=Local\Signum-6D6C3F52-9C1B-4E6A-9A57-2B1FBD6A7E31
@@ -47,30 +48,93 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [CustomMessages]
 english.RiskPageTitle=Document and AI risk awareness
 english.RiskPageDescription=Read the notice and confirm each point before continuing.
-english.RiskCheckPurpose=I understand: Signum results require human verification.
-english.RiskCheckDocuments=I understand: I must be allowed to process the selected documents.
-english.RiskCheckLocal=I understand: a local AI model still processes document contents.
-english.RiskCheckRemote=I understand: a remote AI service receives document contents.
+english.RiskCheckPurpose=I understand that the program is educational and is not suitable for commercial use.
+english.RiskCheckDocuments=I will use the program only with sample documents that contain no personal or sensitive data.
+english.RiskCheckLocal=Local AI processes the document contents.
+english.RiskCheckRemote=Remote AI receives the document contents, which means they leave the computer over the internet and are processed by an external service.
 english.RiskRequired=Confirm all four points to continue.
-english.RequirementsTitle=Runtime and optional AI service
-english.RequirementsDescription=The installer checked what Signum needs to start.
-english.PythonBundled=Python runtime and application libraries: included in Signum; no separate Python installation is required.
-english.OllamaFound=Ollama: detected on this computer. Signum will verify the running service and selected model before processing documents.
-english.OllamaMissing=Ollama: not detected in the standard installation folders. It is optional. Install and start it before using local mode, or select a remote AI provider. Download: https://docs.ollama.com/windows
-english.RequirementsNote=The installer does not download third-party AI software or models. Before every batch, Signum checks the selected service and model.
+english.RequirementsNote=Optional components are third-party programs, models and libraries with their own licences. Downloads require internet, Windows 10 22H2 or newer and current GPU drivers.
+english.ComponentsTitle=Components and local AI
+english.ComponentsDescription=Choose components using the detected hardware and installation status.
+english.Installed=already installed
+english.NotDetected=not detected
+english.ServiceDetected=running service detected
+english.ModelsUnknown=model status could not be verified
+english.Recommended=recommended for this GPU
+english.JevUnavailable=requires NVIDIA with 16 GB VRAM
+english.GpuUnknown=GPU memory could not be determined. No large model will be recommended automatically.
+english.GpuDetected=Detected GPU:
+english.RecommendSmall=Recommendation: Gemma 4 E2B for an 8 GB GPU.
+english.RecommendLarge=Recommended model: Gemma 4 12B (16 GB VRAM).
+english.RecommendNone=Below 8 GB dedicated VRAM: use an existing service or remote API. Local models may use slow CPU processing.
+english.ComponentApp=Signum application (required)
+english.ComponentOllama=Ollama — third-party local AI service
+english.ComponentSmall=Gemma 4 E2B
+english.ComponentLarge=Gemma 4 12B
+english.ComponentJev=Local Jev
+english.SmallDetails=Vision model; 8 GB VRAM; ~4.6 GB download.
+english.LargeDetails=Vision model; 16 GB VRAM; ~8 GB download.
+english.JevDetails=NVIDIA 16 GB; model and external libraries; ~15 GB download.
+english.TypeApp=Signum only / existing AI / remote API
+english.TypeCustom=Choose local AI components
+english.RecommendButton=Select recommended components
+english.StorageTitle=Where to store local AI
+english.StorageDescription=Models and external libraries can occupy tens of GB.
+english.StoragePrompt=Choose a folder on a drive with enough free space. Allow at least 20 GB for Ollama with one model, or 35 GB for Jev. Components are downloaded after Signum is copied. They remain separate from the application and are not removed when Signum is uninstalled.
+english.StorageLabel=AI models and libraries folder:
+english.StorageInvalid=Choose an absolute path on an existing drive, outside the Signum application folder.
+english.JevUnsupported=This Jev package needs an NVIDIA GPU with at least 16 GB dedicated VRAM. Uncheck Jev or choose a supported computer.
+english.LargeWarning=The selected large Ollama model is recommended for 16 GB VRAM. On this GPU, some work may run on the CPU and be much slower. Continue?
 polish.RiskPageTitle=Świadomość ryzyka dla dokumentów i AI
 polish.RiskPageDescription=Przeczytaj informację i potwierdź każdy punkt przed kontynuowaniem.
-polish.RiskCheckPurpose=Rozumiem: wyniki Signum wymagają ręcznej weryfikacji.
-polish.RiskCheckDocuments=Rozumiem: muszę mieć prawo do przetwarzania wybranych dokumentów.
-polish.RiskCheckLocal=Rozumiem: lokalny model AI nadal przetwarza treść dokumentów.
-polish.RiskCheckRemote=Rozumiem: zdalna usługa AI otrzymuje treść dokumentów.
+polish.RiskCheckPurpose=Rozumiem, że program jest edukacyjny i nie nadaje się do użytku komercyjnego.
+polish.RiskCheckDocuments=Będę korzystać z programu tylko na dokumentach przykładowych, niezawierających danych osobowych ani danych wrażliwych.
+polish.RiskCheckLocal=Lokalne AI przetwarza treść dokumentów.
+polish.RiskCheckRemote=Zdalne AI otrzymuje treść dokumentów, co oznacza, że opuszczają komputer przez sieć internetową i są przetwarzane przez zewnętrzną usługę.
 polish.RiskRequired=Aby kontynuować, potwierdź wszystkie cztery punkty.
-polish.RequirementsTitle=Runtime i opcjonalna usługa AI
-polish.RequirementsDescription=Instalator sprawdził składniki potrzebne do uruchomienia Signum.
-polish.PythonBundled=Runtime Pythona i biblioteki aplikacji: dołączone do Signum; osobna instalacja Pythona nie jest potrzebna.
-polish.OllamaFound=Ollama: wykryta na tym komputerze. Signum przed analizą sprawdzi działającą usługę i wybrany model.
-polish.OllamaMissing=Ollama: nie wykryto jej w standardowych katalogach. Jest opcjonalna. Zainstaluj i uruchom ją przed użyciem trybu lokalnego albo wybierz zdalnego dostawcę AI. Pobieranie: https://docs.ollama.com/windows
-polish.RequirementsNote=Instalator nie pobiera zewnętrznego oprogramowania AI ani modeli. Przed każdą partią Signum sprawdza wybraną usługę i model.
+polish.RequirementsNote=Opcjonalne składniki to programy, modele i biblioteki innych autorów, na ich własnych licencjach. Pobieranie wymaga internetu, Windows 10 22H2 lub nowszego i aktualnych sterowników GPU.
+polish.ComponentsTitle=Składniki i lokalne AI
+polish.ComponentsDescription=Wybierz składniki na podstawie wykrytego sprzętu i stanu instalacji.
+polish.Installed=wykryto instalację
+polish.NotDetected=nie wykryto
+polish.ServiceDetected=wykryto działającą usługę
+polish.ModelsUnknown=nie udało się sprawdzić zainstalowanych modeli
+polish.Recommended=zalecany dla tej karty
+polish.JevUnavailable=wymaga NVIDIA z 16 GB VRAM
+polish.GpuUnknown=Nie udało się odczytać pamięci GPU. Instalator nie wybierze automatycznie dużego modelu.
+polish.GpuDetected=Wykryta karta:
+polish.RecommendSmall=Propozycja: Gemma 4 E2B dla karty 8 GB.
+polish.RecommendLarge=Zalecany model: Gemma 4 12B (16 GB VRAM).
+polish.RecommendNone=Poniżej 8 GB dedykowanej pamięci: użyj posiadanej usługi lub API. Lokalny model może działać powoli na procesorze.
+polish.ComponentApp=Program Signum (wymagany)
+polish.ComponentOllama=Ollama — zewnętrzny program do lokalnego AI
+polish.ComponentSmall=Gemma 4 E2B
+polish.ComponentLarge=Gemma 4 12B
+polish.ComponentJev=Lokalny Jev
+polish.SmallDetails=Model wizyjny; 8 GB VRAM; ~4,6 GB do pobrania.
+polish.LargeDetails=Model wizyjny; 16 GB VRAM; ~8 GB do pobrania.
+polish.JevDetails=NVIDIA 16 GB; model i zewnętrzne biblioteki; ~15 GB do pobrania.
+polish.TypeApp=Tylko Signum / posiadane AI / zdalne API
+polish.TypeCustom=Wybór składników lokalnego AI
+polish.RecommendButton=Zaznacz proponowane składniki
+polish.StorageTitle=Miejsce na lokalne AI
+polish.StorageDescription=Modele i zewnętrzne biblioteki zajmują nawet kilkadziesiąt GB.
+polish.StoragePrompt=Wybierz katalog na dysku z wolnym miejscem. Dla Ollamy z jednym modelem przeznacz co najmniej 20 GB, dla Jev — 35 GB. Pobieranie rozpocznie się po skopiowaniu Signum. Te składniki są osobne i nie zostaną usunięte przy odinstalowaniu aplikacji.
+polish.StorageLabel=Katalog modeli i bibliotek AI:
+polish.StorageInvalid=Wybierz pełną ścieżkę na istniejącym dysku, poza katalogiem programu Signum.
+polish.JevUnsupported=Ten pakiet Jev wymaga karty NVIDIA z co najmniej 16 GB dedykowanej pamięci. Odznacz Jev albo użyj zgodnego komputera.
+polish.LargeWarning=Wybrany duży model Ollamy jest zalecany dla 16 GB VRAM. Na tej karcie część pracy może trafić na procesor i znacznie zwolnić. Kontynuować?
+
+[Types]
+Name: "app"; Description: "{cm:TypeApp}"
+Name: "custom"; Description: "{cm:TypeCustom}"; Flags: iscustom
+
+[Components]
+Name: "app"; Description: "{cm:ComponentApp}"; Types: app custom; Flags: fixed
+Name: "ollama"; Description: "{cm:ComponentOllama}"
+Name: "gemma_small"; Description: "{cm:ComponentSmall}"
+Name: "gemma_large"; Description: "{cm:ComponentLarge}"
+Name: "jev"; Description: "{cm:ComponentJev}"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -79,6 +143,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; Pliki tylko dla strony świadomości ryzyka. Przy kompresji solid muszą być pierwsze.
 Source: "legal\RISK-NOTICE-en.txt"; Flags: dontcopy noencryption
 Source: "legal\RISK-NOTICE-pl.txt"; Flags: dontcopy noencryption
+Source: "detect-gpu.ps1"; Flags: dontcopy noencryption
+Source: "detect-ai.ps1"; Flags: dontcopy noencryption
 Source: "..\dist\Signum\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -86,6 +152,7 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--setup-local-ai --ai-components ""{code:SelectedAIComponents}"" --ai-directory ""{code:AIStorageDirectory}"" --existing-ollama ""{code:ExistingOllama}"" --existing-ollama-url ""{code:ExistingOllamaURL}"""; WorkingDir: "{app}"; Check: LocalAISelected; Flags: runasoriginaluser
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
 
 [Code]
@@ -96,28 +163,160 @@ var
   RiskCheckDocuments: TNewCheckBox;
   RiskCheckLocal: TNewCheckBox;
   RiskCheckRemote: TNewCheckBox;
-  RequirementsPage: TOutputMsgWizardPage;
+  HardwareSummary: TNewStaticText;
+  ComponentsNote: TNewStaticText;
+  StoragePage: TInputDirWizardPage;
+  RecommendButton: TNewButton;
+  GpuMemoryMB: Integer;
+  GpuVendor: Integer;
+  GpuName: String;
+  OllamaPath: String;
+  OllamaURL: String;
+  SmallInstalled: Boolean;
+  LargeInstalled: Boolean;
+  JevInstalled: Boolean;
+  ModelsKnown: Boolean;
 
-function OllamaInstalled: Boolean;
+function LocalAISelected: Boolean;
 begin
-  Result :=
-    FileExists(ExpandConstant('{localappdata}\Programs\Ollama\ollama.exe')) or
-    FileExists(ExpandConstant('{pf}\Ollama\ollama.exe')) or
-    FileExists(ExpandConstant('{pf32}\Ollama\ollama.exe'));
+  Result := WizardIsComponentSelected('ollama') or WizardIsComponentSelected('jev') or
+    WizardIsComponentSelected('gemma_small') or WizardIsComponentSelected('gemma_large');
 end;
 
-procedure UpdateRequirementsPage;
+function SelectedAIComponents(Param: String): String;
+begin
+  Result := 'app';
+  if WizardIsComponentSelected('ollama') then Result := Result + ',ollama';
+  if WizardIsComponentSelected('gemma_small') then Result := Result + ',ollama\small';
+  if WizardIsComponentSelected('gemma_large') then Result := Result + ',ollama\large';
+  if WizardIsComponentSelected('jev') then Result := Result + ',jev';
+end;
+
+function ExistingOllama(Param: String): String;
+begin
+  Result := OllamaPath;
+end;
+
+function ExistingOllamaURL(Param: String): String;
+begin
+  Result := OllamaURL;
+end;
+
+function AIStorageDirectory(Param: String): String;
+begin
+  { Avoid a trailing backslash immediately before the command-line closing quote. }
+  Result := AddBackslash(StoragePage.Values[0]) + '.';
+end;
+
+procedure DetectGPU;
+var
+  ExitCode: Integer;
+  Info: TArrayOfString;
+begin
+  ExtractTemporaryFile('detect-gpu.ps1');
+  if Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\detect-gpu.ps1') +
+    '" -OutputPath "' + ExpandConstant('{tmp}\gpu-info.txt') + '"',
+    '', SW_HIDE, ewWaitUntilTerminated, ExitCode) and (ExitCode = 0) then
+    if LoadStringsFromFile(ExpandConstant('{tmp}\gpu-info.txt'), Info) then
+      if GetArrayLength(Info) >= 3 then
+      begin
+        GpuMemoryMB := StrToIntDef(Info[0], 0);
+        GpuVendor := StrToIntDef(Info[1], 0);
+        GpuName := Info[2];
+      end;
+end;
+
+procedure SelectRecommended(Sender: TObject);
+var
+  Selection: String;
+begin
+  Selection := 'app';
+  if GpuMemoryMB >= 15000 then
+    Selection := Selection + ',gemma_large'
+  else if GpuMemoryMB >= 7500 then
+    Selection := Selection + ',gemma_small';
+  if (Selection <> 'app') and (OllamaPath = '') and (OllamaURL = '') then
+    Selection := Selection + ',ollama';
+  WizardSelectComponents(Selection);
+end;
+
+procedure DetectAI;
+var
+  ExitCode: Integer;
+  Info: TArrayOfString;
+begin
+  ExtractTemporaryFile('detect-ai.ps1');
+  if Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    '-NoProfile -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\detect-ai.ps1') +
+    '" -OutputPath "' + ExpandConstant('{tmp}\ai-info.txt') + '"',
+    '', SW_HIDE, ewWaitUntilTerminated, ExitCode) and (ExitCode = 0) then
+    if LoadStringsFromFile(ExpandConstant('{tmp}\ai-info.txt'), Info) then
+      if GetArrayLength(Info) >= 6 then
+      begin
+        OllamaPath := Info[0];
+        OllamaURL := Info[1];
+        SmallInstalled := Info[2] = '1';
+        LargeInstalled := Info[3] = '1';
+        JevInstalled := Info[4] = '1';
+        ModelsKnown := Info[5] = '1';
+      end;
+end;
+
+procedure UpdateComponentsPage;
 var
   OllamaMessage: String;
+  Recommendation: String;
+  Status: String;
 begin
-  if OllamaInstalled then
-    OllamaMessage := CustomMessage('OllamaFound')
+  if OllamaPath <> '' then
+    OllamaMessage := 'Ollama: ' + CustomMessage('Installed')
+  else if OllamaURL <> '' then
+    OllamaMessage := 'Ollama: ' + CustomMessage('ServiceDetected')
   else
-    OllamaMessage := CustomMessage('OllamaMissing');
-  RequirementsPage.MsgLabel.Caption :=
-    CustomMessage('PythonBundled') + #13#10 + #13#10 +
-    OllamaMessage + #13#10 + #13#10 +
-    CustomMessage('RequirementsNote');
+    OllamaMessage := 'Ollama: ' + CustomMessage('NotDetected');
+  if GpuMemoryMB >= 15000 then
+    Recommendation := CustomMessage('RecommendLarge')
+  else if GpuMemoryMB >= 7500 then
+    Recommendation := CustomMessage('RecommendSmall')
+  else if GpuMemoryMB > 0 then
+    Recommendation := CustomMessage('RecommendNone')
+  else
+    Recommendation := CustomMessage('GpuUnknown');
+  if GpuMemoryMB > 0 then
+    Recommendation := CustomMessage('GpuDetected') + ' ' + GpuName +
+      ' (' + IntToStr(GpuMemoryMB) + ' MB VRAM).' + #13#10 + Recommendation;
+  HardwareSummary.Caption := Recommendation + #13#10 + OllamaMessage;
+  WizardForm.ComponentsList.ItemEnabled[1] := (OllamaPath = '') and (OllamaURL = '');
+  if not WizardForm.ComponentsList.ItemEnabled[1] then
+  begin
+    WizardForm.ComponentsList.Checked[1] := False;
+    WizardForm.ComponentsList.ItemCaption[1] := OllamaMessage;
+  end;
+  Status := '';
+  if SmallInstalled then Status := ' — ' + CustomMessage('Installed');
+  if not ModelsKnown then Status := ' — ' + CustomMessage('ModelsUnknown');
+  if (GpuMemoryMB >= 7500) and (GpuMemoryMB < 15000) then
+    Status := Status + ' — ' + CustomMessage('Recommended');
+  WizardForm.ComponentsList.ItemCaption[2] := CustomMessage('ComponentSmall') + Status;
+  if not SmallInstalled then
+    WizardForm.ComponentsList.ItemSubItem[2] := CustomMessage('SmallDetails');
+  Status := '';
+  if LargeInstalled then Status := ' — ' + CustomMessage('Installed');
+  if not ModelsKnown then Status := ' — ' + CustomMessage('ModelsUnknown');
+  if GpuMemoryMB >= 15000 then Status := Status + ' — ' + CustomMessage('Recommended');
+  WizardForm.ComponentsList.ItemCaption[3] := CustomMessage('ComponentLarge') + Status;
+  if not LargeInstalled then
+    WizardForm.ComponentsList.ItemSubItem[3] := CustomMessage('LargeDetails');
+  Status := '';
+  if JevInstalled then Status := ' — ' + CustomMessage('Installed');
+  if (GpuVendor <> 4318) or (GpuMemoryMB < 15000) then
+    Status := Status + ' — ' + CustomMessage('JevUnavailable');
+  WizardForm.ComponentsList.ItemCaption[4] := CustomMessage('ComponentJev') + Status;
+  if not JevInstalled then
+    WizardForm.ComponentsList.ItemSubItem[4] := CustomMessage('JevDetails');
+  WizardForm.ComponentsList.ItemEnabled[4] :=
+    JevInstalled or ((GpuVendor = 4318) and (GpuMemoryMB >= 15000));
 end;
 
 function RisksConfirmed: Boolean;
@@ -130,6 +329,40 @@ procedure RiskCheckClick(Sender: TObject);
 begin
   if WizardForm.CurPageID = RiskPage.ID then
     WizardForm.NextButton.Enabled := RisksConfirmed;
+end;
+
+procedure RiskLabelClick(Sender: TObject);
+var
+  Check: TNewCheckBox;
+begin
+  Check := TNewCheckBox(TNewStaticText(Sender).FocusControl);
+  Check.Checked := not Check.Checked;
+  RiskCheckClick(Check);
+end;
+
+function CreateRiskCheck(const MessageKey: String; var Top: Integer): TNewCheckBox;
+var
+  TextLabel: TNewStaticText;
+  RowHeight: Integer;
+begin
+  Result := TNewCheckBox.Create(WizardForm);
+  Result.Parent := RiskPage.Surface;
+  Result.SetBounds(0, Top, ScaleX(20), ScaleY(20));
+  Result.OnClick := @RiskCheckClick;
+
+  TextLabel := TNewStaticText.Create(WizardForm);
+  TextLabel.Parent := RiskPage.Surface;
+  TextLabel.AutoSize := False;
+  TextLabel.WordWrap := True;
+  TextLabel.ShowAccelChar := False;
+  TextLabel.SetBounds(ScaleX(24), Top, RiskPage.SurfaceWidth - ScaleX(24), ScaleY(20));
+  TextLabel.Caption := CustomMessage(MessageKey);
+  TextLabel.FocusControl := Result;
+  TextLabel.OnClick := @RiskLabelClick;
+  RowHeight := TextLabel.AdjustHeight;
+  if RowHeight < ScaleY(20) then
+    RowHeight := ScaleY(20);
+  Top := Top + RowHeight + ScaleY(10);
 end;
 
 function InitializeSetup: Boolean;
@@ -151,7 +384,6 @@ end;
 procedure InitializeWizard;
 var
   NoticeFileName: String;
-  CheckHeight: Integer;
   CheckTop: Integer;
   MemoHeight: Integer;
 begin
@@ -164,8 +396,8 @@ begin
   RiskPage := CreateCustomPage(wpLicense, CustomMessage('RiskPageTitle'),
     CustomMessage('RiskPageDescription'));
 
-  CheckHeight := ScaleY(28);
-  MemoHeight := RiskPage.SurfaceHeight - (4 * CheckHeight) - ScaleY(22);
+  { Reserve room for wrapped confirmations rather than cutting off long captions. }
+  MemoHeight := RiskPage.SurfaceHeight - ScaleY(200);
 
   RiskMemo := TNewMemo.Create(WizardForm);
   RiskMemo.Parent := RiskPage.Surface;
@@ -177,32 +409,10 @@ begin
   RiskMemo.Lines.LoadFromFile(ExpandConstant('{tmp}\') + NoticeFileName);
 
   CheckTop := MemoHeight + ScaleY(8);
-  RiskCheckPurpose := TNewCheckBox.Create(WizardForm);
-  RiskCheckPurpose.Parent := RiskPage.Surface;
-  RiskCheckPurpose.SetBounds(0, CheckTop, RiskPage.SurfaceWidth, CheckHeight);
-  RiskCheckPurpose.Caption := CustomMessage('RiskCheckPurpose');
-  RiskCheckPurpose.OnClick := @RiskCheckClick;
-
-  CheckTop := CheckTop + CheckHeight;
-  RiskCheckDocuments := TNewCheckBox.Create(WizardForm);
-  RiskCheckDocuments.Parent := RiskPage.Surface;
-  RiskCheckDocuments.SetBounds(0, CheckTop, RiskPage.SurfaceWidth, CheckHeight);
-  RiskCheckDocuments.Caption := CustomMessage('RiskCheckDocuments');
-  RiskCheckDocuments.OnClick := @RiskCheckClick;
-
-  CheckTop := CheckTop + CheckHeight;
-  RiskCheckLocal := TNewCheckBox.Create(WizardForm);
-  RiskCheckLocal.Parent := RiskPage.Surface;
-  RiskCheckLocal.SetBounds(0, CheckTop, RiskPage.SurfaceWidth, CheckHeight);
-  RiskCheckLocal.Caption := CustomMessage('RiskCheckLocal');
-  RiskCheckLocal.OnClick := @RiskCheckClick;
-
-  CheckTop := CheckTop + CheckHeight;
-  RiskCheckRemote := TNewCheckBox.Create(WizardForm);
-  RiskCheckRemote.Parent := RiskPage.Surface;
-  RiskCheckRemote.SetBounds(0, CheckTop, RiskPage.SurfaceWidth, CheckHeight);
-  RiskCheckRemote.Caption := CustomMessage('RiskCheckRemote');
-  RiskCheckRemote.OnClick := @RiskCheckClick;
+  RiskCheckPurpose := CreateRiskCheck('RiskCheckPurpose', CheckTop);
+  RiskCheckDocuments := CreateRiskCheck('RiskCheckDocuments', CheckTop);
+  RiskCheckLocal := CreateRiskCheck('RiskCheckLocal', CheckTop);
+  RiskCheckRemote := CreateRiskCheck('RiskCheckRemote', CheckTop);
 
   { InitializeSetup odrzuca tryb cichy bez jawnego parametru. }
   if WizardSilent then
@@ -213,17 +423,59 @@ begin
     RiskCheckRemote.Checked := True;
   end;
 
-  RequirementsPage := CreateOutputMsgPage(RiskPage.ID,
-    CustomMessage('RequirementsTitle'), CustomMessage('RequirementsDescription'), '');
-  UpdateRequirementsPage;
+  DetectGPU;
+  DetectAI;
+  WizardForm.SelectComponentsLabel.Visible := False;
+  WizardForm.TypesCombo.Visible := False;
+  HardwareSummary := TNewStaticText.Create(WizardForm);
+  HardwareSummary.Parent := WizardForm.SelectComponentsPage;
+  HardwareSummary.AutoSize := False;
+  HardwareSummary.WordWrap := True;
+  HardwareSummary.SetBounds(0, 0, WizardForm.SelectComponentsPage.ClientWidth, ScaleY(64));
+  WizardForm.ComponentsList.SetBounds(0, ScaleY(72),
+    WizardForm.SelectComponentsPage.ClientWidth,
+    WizardForm.SelectComponentsPage.ClientHeight - ScaleY(166));
+  WizardForm.ComponentsList.MinItemHeight := ScaleY(32);
+  RecommendButton := TNewButton.Create(WizardForm);
+  RecommendButton.Parent := WizardForm.SelectComponentsPage;
+  RecommendButton.SetBounds(WizardForm.ComponentsList.Left,
+    WizardForm.ComponentsList.Top + WizardForm.ComponentsList.Height + ScaleY(6),
+    ScaleX(260), ScaleY(28));
+  RecommendButton.Caption := CustomMessage('RecommendButton');
+  RecommendButton.OnClick := @SelectRecommended;
+  ComponentsNote := TNewStaticText.Create(WizardForm);
+  ComponentsNote.Parent := WizardForm.SelectComponentsPage;
+  ComponentsNote.AutoSize := False;
+  ComponentsNote.WordWrap := True;
+  ComponentsNote.SetBounds(0, RecommendButton.Top + RecommendButton.Height + ScaleY(6),
+    WizardForm.SelectComponentsPage.ClientWidth, ScaleY(54));
+  ComponentsNote.Caption := CustomMessage('RequirementsNote');
+  UpdateComponentsPage;
+
+  StoragePage := CreateInputDirPage(wpSelectComponents, CustomMessage('StorageTitle'),
+    CustomMessage('StorageDescription'), CustomMessage('StoragePrompt'), False, '');
+  StoragePage.Add(CustomMessage('StorageLabel'));
+  if DirExists('H:\') then
+    StoragePage.Values[0] := 'H:\Tools\SignumAI'
+  else
+    StoragePage.Values[0] := ExpandConstant('{userdocs}\SignumAI');
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := (PageID = StoragePage.ID) and not LocalAISelected;
 end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = RiskPage.ID then
     WizardForm.NextButton.Enabled := RisksConfirmed
-  else if CurPageID = RequirementsPage.ID then
-    UpdateRequirementsPage;
+  else if CurPageID = wpSelectComponents then
+  begin
+    WizardForm.PageNameLabel.Caption := CustomMessage('ComponentsTitle');
+    WizardForm.PageDescriptionLabel.Caption := CustomMessage('ComponentsDescription');
+    UpdateComponentsPage;
+  end;
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
@@ -234,4 +486,24 @@ begin
     MsgBox(CustomMessage('RiskRequired'), mbInformation, MB_OK);
     Result := False;
   end;
+  if CurPageID = wpSelectComponents then
+  begin
+    if WizardIsComponentSelected('jev') and
+       ((GpuVendor <> 4318) or (GpuMemoryMB < 15000)) then
+    begin
+      MsgBox(CustomMessage('JevUnsupported'), mbInformation, MB_OK);
+      Result := False;
+    end
+    else if WizardIsComponentSelected('gemma_large') and (GpuMemoryMB < 15000) then
+      Result := MsgBox(CustomMessage('LargeWarning'), mbConfirmation, MB_YESNO) = IDYES;
+  end;
+  if CurPageID = StoragePage.ID then
+    if (ExtractFileDrive(StoragePage.Values[0]) = '') or
+       not DirExists(ExtractFileDrive(StoragePage.Values[0]) + '\') or
+       (Pos(Lowercase(AddBackslash(WizardDirValue)),
+         Lowercase(AddBackslash(StoragePage.Values[0]))) = 1) then
+    begin
+      MsgBox(CustomMessage('StorageInvalid'), mbInformation, MB_OK);
+      Result := False;
+    end;
 end;

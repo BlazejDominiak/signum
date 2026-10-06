@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signum · Poligon Jev / Gemma</title>
+<style>
+:root{font:16px/1.6 system-ui,sans-serif;color:#182b3b;background:#eff3f6;accent-color:#087b70}
+*{box-sizing:border-box}body{margin:0}main{max-width:1180px;margin:auto;padding:36px 24px}
+h1{font-size:36px;line-height:1.2;margin:12px 0}h2{font-size:23px;margin-top:0}
+.eyebrow{letter-spacing:.14em;font-size:12px;font-weight:700;color:#087b70}
+.intro{max-width:800px;color:#506273}.card{background:white;border:1px solid #d8e2e8;border-radius:14px;padding:26px;margin:22px 0}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px}.value{font-size:42px;line-height:1.2;font-weight:700;margin:8px 0}.muted{color:#586d7a;font-size:14px;overflow-wrap:anywhere}
+label{display:block;font-weight:600;margin-top:16px}input[type=number],select{width:100%;padding:10px;border:1px solid #a8bbc7;border-radius:6px;background:white;color:#182b3b;font:inherit}
+input[type=range]{width:100%}table{width:100%;border-collapse:collapse;font-size:15px}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #e3e9ee}
+th{font-size:13px;color:#586d7a}a{color:#006d9a}button{font:inherit;background:#087b70;color:white;border:0;border-radius:7px;padding:9px 15px;cursor:pointer}
+.badge{display:inline-block;border-radius:30px;padding:4px 14px;background:#e1f1ed;color:#075c53;font-weight:700}.negative{background:#e6edf4;color:#304d65}
+.preview{display:block;width:100%;max-height:720px;object-fit:contain;background:#f7f8fa;border:1px solid #e2e9ee}
+.notice{border-left:4px solid #d6a143;padding-left:16px}.scroll{overflow:auto}code{font-size:13px;overflow-wrap:anywhere}pre{overflow:auto;font-size:13px;background:#f3f6f8;padding:16px}
+@media(max-width:740px){.grid{grid-template-columns:1fr}main{padding:22px 14px}h1{font-size:29px}.card{padding:18px}}
+</style>
+<main>
+<div class="eyebrow">SIGNUM / LOKALNY EKSPERYMENT / 5 PAŹDZIERNIKA 2026</div>
+<h1>Podpis jest. Ale skąd ta pewność?</h1>
+<p><a href="quality-calculator.html">Dokładniejszy wariant pięciu widoków i dodatkowy test 20 nowych stron</a></p>
+<p class="intro">50 publicznych dokumentów z widocznym podpisem i 50 stron kontrolnych z innych PDF-ów. Każda strona została obejrzana przed uruchomieniem modeli. Poniżej wyniki oddzielnego testu oraz kalkulator zamrożonej reguły Jev.</p>
+<section class="card"><h2>Wynik na 40 odłożonych stronach</h2><div class="scroll"><table><thead><tr><th>Metoda</th><th>Poprawne</th><th>Pominięte podpisy</th><th>Fałszywe alarmy</th><th>Błędy odpowiedzi¹</th><th>Mediana / strona</th></tr></thead><tbody id="summary"></tbody></table></div>
+<p class="muted">20 stron z podpisem, 20 bez. Wydawcy testowi nie występują w zbiorze do strojenia. ¹ Błędy odpowiedzi obniżają trafność; w kolumnach pominięć i fałszywych alarmów są tylko odczytane decyzje. Czasy dotyczą różnych trybów odpowiedzi, na tym samym RTX 5060 Ti 16 GB.</p></section>
+<div class="grid">
+<section class="card"><h2>Kalkulator Jev</h2><p>Model ogląda całą stronę i jej dolne 55%. Z obu odpowiedzi <code>choice.present</code> bierze większą wartość.</p>
+<label for="full">Cała strona — wynik 0–1</label><input id="full" type="number" min="0" max="1" step="0.001" value="0.3"><input id="fullRange" aria-label="Cała strona — suwak" type="range" min="0" max="1" step="0.001" value="0.3">
+<label for="bottom">Dolna część — wynik 0–1</label><input id="bottom" type="number" min="0" max="1" step="0.001" value="0.8"><input id="bottomRange" aria-label="Dolna część — suwak" type="range" min="0" max="1" step="0.001" value="0.8">
+<p id="decision" class="badge" aria-live="polite"></p><div class="value" id="probability"></div><div class="muted">Eksperymentalnie skalibrowane prawdopodobieństwo</div><p id="formula" class="muted"></p><p id="validation" role="alert"></p>
+<p class="notice muted">Kalibracja pochodzi ze zbilansowanych 60 stron do strojenia. 99% tutaj nie gwarantuje 99% trafności w Twoich dokumentach. Reguła wykrywa wygląd podpisu, nie potwierdza jego autentyczności.</p>
+</section>
+<section class="card"><h2>Sprawdź prawdziwy przykład</h2><label for="split">Zbiór</label><select id="split"><option value="test">Odłożony test · 40 stron</option><option value="dev">Strojenie · 60 stron</option><option value="all">Całość · 100 stron</option></select>
+<label for="example">Dokument i strona</label><select id="example"></select><p id="truth"></p><p id="exampleMethods" class="muted"></p><button id="load">Wstaw wyniki do kalkulatora</button><p><a id="source" target="_blank" rel="noopener">Otwórz publiczne źródło PDF</a> · <a id="local" target="_blank">Lokalny PDF</a></p><img id="preview" class="preview" alt="Pełna oceniana strona dokumentu"><p id="digest" class="muted"></p></section>
+</div>
+<section class="card"><h2>Co zostało sprawdzone</h2><p>800 zapytań Jev: trzy instrukcje kontekstu, osiem pytań <code>noul</code> i jedno pytanie binarne <code>choice</code>, cała strona oraz stałe fragmenty. Porównano 39 reguł i 161 progów dla każdej reguły. Wybrano dwie perspektywy i próg 0,455 wyłącznie na 60 stronach do strojenia; potem zamrożono regułę i oceniono osobny test.</p>
+<p>Gemma jest mierzona w dwóch trybach: dotychczasowa analiza Signum z opisem i współrzędnymi oraz osobna klasyfikacja binarna. Jev w kalkulatorze nie generuje współrzędnych wycinków podpisów. Wynik szybkości nie jest pomiarem kosztu energii ani cennika API.</p>
+<p class="notice">Jednostką testu jest jedna wybrana kompletna strona na PDF. Nie zmierzono wyszukiwania stron podpisu w całym dokumencie. Dokumenty pochodzą głównie z administracji i uczelni, z puli wyszukanej w internecie i przetasowanej ze stałym ziarnem; to nie jest reprezentatywna losowa próba całego internetu.</p>
+<p><a href="RESULTS.pl.md">Pełny raport</a> · <a href="labels.json">Manifest źródeł i etykiet</a> · <a href="heuristic.json">Zamrożone parametry</a> · <a href="protocol.json">Dokładne prompty</a> · <a href="README.md">Uruchamianie kalkulatora dla własnego PDF</a></p></section>
+<footer class="muted">Obliczenia na tej stronie działają lokalnie w przeglądarce. Zmiana liczb nie uruchamia modelu ani nie wysyła dokumentów. Analizę nowego PDF wykonuje <code>calculator.py</code>.</footer>
+</main>
+<script id="dataset" type="application/json">__DATA__</script>
+<script>
+"use strict";
+const DATA=JSON.parse(document.getElementById("dataset").textContent);
+const $=id=>document.getElementById(id), names={jev_baseline:"Jev · dotychczasowy",heuristic:"Jev · kalkulator",gemma:"Gemma · Signum",gemma_binary:"Gemma · tylko klasyfikacja"};
+function calculate(full,bottom,config){if(!Number.isFinite(full)||!Number.isFinite(bottom)||full<0||full>1||bottom<0||bottom>1)throw Error("Podaj dwie liczby z zakresu 0–1.");const score=Math.max(full,bottom),z=config.calibration.intercept+config.calibration.slope*4*(score-.5);return{score,p:1/(1+Math.exp(-Math.max(-40,Math.min(40,z)))),yes:score>=config.threshold};}
+function update(){try{if($("full").value===""||$("bottom").value==="")throw Error("Uzupełnij oba wyniki.");const r=calculate(Number($("full").value),Number($("bottom").value),DATA.config);$("decision").textContent=r.yes?"Podpis wykryty":"Podpis niewykryty";$("decision").className="badge"+(r.yes?"":" negative");$("probability").textContent=(r.p*100).toFixed(1)+"%";$("formula").textContent="max = "+r.score.toFixed(4)+" · próg decyzji = "+DATA.config.threshold;$("validation").textContent="";}catch(e){$("validation").textContent=e.message;$("decision").textContent="Brak decyzji";$("probability").textContent="—";$("formula").textContent="";}}
+for(const key of ["full","bottom"]){$(key).addEventListener("input",()=>{$(key+"Range").value=$(key).value;update();});$(key+"Range").addEventListener("input",()=>{$(key).value=$(key+"Range").value;update();});}
+for(const method of ["jev_baseline","heuristic","gemma","gemma_binary"]){const m=DATA.summary.test[method],tr=document.createElement("tr");for(const value of [names[method],(m.tp+m.tn)+"/"+m.n+" ("+(m.accuracy*100).toFixed(1)+"%)",m.valid_fn,m.valid_fp,m.inference_errors,m.median_s.toFixed(2)+" s"]){const td=document.createElement("td");td.textContent=value;tr.append(td);}$("summary").append(tr);}
+function selected(){return DATA.samples.find(s=>s.id===$("example").value);}
+function resultText(row){return row.error?"błąd odpowiedzi":row.predicted?"podpis":"brak podpisu";}
+function show(){const s=selected();$("truth").textContent="Oględziny: "+(s.has_signature?"widoczny podpis / parafka":"brak widocznego podpisu")+" · "+s.group;$("exampleMethods").textContent="Jev przed: "+resultText(s.jev_baseline)+" · kalkulator: "+(s.heuristic_predicted?"podpis":"brak podpisu")+" · Gemma Signum: "+resultText(s.gemma)+" · Gemma binarna: "+resultText(s.gemma_binary);$("source").href=s.url;$("local").href="../../scratch/jev50/pdf/"+s.document+".pdf#page="+s.page;$("preview").src="../../scratch/jev50/pages/"+s.id+".jpg";$("digest").textContent="PDF SHA256: "+s.pdf_sha256;}
+function populate(){const split=$("split").value;$("example").replaceChildren();for(const s of DATA.samples.filter(s=>split==="all"||s.split===split)){const o=document.createElement("option");o.value=s.id;o.textContent=s.id+" · "+s.group;$("example").append(o);}show();}
+$("split").addEventListener("change",populate);$("example").addEventListener("change",show);$("load").addEventListener("click",()=>{const s=selected();$("full").value=s.full_score;$("bottom").value=s.bottom_score;$("fullRange").value=s.full_score;$("bottomRange").value=s.bottom_score;update();});populate();update();
+</script>
+</html>

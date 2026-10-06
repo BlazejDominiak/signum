@@ -34,11 +34,12 @@ flowchart TD
         O[OllamaVisionModel]
         OA[OpenAIVisionModel]
         AN[AnthropicVisionModel]
+        J[JevVisionModel: vjev-vision]
     end
     W --> P
     C --> P
     P --> B
-    B --- O & OA & AN
+    B --- O & OA & AN & J
     P --> REP[report/ HTML+CSV]
 ```
 
@@ -53,9 +54,27 @@ Dwie niezależne ścieżki, łączone per dokument:
 | Ścieżka | Co wykrywa | Jak | Pewność |
 |---|---|---|---|
 | wizyjna | podpis odręczny, parafka, pieczątka | render strony → vision LLM → JSON (schemat egzekwowany promptem + odpornym parserem; structured outputs tylko w ponowieniu) | deklarowana przez model 0–100 |
+| wizyjna Jev | obecność podpisu odręcznego lub parafki; pieczątka osobno | pełna strona + cztery zachodzące ćwiartki → dziewięć pytań typowanych → największa średnia czterech ocen, próg 0,535 | prawdopodobieństwo kalibrowane na próbie eksperymentalnej, także dla wyników ujemnych |
 | strukturalna (PDF) | podpisy cyfrowe: PAdES/CAdES, PKCS#7 (adbe), X.509, znaczniki czasu RFC 3161, podpisy certyfikujące DocMDP, UR3 | pypdf: pola `/FT /Sig` z `/V`, klasyfikacja po `/SubFilter` | 100 (fakt strukturalny) |
 
 Kluczowe decyzje:
+
+- **vjev:** nadpisuje `VisionModel.analyze_image` i zwraca wspólny
+  `PageAnalysis`. Wysyła `state` z obrazem base64 do `/systemone`. Prompt decyzyjny jest
+  zapisany osobno jako `jev_custom_prompt`. Pięć widoków powstaje przed zmniejszeniem
+  obrazu; każdy JPEG ma limit 1120 px. Parametry metody są zamrożone w
+  `ai/jev_signature.py` i porównywane z protokołem badania w testach.
+  Jev nie zlicza podpisów, nie podaje ramek ani nie klasyfikuje rodzaju dokumentu.
+  Brakujące lub niepoprawne decyzje powodują `AIResponseError`, nigdy pusty wynik
+  oznaczający brak podpisu. Preflight sprawdza listę modeli i syntetyczny obraz.
+  Lokalność każdego dostawcy zależy od rzeczywistego adresu wybranego API.
+  Przy braku lokalnego serwera `local_vjev` uruchamia osobny proces Python z
+  przygotowanego `runtime.json`, czeka na załadowanie prawdziwych wag i powtarza
+  preflight. `vjev_bootstrap.py` jest zasobem instalatora, nie importem GUI:
+  Torch i model pozostają na H:. Serwer jest offline, tylko IPv4 loopback,
+  z blokadą startu per port. Zatrzymanie wymaga osobnego losowego tokenu sterowania;
+  nie zatrzymuje serwerów innych dostawców ani dowolnych procesów.
+  Worker i CLI zwalniają zarządzany serwer po zakończeniu lub anulowaniu analizy.
 
 - **Podpisy cyfrowe NIE są wykrywane przez LLM.** Obecność wypełnionego pola `/Sig`
   to fakt; pytanie modelu wizyjnego o nie byłoby mniej wiarygodne. Widget podpisu

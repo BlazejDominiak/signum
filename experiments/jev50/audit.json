@@ -1,0 +1,26 @@
+{
+  "raw_files": {
+    "jev_raw.jsonl": {
+      "path": "H:\\podpisy\\scratch\\jev50\\jev_raw.jsonl",
+      "sha256": "4ee7244903e1930143124d156ed0a3dfdd74d412b30a94f90b4b7eb01878ac3f"
+    },
+    "jev_baseline.jsonl": {
+      "path": "H:\\podpisy\\scratch\\jev50\\jev_baseline.jsonl",
+      "sha256": "789a0a60e785ebe36e14ef4d5345cbdc55117655d345280579e317a4463ae67b"
+    },
+    "gemma_raw.jsonl": {
+      "path": "H:\\podpisy\\scratch\\jev50\\gemma_raw.jsonl",
+      "sha256": "2bc6db3bc2d0f46bcdc7fabed73b8a3b9a4c260e69ba70743687ca42764bf175"
+    },
+    "gemma_binary.jsonl": {
+      "path": "H:\\podpisy\\scratch\\jev50\\gemma_binary.jsonl",
+      "sha256": "1c2ba41528f0d0d02358b22eeee7fd688d311cf6a2fb7f4b19bd8455ec6b5c56"
+    }
+  },
+  "protocol_sha256": "01972ff8b37fb2f64b4c718b9c95645a880f669a5e7f450e71f166ea88aa3269",
+  "gemma_binary_protocol_sha256": "4a25834559be1f0e460918574c5172211d46068de58bfa3fe2943412bdd85b55",
+  "labels_sha256": "b75a9cc7b09eff0711d0dacdaa53d1e7e469f04d85de77fdcd131c0033a23cce",
+  "results_sha256": "57f3fa8ed2ee841b0e9815cd59c0925553b97ff3289ab41f4c56f88eff286e3e",
+  "verified_pdf_count": 100,
+  "verified_identical_gemma_inputs": true
+}

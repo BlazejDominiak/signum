@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from signum.config import AppConfig
 
 
@@ -81,3 +83,39 @@ def test_klucze_api_nie_trafiaja_do_pliku(isolated_config: Path) -> None:
     content = isolated_config.read_text(encoding="utf-8")
     assert "api_key" not in content
     assert "key" not in json.loads(content)
+
+
+@pytest.mark.parametrize("provider", ["vjev"])
+def test_nowi_dostawcy_i_prompt_sa_trwale(isolated_config: Path, provider: str) -> None:
+    config = AppConfig(provider=provider, jev_custom_prompt="Custom decision instructions")
+    setattr(config, f"{provider}_base_url", "https://custom.example.test/v1")
+    setattr(config, f"{provider}_model", "custom-vision")
+    config.save()
+    loaded = AppConfig.load()
+    assert loaded.provider == provider
+    assert loaded.api_base_url == "https://custom.example.test/v1"
+    assert getattr(loaded, f"{provider}_model") == "custom-vision"
+    assert loaded.jev_custom_prompt == "Custom decision instructions"
+
+
+def test_stary_plik_uzupelnia_nowe_adresy_i_modele(isolated_config: Path) -> None:
+    isolated_config.parent.mkdir(parents=True, exist_ok=True)
+    isolated_config.write_text('{"provider":"anthropic"}', encoding="utf-8")
+    loaded = AppConfig.load()
+    assert loaded.api_base_url == "https://api.anthropic.com/v1"
+    assert loaded.vjev_model == "vjev-vision"
+    assert loaded.vjev_runtime_dir == "H:/Tools/SignumJev"
+
+
+def test_migracja_blednego_id_modelu_jev(isolated_config: Path) -> None:
+    isolated_config.parent.mkdir(parents=True, exist_ok=True)
+    isolated_config.write_text(
+        '{"provider":"vjev", "vjev_model":"yah01/vjev-vision"}', encoding="utf-8",
+    )
+    assert AppConfig.load().vjev_model == "vjev-vision"
+
+
+def test_usuniety_dostawca_nie_jest_uzywany(isolated_config: Path) -> None:
+    isolated_config.parent.mkdir(parents=True, exist_ok=True)
+    isolated_config.write_text('{"provider":"simple_jev"}', encoding="utf-8")
+    assert AppConfig.load().provider == "ollama"

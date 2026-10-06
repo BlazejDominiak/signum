@@ -7,6 +7,7 @@ import base64
 import requests
 
 from signum.ai.base import AIConnectionError, AIResponseError, VisionModel
+from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
 API_URL = "https://api.anthropic.com/v1"
 API_VERSION = "2023-06-01"
@@ -16,7 +17,13 @@ DEFAULT_MODEL = "claude-sonnet-5"
 class AnthropicVisionModel(VisionModel):
     """Model Claude przez Messages API (obrazy jako bloki base64)."""
 
-    def __init__(self, api_key: str, model: str = DEFAULT_MODEL, timeout_s: int = 300) -> None:
+    def __init__(
+        self, api_key: str, model: str = DEFAULT_MODEL, timeout_s: int = 300,
+        base_url: str = API_URL,
+    ) -> None:
+        self._base_url = normalize_ai_endpoint(base_url, API_URL, "API Claude")
+        self._session = requests.Session()
+        self._session.trust_env = not is_loopback_endpoint(self._base_url)
         self._api_key = api_key
         self._model = model
         self._timeout_s = timeout_s
@@ -26,11 +33,13 @@ class AnthropicVisionModel(VisionModel):
         return f"Claude API: {self._model}"
 
     def _headers(self) -> dict[str, str]:
-        return {
-            "x-api-key": self._api_key,
+        headers = {
             "anthropic-version": API_VERSION,
             "content-type": "application/json",
         }
+        if self._api_key:
+            headers["x-api-key"] = self._api_key
+        return headers
 
     def _generate(self, image_jpeg: bytes, prompt: str) -> str:
         payload = {
@@ -55,8 +64,8 @@ class AnthropicVisionModel(VisionModel):
             ],
         }
         try:
-            response = requests.post(
-                f"{API_URL}/messages",
+            response = self._session.post(
+                f"{self._base_url}/messages",
                 json=payload,
                 headers=self._headers(),
                 timeout=self._timeout_s,
@@ -74,11 +83,11 @@ class AnthropicVisionModel(VisionModel):
             raise AIResponseError(f"Niepoprawna odpowiedź Claude API: {exc}") from exc
 
     def check_connection(self) -> str:
-        if not self._api_key:
+        if not self._api_key and not is_loopback_endpoint(self._base_url):
             raise AIResponseError("Nie podano klucza API")
         try:
-            response = requests.get(
-                f"{API_URL}/models?limit=1",
+            response = self._session.get(
+                f"{self._base_url}/models?limit=1",
                 headers=self._headers(),
                 timeout=15,
                 allow_redirects=False,

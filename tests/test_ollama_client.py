@@ -65,6 +65,7 @@ class TestGenerateRetry:
         analysis = model.analyze_page(b"jpeg")
         assert len(post.payloads) == 1
         assert "format" not in post.payloads[0]
+        assert post.payloads[0]["think"] is False
         assert analysis.signatures[0].confidence == 95
 
     def test_plotki_markdown_nie_wymuszaja_ponowienia(
@@ -96,6 +97,36 @@ class TestGenerateRetry:
         with pytest.raises(AIResponseError):
             model.analyze_page(b"jpeg")
         assert len(post.payloads) == 2
+
+
+@pytest.mark.parametrize("content", ["", "{}", '{"description":"Umowa"}'])
+def test_empty_or_incomplete_result_is_retried_not_unsigned(
+    content: str, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model = _model()
+    post = _FakePost(content, VALID_JSON)
+    monkeypatch.setattr(model._session, "post", post)
+    assert model.analyze_page(b"jpeg").signatures
+    assert len(post.payloads) == 2
+    assert post.payloads[1]["format"] is RESPONSE_SCHEMA
+
+
+def test_truncated_valid_json_is_not_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
+    class Truncated(_FakeResponse):
+        def json(self) -> dict[str, Any]:
+            return {"message": {"content": VALID_JSON}, "done_reason": "length"}
+
+    model = _model()
+    calls: list[dict[str, Any]] = []
+
+    def post(url: str, **kwargs: Any) -> _FakeResponse:
+        calls.append(kwargs["json"])
+        return Truncated(VALID_JSON) if len(calls) == 1 else _FakeResponse(VALID_JSON)
+
+    monkeypatch.setattr(model._session, "post", post)
+    assert model.analyze_page(b"jpeg").signatures
+    assert len(calls) == 2
+    assert calls[1]["options"]["num_predict"] > calls[0]["options"]["num_predict"]
 
 
 def test_lokalna_ollama_nie_uzywa_proxy_z_otoczenia() -> None:

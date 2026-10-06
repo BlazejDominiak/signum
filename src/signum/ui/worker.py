@@ -40,6 +40,8 @@ class BatchWorker(QThread):
             )
         except Exception as exc:  # obrona: wyjątek nie może zabić wątku po cichu
             batch = BatchResult(abort_error=f"Nieoczekiwany błąd: {exc}")
+        finally:
+            self._analyzer.release_resources()
         self.batch_done.emit(batch)
 
 
@@ -48,13 +50,22 @@ class ConnectionTestWorker(QThread):
 
     finished_with_result = Signal(bool, str)  # sukces, komunikat
 
-    def __init__(self, model: VisionModel, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        model: VisionModel,
+        parent: QObject | None = None,
+        *,
+        stop_local: bool = False,
+    ) -> None:
         super().__init__(parent)
         self._model = model
+        self._stop_local = stop_local
 
     def run(self) -> None:
         try:
-            message = self._model.check_connection()
+            message = (
+                self._model.stop_local() if self._stop_local else self._model.check_connection()
+            )
         except AIError as exc:
             self.finished_with_result.emit(False, str(exc))
         except Exception as exc:  # nie przepuszczaj żadnego wyjątku do Qt
@@ -68,13 +79,19 @@ class ModelListWorker(QThread):
 
     finished_with_result = Signal(bool, object)  # sukces, list[str] | komunikat błędu
 
-    def __init__(self, base_url: str, parent: QObject | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str,
+        parent: QObject | None = None,
+        api_key: str = "",
+    ) -> None:
         super().__init__(parent)
         self._base_url = base_url
+        self._api_key = api_key
 
     def run(self) -> None:
         try:
-            models = OllamaVisionModel.list_models(self._base_url)
+            models = OllamaVisionModel.list_models(self._base_url, api_key=self._api_key)
         except AIError as exc:
             self.finished_with_result.emit(False, str(exc))
         except Exception as exc:

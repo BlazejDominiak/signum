@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
+
+from PIL import Image
 
 from signum.core.models import SignatureKind
 
@@ -27,6 +30,7 @@ class VisualSignature:
     kind: SignatureKind
     confidence: int  # 0-100
     box_2d: tuple[int, int, int, int] | None  # [ymin, xmin, ymax, xmax] w skali 0-1000
+    detail: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,14 +39,15 @@ class PageAnalysis:
 
     description: str  # kilkuwyrazowy opis dokumentu (może być pusty)
     signatures: tuple[VisualSignature, ...]
+    signature_probability: float | None = None  # P(widocznego podpisu/parafki) tej strony
 
 
 class VisionModel(ABC):
     """Model wizyjny analizujący obraz strony dokumentu.
 
-    Podklasy implementują wyłącznie transport (:meth:`_generate`); prompt
-    i parsowanie odpowiedzi są wspólne, więc każdy dostawca zachowuje się
-    identycznie z punktu widzenia pipeline'u.
+    Dostawcy generatywni implementują transport (:meth:`_generate`) i korzystają
+    ze wspólnego parsera. Dostawcy decyzji nadpisują :meth:`analyze_page`,
+    zwracając ten sam typ wyniku bez generowania tekstu.
     """
 
     @property
@@ -73,3 +78,25 @@ class VisionModel(ABC):
 
         raw = self._generate(image_jpeg, prompt or PAGE_PROMPT)
         return parse_page_analysis(raw)
+
+    def stop_local(self) -> str:
+        """Zwalnia pamięć lokalnego modelu, jeśli dostawca obsługuje zarządzanie."""
+        raise AIResponseError("Ten dostawca nie obsługuje zatrzymywania lokalnego modelu.")
+
+    def release_resources(self) -> None:
+        """Po partii dostawca może zwolnić własny lokalny runtime."""
+        return
+
+    def analyze_image(
+        self,
+        image: Image.Image,
+        max_side: int,
+        prompt: str | None = None,
+        check_cancelled: Callable[[], None] | None = None,
+    ) -> PageAnalysis:
+        """Analiza obrazu roboczego, zanim zostanie zmniejszony dla pojedynczego widoku."""
+        from signum.core.rendering import to_model_jpeg  # noqa: PLC0415
+
+        if check_cancelled:
+            check_cancelled()
+        return self.analyze_page(to_model_jpeg(image, max_side), prompt)

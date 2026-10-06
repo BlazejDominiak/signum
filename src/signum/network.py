@@ -65,9 +65,11 @@ def is_loopback_endpoint(value: str) -> bool:
     return bool(host and _is_loopback_host(host))
 
 
-def processing_is_local(provider: str, ollama_url: str) -> bool:
-    """Tylko Ollama pod adresem loopback jest trybem lokalnym."""
-    return provider == "ollama" and is_loopback_endpoint(ollama_url)
+def processing_is_local(provider: str, api_url: str) -> bool:
+    """Przetwarzanie na tym komputerze rozpoznajemy po rzeczywistym adresie API."""
+    return provider in {"ollama", "openai", "anthropic", "vjev"} and (
+        is_loopback_endpoint(api_url)
+    )
 
 
 def _is_loopback_host(host: str) -> bool:

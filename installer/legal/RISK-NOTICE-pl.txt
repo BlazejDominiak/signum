@@ -1,6 +1,10 @@
-SIGNUM — INFORMACJA O RYZYKU DLA DOKUMENTÓW I AI
+﻿SIGNUM — INFORMACJA O RYZYKU DLA DOKUMENTÓW I AI
 
 Przeczytaj tę informację przed zainstalowaniem aplikacji.
+
+Program jest edukacyjny i nie nadaje się do użytku komercyjnego. Korzystaj
+z niego tylko na dokumentach przykładowych, niezawierających danych osobowych
+ani danych wrażliwych.
 
 1. CEL I OGRANICZENIA PROGRAMU
 
@@ -42,7 +46,6 @@ to również usługi w sieci organizacji. Dane mogą być tam przetwarzane lub
 przechowywane zgodnie z warunkami, zabezpieczeniami, zasadami prywatności i
 jurysdykcją operatora usługi.
 
-Instalator wymaga czterech osobnych potwierdzeń, aby powyższe ryzyka zostały
-zauważone przed kontynuowaniem instalacji. Potwierdzenia służą uświadomieniu
-ryzyka; nie są dodatkową umową, ograniczeniem licencji MIT ani obietnicą
-określonego sposobu korzystania z aplikacji.
+Instalator wymaga czterech osobnych potwierdzeń: edukacyjnego charakteru
+programu, korzystania wyłącznie z dokumentów przykładowych bez danych osobowych
+ani wrażliwych oraz przekazywania treści do lokalnego lub zdalnego modelu AI.

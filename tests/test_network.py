@@ -42,11 +42,13 @@ def test_niebezpieczne_endpointy_sa_odrzucane(url: str) -> None:
         normalize_ai_endpoint(url, "https://default.invalid", "test")
 
 
-def test_tylko_ollama_loopback_jest_lokalna() -> None:
+def test_lokalnosc_zalezy_od_endpointu_wybranego_dostawcy() -> None:
     assert is_loopback_endpoint("http://127.0.0.1:11434")
     assert processing_is_local("ollama", "http://localhost:11434")
     assert not processing_is_local("ollama", "https://ollama.example.test")
-    assert not processing_is_local("openai", "http://localhost:8000/v1")
+    assert processing_is_local("openai", "http://localhost:8000/v1")
+    assert processing_is_local("vjev", "http://localhost:8800/v1")
+    assert not processing_is_local("vjev", "https://vjev.example.test/v1")
 
 
 def test_ipv6_zachowuje_poprawne_nawiasy() -> None:

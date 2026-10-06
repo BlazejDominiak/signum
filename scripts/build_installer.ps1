@@ -11,14 +11,34 @@ $version = & $python -c "import signum; print(signum.__version__)"
 Write-Host "=== Signum $version ===" -ForegroundColor Cyan
 
 Write-Host "[1/3] PyInstaller (dist\Signum)..." -ForegroundColor Cyan
-& $python -m PyInstaller (Join-Path $root "packaging\signum.spec") `
-    --noconfirm --distpath (Join-Path $root "dist") --workpath (Join-Path $root "build")
+# Budowanie z terminala z dodatkowymi narzędziami w PATH może spakować obce DLL
+# (np. UCRT z Windows 11), które uniemożliwiają start programu na Windows 10.
+$pythonBaseDir = & $python -c "import sys; print(sys.base_prefix)"
+$signumOriginalPath = $env:PATH
+try {
+    $env:PATH = @(
+        (Split-Path -Parent $python),
+        $pythonBaseDir,
+        (Join-Path $pythonBaseDir "DLLs"),
+        (Join-Path $env:SystemRoot "System32"),
+        $env:SystemRoot
+    ) -join ";"
+    & $python -m PyInstaller (Join-Path $root "packaging\signum.spec") `
+        --clean --noconfirm --distpath (Join-Path $root "dist") --workpath (Join-Path $root "build")
+} finally {
+    $env:PATH = $signumOriginalPath
+}
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller zakończył się błędem" }
 
 Write-Host "[2/3] Test dymny zbudowanego exe..." -ForegroundColor Cyan
 $exe = Join-Path $root "dist\Signum\Signum.exe"
 if (-not (Test-Path $exe)) { throw "Brak $exe" }
-$smoke = Start-Process -FilePath $exe -ArgumentList "--self-test" -Wait -PassThru -WindowStyle Hidden
+$smoke = Start-Process -FilePath $exe -ArgumentList "--self-test" -PassThru -WindowStyle Hidden
+if (-not $smoke.WaitForExit(60000)) {
+    $smoke.Kill()
+    $smoke.WaitForExit()
+    throw "Test spakowanego runtime'u nie zakończył się w ciągu 60 sekund"
+}
 if ($smoke.ExitCode -ne 0) {
     throw "Test spakowanego runtime'u zakończył się kodem $($smoke.ExitCode)"
 }

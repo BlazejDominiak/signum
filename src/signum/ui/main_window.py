@@ -6,12 +6,14 @@ import math
 import time
 from pathlib import Path
 
-from PySide6.QtCore import QPointF, Qt, QTimer, Signal
+from PySide6.QtCore import QPointF, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import (
     QAction,
     QColor,
+    QDesktopServices,
     QDragEnterEvent,
     QDropEvent,
+    QMouseEvent,
     QPainter,
     QPen,
     QPixmap,
@@ -27,6 +29,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QProgressBar,
+    QPushButton,
     QScrollArea,
     QSplitter,
     QStackedLayout,
@@ -144,14 +147,14 @@ class MainWindow(QMainWindow):
         self._left_stack.addWidget(hint)
 
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Plik", "Tytuł (AI)", "Podpisy", "Pewność", "Status"])
+        self.table.setHorizontalHeaderLabels(["Plik", "Opis / nazwa", "Podpisy", "Ocena", "Status"])
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.setColumnWidth(_COL_FILE, 240)
-        self.table.setColumnWidth(_COL_TITLE, 250)
-        self.table.setColumnWidth(_COL_SIGNATURES, 150)
+        self.table.setColumnWidth(_COL_FILE, 180)
+        self.table.setColumnWidth(_COL_TITLE, 160)
+        self.table.setColumnWidth(_COL_SIGNATURES, 180)
         self.table.setColumnWidth(_COL_CONFIDENCE, 70)
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
@@ -161,6 +164,7 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self._build_details_panel())
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 2)
+        splitter.setSizes([740, 440])
         self.setCentralWidget(splitter)
 
     def _build_details_panel(self) -> QWidget:
@@ -188,7 +192,7 @@ class MainWindow(QMainWindow):
     def _refresh_online_badge(self) -> None:
         """Plakietka „model online" jest widoczna, gdy dostawca AI nie jest lokalny."""
         self.online_badge.setVisible(
-            not processing_is_local(self._config.provider, self._config.ollama_url)
+            not processing_is_local(self._config.provider, self._config.api_base_url)
         )
 
     # -- drag & drop ---------------------------------------------------------
@@ -273,7 +277,11 @@ class MainWindow(QMainWindow):
             model=model,
             max_pages=self._config.max_pages_per_doc,
             image_max_side=self._config.model_image_max_side,
-            prompt=build_page_prompt(self._config.custom_prompt),
+            prompt=build_page_prompt(
+                self._config.custom_prompt,
+                self._config.provider,
+                self._config.jev_custom_prompt,
+            ),
         )
         self._results.clear()
         self._last_batch = None
@@ -337,9 +345,7 @@ class MainWindow(QMainWindow):
 
     def _ensure_ai_ready(self) -> bool:
         """Dla dostawców chmurowych wymagany jest klucz API."""
-        if self._config.provider in ("openai", "anthropic") and not get_api_key(
-            self._config.provider
-        ):
+        if self._config.requires_api_key and not get_api_key(self._config.provider):
             answer = QMessageBox.question(
                 self,
                 "Brak klucza API",
@@ -490,10 +496,21 @@ class MainWindow(QMainWindow):
         self._cell(row, _COL_TITLE).setText(result.title)
         if result.status == DocumentStatus.OK:
             if result.is_signed:
-                text = f"PODPISANY ({len(result.findings)})"
+                text = (
+                    "WIDOCZNY PODPIS"
+                    if result.page_signature_probabilities
+                    else f"PODPISANY ({len(result.findings)})"
+                )
                 color = _GREEN
+            elif result.findings:
+                text = "TYLKO PIECZĄTKA"
+                color = _GRAY
             else:
-                text = "BRAK PODPISU"
+                text = (
+                    "BRAK W BADANEJ CZĘŚCI"
+                    if result.pages_analyzed < result.page_count
+                    else "BRAK PODPISU"
+                )
                 color = _GRAY
             signatures_item = self._cell(row, _COL_SIGNATURES)
             signatures_item.setText(text)
@@ -502,6 +519,12 @@ class MainWindow(QMainWindow):
             self._cell(row, _COL_CONFIDENCE).setText(
                 f"{confidence}%" if confidence is not None else ""
             )
+            if result.page_signature_probabilities:
+                item = self._cell(row, _COL_CONFIDENCE)
+                item.setText(f"{max(result.page_signature_probabilities.values()) * 100:.1f}%")
+                item.setToolTip(
+                    "Najwyższe prawdopodobieństwo obecności podpisu na analizowanych stronach."
+                )
             self._set_status_cell(row, "OK", _GREEN)
         elif result.status == DocumentStatus.ERROR:
             self._set_status_cell(row, "Błąd", _RED)
@@ -582,6 +605,9 @@ class MainWindow(QMainWindow):
         path_label.setWordWrap(True)
         path_label.setStyleSheet("color: #666; font-size: 11px;")
         self.details_layout.addWidget(path_label)
+        open_source = QPushButton("Otwórz dokument źródłowy")
+        open_source.clicked.connect(lambda: self._open_source_document(result.path))
+        self.details_layout.addWidget(open_source)
 
         if result.status == DocumentStatus.ERROR:
             error = QLabel(f"Błąd: {result.error}")
@@ -600,6 +626,23 @@ class MainWindow(QMainWindow):
         )
         meta.setStyleSheet("color: #666;")
         self.details_layout.addWidget(meta)
+
+        if result.pages_analyzed < result.page_count:
+            partial = QLabel(
+                "Analiza obejmuje tylko część dokumentu. Pozostałe strony mogą "
+                "zawierać podpisy. Zwiększ limit stron w ustawieniach AI."
+            )
+            partial.setWordWrap(True)
+            self.details_layout.addWidget(partial)
+        if result.page_signature_probabilities and not result.is_signed:
+            values = "; ".join(
+                f"strona {page}: {probability * 100:.1f}%"
+                for page, probability in result.page_signature_probabilities.items()
+            )
+            probability_label = QLabel("Prawdopodobieństwo obecności podpisu: " + values)
+            probability_label.setTextFormat(Qt.TextFormat.PlainText)
+            probability_label.setWordWrap(True)
+            self.details_layout.addWidget(probability_label)
 
         if not result.findings:
             none_label = QLabel("<b>Nie wykryto podpisów.</b>")
@@ -633,9 +676,13 @@ class MainWindow(QMainWindow):
             pixmap.loadFromData(finding.crop_png)
             crop_label = _ClickableLabel(pixmap)
             layout.addWidget(crop_label)
-        else:
-            layout.addWidget(QLabel("(brak wycinka — podpis niewidoczny lub błędna ramka)"))
         return frame
+
+    def _open_source_document(self, path: Path) -> None:
+        if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve()))):
+            QMessageBox.warning(
+                self, "Dokument źródłowy", "Nie udało się otworzyć dokumentu w domyślnym programie."
+            )
 
     def _clear_details(self) -> None:
         while self.details_layout.count():
@@ -691,6 +738,22 @@ class MainWindow(QMainWindow):
         event.accept()
 
 
+class _AcknowledgementText(QLabel):
+    """Zawijana etykieta, której kliknięcie przełącza powiązane pole."""
+
+    def __init__(self, text: str, checkbox: QCheckBox) -> None:
+        super().__init__(text)
+        self._checkbox = checkbox
+        self.setWordWrap(True)
+        self.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+        self.setBuddy(checkbox)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802 — API Qt
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._checkbox.click()
+        super().mousePressEvent(event)
+
+
 class BatchRiskDialog(QDialog):
     """Jednorazowe potwierdzenie ryzyka przed analizą całej kolejki dokumentów."""
 
@@ -705,43 +768,33 @@ class BatchRiskDialog(QDialog):
         layout.addWidget(heading)
 
         limitations = QLabel(
-            "Signum wykorzystuje AI i może zwrócić wynik błędny lub niepełny. "
-            "Program wykrywa oznaki obecności podpisów, ale nie potwierdza "
-            "tożsamości osoby podpisującej, autentyczności podpisu, jego ważności "
-            "prawnej lub kryptograficznej ani integralności dokumentu. Każdy wynik "
-            "wymaga ręcznej weryfikacji w dokumencie źródłowym."
+            "Signum służy do nauki i eksperymentów z wykrywaniem podpisów. "
+            "Wyniki AI mogą być błędne lub niepełne. Program nie potwierdza "
+            "autentyczności ani ważności podpisu."
         )
         limitations.setWordWrap(True)
         layout.addWidget(limitations)
 
-        is_local = processing_is_local(config.provider, config.ollama_url)
+        is_local = processing_is_local(config.provider, config.api_base_url)
+        if config.provider == "ollama" and config.ollama_model.lower().endswith("cloud"):
+            is_local = False
         if is_local:
             processing_text = (
-                "Tryb lokalny (Ollama): dokumenty nie są wysyłane do dostawcy "
-                "chmurowego, ale ich treść nadal trafia do modelu i jest "
-                "przetwarzana na tym komputerze. Lokalne uruchomienie nie przesądza, "
-                "czy takie użycie danych jest dozwolone."
+                "Tryb lokalny: wybrane dokumenty będą analizowane przez model AI "
+                "na tym komputerze."
             )
             processing_ack_text = (
-                "Rozumiem, że lokalny model AI otrzyma i przeanalizuje treść dokumentów."
-            )
-        elif config.provider == "ollama":
-            processing_text = (
-                "Tryb zdalny (Ollama): strony dokumentów zostaną wysłane przez sieć "
-                f"do usługi pod adresem {config.ollama_url}. Zdalna Ollama nie jest "
-                "przetwarzaniem lokalnym, nawet jeśli działa w sieci organizacji."
-            )
-            processing_ack_text = (
-                "Rozumiem, że dokumenty opuszczą komputer i trafią do zdalnej Ollamy."
+                "Rozumiem, że treść wybranych dokumentów będzie przetwarzana "
+                "przez lokalny model AI."
             )
         else:
             processing_text = (
-                "Tryb online: strony dokumentów zostaną wysłane przez internet do "
-                "zewnętrznego dostawcy AI i mogą być przetwarzane lub przechowywane "
-                "zgodnie z jego warunkami i zasadami prywatności."
+                "Tryb zdalny: wybrane dokumenty opuszczą komputer. Ich treść będzie "
+                "przetwarzana przez zewnętrzną usługę AI."
             )
             processing_ack_text = (
-                "Rozumiem, że dokumenty opuszczą komputer i trafią do zewnętrznego dostawcy AI."
+                "Rozumiem, że treść wybranych dokumentów będzie przesyłana przez "
+                "internet do usług stron trzecich i tam przetwarzana."
             )
 
         processing = QLabel(processing_text)
@@ -750,29 +803,25 @@ class BatchRiskDialog(QDialog):
         processing.setStyleSheet(f"color: {'#555' if is_local else '#c62828'};")
         layout.addWidget(processing)
 
-        responsibility = QLabel(
-            "Użytkownik odpowiada za sprawdzenie uprawnień do przetwarzania "
-            "dokumentów, zasad organizacji, wymagań poufności oraz przydatności "
-            "wyniku do danego celu."
+        self.purpose_ack = QCheckBox(
+            "Rozumiem, że narzędzie jest edukacyjne i nie nadaje się "
+            "do użytku w organizacjach."
         )
-        responsibility.setWordWrap(True)
-        layout.addWidget(responsibility)
-
-        self.rights_ack = QCheckBox(
-            "Mam uprawnienia do przetwarzania wybranych dokumentów i sprawdziłem(-am) "
-            "zasady organizacji."
-        )
-        self.result_ack = QCheckBox("Rozumiem ograniczenia Signum i zweryfikuję wyniki ręcznie.")
         self.processing_ack = QCheckBox(processing_ack_text)
         self._acknowledgements = (
-            self.rights_ack,
-            self.result_ack,
+            self.purpose_ack,
             self.processing_ack,
         )
         for checkbox in self._acknowledgements:
             checkbox.setTristate(False)
+            checkbox.setAccessibleName(checkbox.text())
+            label = _AcknowledgementText(checkbox.text(), checkbox)
+            checkbox.setText("")
             checkbox.stateChanged.connect(self._update_accept_state)
-            layout.addWidget(checkbox)
+            row = QHBoxLayout()
+            row.addWidget(checkbox, 0, Qt.AlignmentFlag.AlignTop)
+            row.addWidget(label, 1)
+            layout.addLayout(row)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok
@@ -783,6 +832,7 @@ class BatchRiskDialog(QDialog):
         self.accept_button.setText("Rozumiem — uruchom analizę")
         self.accept_button.setEnabled(False)
         cancel_button = buttons.button(QDialogButtonBox.StandardButton.Cancel)
+        cancel_button.setText("Anuluj")
         cancel_button.setDefault(True)
         layout.addWidget(buttons)
 
@@ -853,8 +903,8 @@ class _OnlineBadge(QFrame):
         self.setToolTip(
             "Aktywna usługa AI nie działa na tym komputerze — analizowane dokumenty "
             "są wysyłane przez sieć poza ten komputer.\n"
-            "Trybem lokalnym jest wyłącznie Ollama pod adresem pętli zwrotnej "
-            "tego komputera (np. http://127.0.0.1:11434)."
+            "Trybem lokalnym jest API pod adresem pętli zwrotnej "
+            "tego komputera (np. http://localhost:8800/v1)."
         )
 
 

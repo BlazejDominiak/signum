@@ -12,7 +12,7 @@ from pathlib import Path
 from signum import __version__
 from signum.ai import AIError, create_vision_model
 from signum.ai.prompts import build_page_prompt
-from signum.config import AppConfig
+from signum.config import PROVIDERS, AppConfig
 from signum.core.discovery import collect_documents
 from signum.core.models import DocumentResult, DocumentStatus
 from signum.core.pipeline import BatchResult, CancelToken, DocumentAnalyzer, run_batch
@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-recursive", action="store_true", help="nie schodź do podfolderów")
     parser.add_argument("--html", type=Path, metavar="PLIK", help="zapisz raport HTML")
     parser.add_argument("--csv", type=Path, metavar="PLIK", help="zapisz raport CSV")
-    parser.add_argument("--provider", choices=("ollama", "openai", "anthropic"))
+    parser.add_argument("--provider", choices=PROVIDERS)
     parser.add_argument("--model", help="nazwa modelu (nadpisuje ustawienia)")
     parser.add_argument(
         "--max-pages", type=_positive_int, metavar="N", help="limit stron na dokument"
@@ -50,12 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.provider:
         config.provider = args.provider
     if args.model:
-        if config.provider == "ollama":
-            config.ollama_model = args.model
-        elif config.provider == "openai":
-            config.openai_model = args.model
-        else:
-            config.anthropic_model = args.model
+        setattr(config, f"{config.provider}_model", args.model)
     if args.max_pages is not None:
         config.max_pages_per_doc = args.max_pages
 
@@ -92,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         model=model,
         max_pages=config.max_pages_per_doc,
         image_max_side=config.model_image_max_side,
-        prompt=build_page_prompt(config.custom_prompt),
+        prompt=build_page_prompt(config.custom_prompt, config.provider, config.jev_custom_prompt),
     )
 
     def on_start(index: int, total: int, path: Path) -> None:
@@ -101,7 +96,10 @@ def main(argv: list[str] | None = None) -> int:
     def on_done(_index: int, result: DocumentResult) -> None:
         print(f"    {_summarize(result)}", flush=True)
 
-    batch = run_batch(files, analyzer, CancelToken(), on_start, on_done)
+    try:
+        batch = run_batch(files, analyzer, CancelToken(), on_start, on_done)
+    finally:
+        analyzer.release_resources()
     _print_summary(batch)
 
     if args.html:
@@ -135,9 +133,9 @@ def _print_summary(batch: BatchResult) -> None:
 
 
 def _print_risk_notice(config: AppConfig, file_count: int) -> None:
-    local = processing_is_local(config.provider, config.ollama_url)
+    local = processing_is_local(config.provider, config.api_base_url)
     transport = (
-        "lokalny model Ollama pod adresem loopback"
+        "lokalny model AI pod adresem loopback"
         if local
         else "zewnętrzna usługa AI; obrazy stron opuszczą komputer"
     )

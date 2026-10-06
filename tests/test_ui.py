@@ -26,6 +26,41 @@ def window(qtbot, isolated_config):  # type: ignore[no-untyped-def]
 
 
 class TestMainWindow:
+    def test_ujemny_wynik_jev_ma_prawdopodobienstwo_i_zakres_analizy(
+        self,
+        window: MainWindow,
+        docs_dir: Path,
+    ) -> None:
+        from PySide6.QtWidgets import QLabel
+
+        window._add_documents([docs_dir])
+        result = DocumentResult(
+            window._files[0],
+            status=DocumentStatus.OK,
+            page_count=10,
+            pages_analyzed=2,
+            page_signature_probabilities={1: 0.172, 2: 0.03},
+        )
+        window._fill_result_row(0, result)
+        window._show_details(result)
+        assert window.table.item(0, 3).text() == "17.2%"
+        assert "BADANEJ" in window.table.item(0, 2).text()
+        labels = " ".join(label.text() for label in window.details_container.findChildren(QLabel))
+        assert "strona 1: 17.2%" in labels
+        assert "Pozostałe strony mogą zawierać podpisy" in labels
+
+    def test_otwieranie_zrodla_uzywa_lokalnego_pliku(
+        self, window: MainWindow, monkeypatch, tmp_path
+    ):
+        urls = []
+        monkeypatch.setattr(
+            "signum.ui.main_window.QDesktopServices.openUrl", lambda url: urls.append(url) or True
+        )
+        path = tmp_path / "source.pdf"
+        window._open_source_document(path)
+        assert urls[0].isLocalFile()
+        assert Path(urls[0].toLocalFile()) == path.resolve()
+
     def test_stan_poczatkowy(self, window: MainWindow) -> None:
         assert window.table.rowCount() == 0
         assert not window.act_process.isEnabled()
@@ -145,6 +180,175 @@ class TestMainWindow:
 
 
 class TestSettingsDialog:
+    @pytest.mark.parametrize("provider", ["ollama", "openai", "anthropic", "vjev"])
+    def test_adres_model_i_klucz_dla_kazdego_dostawcy(
+        self,
+        qtbot,
+        monkeypatch,
+        provider,
+    ) -> None:  # type: ignore[no-untyped-def]
+        from signum.config import AppConfig
+
+        monkeypatch.setattr("signum.ui.settings_dialog.get_api_key", lambda _: None)
+        config = AppConfig(provider=provider)
+        dialog = SettingsDialog(config)
+        qtbot.addWidget(dialog)
+        assert dialog.provider_combo.currentData() == provider
+        if provider == "ollama":
+            dialog.ollama_url.setText("https://model.example.test")
+            dialog.ollama_model.setEditText("my-vision-model")
+        else:
+            dialog._url_edits[provider].setText("https://model.example.test/v1")
+            dialog._model_edits[provider].setText("my-vision-model")
+        dialog._key_edits[provider].setText("draft-key")
+        collected = dialog._collect_config()
+        assert collected.api_base_url.startswith("https://model.example.test")
+        assert getattr(collected, f"{provider}_model") == "my-vision-model"
+        assert dialog._current_api_key() == "draft-key"
+        assert "api_key" not in collected.__dataclass_fields__
+
+    def test_przelaczanie_zachowuje_osobne_prompty_llm_i_jev(
+        self,
+        qtbot,
+        monkeypatch,
+    ) -> None:  # type: ignore[no-untyped-def]
+        from signum.ai.jev_prompts import JEV_PROMPT_INSTRUCTIONS
+        from signum.config import AppConfig
+
+        monkeypatch.setattr("signum.ui.settings_dialog.get_api_key", lambda _: None)
+        dialog = SettingsDialog(AppConfig())
+        qtbot.addWidget(dialog)
+        dialog.prompt_edit.setPlainText("LLM instructions")
+        dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("vjev"))
+        assert dialog.prompt_edit.toPlainText() == JEV_PROMPT_INSTRUCTIONS
+        dialog.prompt_edit.setPlainText("Jev instructions")
+        dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("openai"))
+        dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("vjev"))
+        assert dialog.prompt_edit.toPlainText() == "Jev instructions"
+        dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("anthropic"))
+        assert dialog.prompt_edit.toPlainText() == "LLM instructions"
+        config = dialog._collect_config()
+        assert config.custom_prompt == "LLM instructions"
+        assert config.jev_custom_prompt == "Jev instructions"
+
+    @pytest.mark.parametrize("provider", ["vjev"])
+    def test_testuj_uzywa_niezapisanych_ustawien_i_klucza(
+        self,
+        qtbot,
+        monkeypatch,
+        provider,
+    ) -> None:  # type: ignore[no-untyped-def]
+        from signum.config import AppConfig
+
+        captured = []
+
+        def check(model):  # type: ignore[no-untyped-def]
+            captured.append((model._base_url, model._model, model._api_key))
+            return "test OK"
+
+        monkeypatch.setattr("signum.ui.settings_dialog.get_api_key", lambda _: None)
+        monkeypatch.setattr("signum.ai.jev_client.JevVisionModel.check_connection", check)
+        dialog = SettingsDialog(AppConfig(provider=provider))
+        qtbot.addWidget(dialog)
+        dialog._url_edits[provider].setText("https://draft.example.test/v1")
+        dialog._model_edits[provider].setText("draft-model")
+        dialog._key_edits[provider].setText("draft-key")
+        dialog.test_button.click()
+        qtbot.waitUntil(lambda: dialog._test_worker is None)
+        assert captured == [("https://draft.example.test/v1", "draft-model", "draft-key")]
+        assert "test OK" in dialog.test_result.text()
+
+    def test_przycisk_zatrzymania_jev_uzywa_biezacego_katalogu(
+        self,
+        qtbot,
+        monkeypatch,
+    ) -> None:  # type: ignore[no-untyped-def]
+        from signum.config import AppConfig
+
+        captured = []
+
+        def stop(model):  # type: ignore[no-untyped-def]
+            captured.append((model._base_url, model._runtime_dir))
+            return "Jev zatrzymany"
+
+        monkeypatch.setattr("signum.ui.settings_dialog.get_api_key", lambda _: None)
+        monkeypatch.setattr("signum.ai.jev_client.JevVisionModel.stop_local", stop)
+        dialog = SettingsDialog(AppConfig(provider="vjev"))
+        qtbot.addWidget(dialog)
+        dialog._url_edits["vjev"].setText("http://127.0.0.1:8877/v1")
+        dialog.vjev_runtime_dir.setText("H:/test/runtime")
+        dialog.stop_jev_button.click()
+        qtbot.waitUntil(lambda: dialog._test_worker is None)
+        assert captured == [("http://127.0.0.1:8877/v1", "H:/test/runtime")]
+        assert "Jev zatrzymany" in dialog.test_result.text()
+
+    def test_zapis_i_usuniecie_kluczy_tylko_w_magazynie(
+        self,
+        qtbot,
+        isolated_config,
+        monkeypatch,
+    ) -> None:  # type: ignore[no-untyped-def]
+        from signum.config import AppConfig
+
+        keys = {}
+        monkeypatch.setattr("signum.ui.settings_dialog.get_api_key", lambda _: None)
+        monkeypatch.setattr("signum.ui.settings_dialog.set_api_key", keys.__setitem__)
+        dialog = SettingsDialog(AppConfig(provider="vjev"))
+        qtbot.addWidget(dialog)
+        dialog._key_edits["anthropic"].setText("private-test-key")
+        dialog._key_edits["vjev"].setText("remove-me")
+        from PySide6.QtWidgets import QPushButton
+
+        clear = next(
+            button
+            for button in dialog._key_edits["vjev"].parent().findChildren(QPushButton)
+            if button.text() == "Wyczyść"
+        )
+        clear.click()
+        dialog._on_save()
+        assert keys["anthropic"] == "private-test-key"
+        assert keys["vjev"] == ""
+        assert "private-test-key" not in isolated_config.read_text(encoding="utf-8")
+        assert AppConfig.load().provider == "vjev"
+
+    def test_test_polaczenia_chroni_watek_przed_zamknieciem_dialogu(
+        self,
+        qtbot,
+        isolated_config,
+        monkeypatch,
+    ) -> None:  # type: ignore[no-untyped-def]
+        import threading
+
+        from signum.config import AppConfig
+
+        started = threading.Event()
+        release = threading.Event()
+
+        def check(_model):  # type: ignore[no-untyped-def]
+            started.set()
+            release.wait(5)
+            return "OK"
+
+        monkeypatch.setattr("signum.ui.settings_dialog.get_api_key", lambda _: None)
+        monkeypatch.setattr("signum.ai.jev_client.JevVisionModel.check_connection", check)
+        dialog = SettingsDialog(AppConfig(provider="vjev"))
+        qtbot.addWidget(dialog)
+        dialog.show()
+        dialog._on_test_clicked()
+        try:
+            qtbot.waitUntil(started.is_set)
+            dialog.reject()
+            dialog._on_save()
+            assert dialog.isVisible()
+            assert not dialog.buttons.isEnabled()
+            assert not isolated_config.exists()
+        finally:
+            release.set()
+            qtbot.waitUntil(lambda: dialog._test_worker is None)
+        assert dialog.buttons.isEnabled()
+        dialog.reject()
+        assert not dialog.isVisible()
+
     def test_wczytuje_i_zbiera_konfiguracje(self, qtbot, isolated_config) -> None:  # type: ignore[no-untyped-def]
         from signum.config import AppConfig
 
@@ -215,7 +419,7 @@ class TestOnlineWarningDialog:
 
 
 class TestBatchRiskDialog:
-    def test_wymaga_wszystkich_trzech_potwierdzen(self, qtbot) -> None:  # type: ignore[no-untyped-def]
+    def test_wymaga_obu_potwierdzen(self, qtbot) -> None:  # type: ignore[no-untyped-def]
         from signum.config import AppConfig
 
         dialog = BatchRiskDialog(AppConfig(), 12)
@@ -224,12 +428,16 @@ class TestBatchRiskDialog:
         assert not dialog.accept_button.isEnabled()
         assert "12 dokumentów" in _dialog_text(dialog)
         assert "Tryb lokalny" in _dialog_text(dialog)
+        assert "edukacyjne" in _dialog_text(dialog)
+        assert "nie nadaje się do użytku w organizacjach" in _dialog_text(dialog)
+        assert len(dialog._acknowledgements) == 2
 
-        dialog.rights_ack.setChecked(True)
-        dialog.result_ack.setChecked(True)
+        dialog.purpose_ack.setChecked(True)
         assert not dialog.accept_button.isEnabled()
         dialog.processing_ack.setChecked(True)
         assert dialog.accept_button.isEnabled()
+        dialog.purpose_ack.setChecked(False)
+        assert not dialog.accept_button.isEnabled()
 
     def test_tryb_online_ostrzega_o_wysylce(self, qtbot) -> None:  # type: ignore[no-untyped-def]
         from signum.config import AppConfig
@@ -239,9 +447,9 @@ class TestBatchRiskDialog:
         qtbot.addWidget(dialog)
 
         text = _dialog_text(dialog)
-        assert "Tryb online" in text
-        assert "zewnętrznego dostawcy AI" in text
-        assert "opuszczą komputer" in dialog.processing_ack.text()
+        assert "Tryb zdalny" in text
+        assert "przez internet do usług stron trzecich" in text
+        assert "przetwarzana" in dialog.processing_ack.accessibleName()
 
     def test_zdalna_ollama_jest_trybem_online(self, qtbot) -> None:  # type: ignore[no-untyped-def]
         from signum.config import AppConfig
@@ -251,7 +459,16 @@ class TestBatchRiskDialog:
         qtbot.addWidget(dialog)
 
         assert "Tryb zdalny" in _dialog_text(dialog)
-        assert "opuszczą komputer" in dialog.processing_ack.text()
+        assert "opuszczą komputer" in _dialog_text(dialog)
+
+    def test_ollama_cloud_nie_jest_przetwarzaniem_lokalnym(self, qtbot) -> None:  # type: ignore[no-untyped-def]
+        from signum.config import AppConfig
+
+        dialog = BatchRiskDialog(AppConfig(ollama_model="gemma4:31b-cloud"), 2)
+        qtbot.addWidget(dialog)
+
+        assert "Tryb zdalny" in _dialog_text(dialog)
+        assert "przez internet do usług stron trzecich" in _dialog_text(dialog)
 
 
 def _collect_labels(window: MainWindow) -> list[str]:

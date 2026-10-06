@@ -33,7 +33,7 @@ class OpenAIVisionModel(VisionModel):
         return f"OpenAI API: {self._model}"
 
     def _headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._api_key}"}
+        return {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
 
     def _generate(self, image_jpeg: bytes, prompt: str) -> str:
         image_b64 = base64.b64encode(image_jpeg).decode("ascii")
@@ -84,7 +84,7 @@ class OpenAIVisionModel(VisionModel):
             raise AIConnectionError(f"Brak połączenia z {self._base_url}: {exc}") from exc
 
     def check_connection(self) -> str:
-        if not self._api_key:
+        if not self._api_key and not is_loopback_endpoint(self._base_url):
             raise AIResponseError("Nie podano klucza API")
         try:
             response = self._session.get(

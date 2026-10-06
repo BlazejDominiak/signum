@@ -122,6 +122,25 @@ class TestHtml:
 
 
 class TestCsv:
+    def test_jev_zapisuje_ocene_ujemna_i_nie_udaje_zliczania(self) -> None:
+        import json
+
+        result = DocumentResult(
+            Path("page.pdf"),
+            status=DocumentStatus.OK,
+            page_count=10,
+            pages_analyzed=1,
+            page_signature_probabilities={1: 0.172},
+        )
+        batch = BatchResult(results=[result])
+        rows = list(csv.reader(io.StringIO(build_csv(batch)), delimiter=";"))
+        assert rows[1][4] == ""
+        assert json.loads(rows[1][7]) == {"1": 0.172}
+        assert rows[1][8:] == ["1", "10"]
+        html = build_html(batch)
+        assert "strona 1: 17.2%" in html
+        assert "Nie zbadano wszystkich stron" in html
+
     def test_write_csv_bez_podwojnych_crlf(self, tmp_path: Path) -> None:
         # Regresja: write_text na Windows tłumaczy \n → \r\n, co przy
         # CRLF w treści dawało \r\r\n (puste wiersze w Excelu).

@@ -30,7 +30,6 @@ from signum.core.rendering import (
     is_pdf,
     load_pages,
     render_pdf_page,
-    to_model_jpeg,
 )
 
 # Ile razy ponawiamy analizę strony po błędnej odpowiedzi modelu
@@ -98,6 +97,9 @@ class DocumentAnalyzer:
     def model_name(self) -> str:
         return self._model.name
 
+    def release_resources(self) -> None:
+        self._model.release_resources()
+
     def analyze(self, path: Path, cancel: CancelToken) -> DocumentResult:
         """Pełna analiza jednego pliku.
 
@@ -130,7 +132,9 @@ class DocumentAnalyzer:
 
         for page in pages:
             _raise_if_cancelled(cancel)
-            analysis = self._analyze_page_with_retry(page)
+            analysis = self._analyze_page_with_retry(page, cancel)
+            if analysis.signature_probability is not None:
+                result.page_signature_probabilities[page.number] = analysis.signature_probability
             if analysis.description and not result.title:
                 result.title = analysis.description
             for sig in analysis.signatures:
@@ -150,6 +154,7 @@ class DocumentAnalyzer:
                         confidence=sig.confidence,
                         crop_png=crop_png,
                         overview_jpeg=overview_jpeg,
+                        detail=sig.detail,
                     )
                 )
             result.pages_analyzed += 1
@@ -158,12 +163,16 @@ class DocumentAnalyzer:
         if not result.title:
             result.title = path.stem
 
-    def _analyze_page_with_retry(self, page: PageImage) -> PageAnalysis:
-        jpeg = to_model_jpeg(page.image, self._image_max_side)
+    def _analyze_page_with_retry(self, page: PageImage, cancel: CancelToken) -> PageAnalysis:
         last_error: AIError | None = None
         for _attempt in range(1 + PAGE_RETRIES):
             try:
-                return self._model.analyze_page(jpeg, self._prompt)
+                return self._model.analyze_image(
+                    page.image,
+                    self._image_max_side,
+                    self._prompt,
+                    check_cancelled=lambda: _raise_if_cancelled(cancel),
+                )
             except AIConnectionError:
                 raise
             except AIError as exc:

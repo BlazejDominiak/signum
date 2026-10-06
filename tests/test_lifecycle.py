@@ -31,9 +31,11 @@ def test_installer_explains_and_checks_runtime_prerequisites() -> None:
     installer = Path("installer/signum.iss").read_text(encoding="utf-8")
     build_script = Path("scripts/build_installer.ps1").read_text(encoding="utf-8")
 
-    assert "PythonBundled" in installer
-    assert "OllamaInstalled" in installer
-    assert "RequirementsPage" in installer
+    assert "RequirementsNote" in installer
+    assert "DetectAI" in installer
+    assert "HardwareSummary" in installer
+    assert "RequirementsPage" not in installer
+    assert "ItemEnabled[1]" in installer
     assert "--self-test" in build_script
     assert "Start-Process" in build_script
     assert "Get-FileHash" in build_script

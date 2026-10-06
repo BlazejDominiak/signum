@@ -67,10 +67,11 @@ class DocumentResult:
     pages_analyzed: int = 0  # ile stron faktycznie przeanalizowano
     error: str | None = None
     duration_s: float = 0.0
+    page_signature_probabilities: dict[int, float] = field(default_factory=dict)
 
     @property
     def is_signed(self) -> bool:
-        return bool(self.findings)
+        return any(f.kind != SignatureKind.STAMP for f in self.findings)
 
     @property
     def kinds_summary(self) -> str:

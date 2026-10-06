@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -22,6 +23,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
     QSpinBox,
     QStackedWidget,
     QVBoxLayout,
@@ -29,9 +32,11 @@ from PySide6.QtWidgets import (
 )
 
 from signum.ai import create_vision_model
+from signum.ai.jev_prompts import JEV_PROMPT_INSTRUCTIONS
 from signum.ai.prompts import PROMPT_INSTRUCTIONS
 from signum.config import (
     MAX_CUSTOM_PROMPT_LENGTH,
+    PROVIDERS,
     AppConfig,
     get_api_key,
     set_api_key,
@@ -39,11 +44,12 @@ from signum.config import (
 from signum.network import normalize_ai_endpoint, processing_is_local
 from signum.ui.worker import ConnectionTestWorker, ModelListWorker
 
-_PROVIDER_ORDER = ("ollama", "openai", "anthropic")
+_PROVIDER_ORDER = PROVIDERS
 _PROVIDER_LABELS = {
     "ollama": "Ollama (lokalna lub zdalna)",
     "openai": "OpenAI / API zgodne z OpenAI",
     "anthropic": "Claude (Anthropic)",
+    "vjev": "vjev-vision (on-prem / API)",
 }
 _OLLAMA_INSTALL_HELP = (
     "Nie wykryto działającej Ollamy. Zainstaluj ją z "
@@ -52,13 +58,33 @@ _OLLAMA_INSTALL_HELP = (
 )
 
 
+class _ProviderStack(QStackedWidget):
+    """Ukryty formularz dostawcy nie zostawia pustego miejsca pod bieżącym."""
+
+    def sizeHint(self) -> QSize:  # noqa: N802
+        widget = self.currentWidget()
+        return widget.sizeHint() if widget else super().sizeHint()
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        widget = self.currentWidget()
+        return widget.minimumSizeHint() if widget else super().minimumSizeHint()
+
+
 class SettingsDialog(QDialog):
     """Konfiguracja dostawcy AI, modelu i parametrów przetwarzania."""
 
     def __init__(self, config: AppConfig, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._config = config
-        self._initial_local = processing_is_local(config.provider, config.ollama_url)
+        self._initial_local = processing_is_local(config.provider, config.api_base_url)
+        self._key_edits: dict[str, QLineEdit] = {}
+        self._url_edits: dict[str, QLineEdit] = {}
+        self._model_edits: dict[str, QLineEdit] = {}
+        self._prompt_family: str | None = None
+        self._prompt_drafts = {
+            "llm": config.custom_prompt or PROMPT_INSTRUCTIONS,
+            "jev": config.jev_custom_prompt or JEV_PROMPT_INSTRUCTIONS,
+        }
         self._test_worker: ConnectionTestWorker | None = None
         self._models_worker: ModelListWorker | None = None
         self._auto_refresh_started = False
@@ -70,7 +96,16 @@ class SettingsDialog(QDialog):
     # -- budowa UI ---------------------------------------------------------
 
     def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
+        outer = QVBoxLayout(self)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        content = QWidget()
+        layout = QVBoxLayout(content)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        scroll.setWidget(content)
+        outer.addWidget(scroll, stretch=1)
 
         provider_form = QFormLayout()
         self.provider_combo = QComboBox()
@@ -80,10 +115,12 @@ class SettingsDialog(QDialog):
         provider_form.addRow("Dostawca AI:", self.provider_combo)
         layout.addLayout(provider_form)
 
-        self.stack = QStackedWidget()
+        self.stack = _ProviderStack()
+        self.stack.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Maximum)
         self.stack.addWidget(self._build_ollama_page())
         self.stack.addWidget(self._build_openai_page())
         self.stack.addWidget(self._build_anthropic_page())
+        self.stack.addWidget(self._build_jev_page("vjev"))
         layout.addWidget(self.stack)
 
         test_row = QHBoxLayout()
@@ -99,21 +136,22 @@ class SettingsDialog(QDialog):
         layout.addWidget(self._build_processing_group())
         layout.addWidget(self._build_prompt_group())
 
-        buttons = QDialogButtonBox(
+        self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
         )
-        buttons.button(QDialogButtonBox.StandardButton.Save).setText("Zapisz")
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Anuluj")
-        buttons.accepted.connect(self._on_save)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.buttons.button(QDialogButtonBox.StandardButton.Save).setText("Zapisz")
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Anuluj")
+        self.buttons.accepted.connect(self._on_save)
+        self.buttons.rejected.connect(self.reject)
+        outer.addWidget(self.buttons)
+        self.resize(620, max(480, min(840, self.screen().availableGeometry().height() - 80)))
 
     def _build_ollama_page(self) -> QWidget:
         page = QWidget()
         form = QFormLayout(page)
         self.ollama_url = QLineEdit()
         self.ollama_url.setPlaceholderText("http://localhost:11434")
-        form.addRow("Adres Ollamy:", self.ollama_url)
+        form.addRow("Adres API:", self.ollama_url)
 
         model_row = QHBoxLayout()
         self.ollama_model = QComboBox()
@@ -123,7 +161,12 @@ class SettingsDialog(QDialog):
         model_row.addWidget(self.ollama_model, stretch=1)
         model_row.addWidget(self.refresh_models)
         form.addRow("Model:", model_row)
-        form.addRow("", QLabel("Model musi obsługiwać obrazy (np. gemma4:12b, llava, qwen-vl)."))
+        self.ollama_key = self._password_edit()
+        self._key_edits["ollama"] = self.ollama_key
+        form.addRow("Klucz API (opcjonalny):", self._with_reveal(self.ollama_key))
+        form.addRow(
+            "", _hint_label("Model musi obsługiwać obrazy (np. gemma4:12b, llava, qwen-vl).")
+        )
         self.ollama_status = QLabel("")
         self.ollama_status.setTextFormat(Qt.TextFormat.PlainText)
         self.ollama_status.setWordWrap(True)
@@ -158,6 +201,9 @@ class SettingsDialog(QDialog):
         self.openai_model.setPlaceholderText("gpt-4o")
         form.addRow("Model:", self.openai_model)
         self.openai_key = self._password_edit()
+        self._key_edits["openai"] = self.openai_key
+        self._url_edits["openai"] = self.openai_base_url
+        self._model_edits["openai"] = self.openai_model
         form.addRow("Klucz API:", self._with_reveal(self.openai_key))
         form.addRow("", _online_warning_label())
         return page
@@ -165,12 +211,58 @@ class SettingsDialog(QDialog):
     def _build_anthropic_page(self) -> QWidget:
         page = QWidget()
         form = QFormLayout(page)
+        self.anthropic_base_url = QLineEdit()
+        self.anthropic_base_url.setPlaceholderText(AppConfig().anthropic_base_url)
+        form.addRow("Adres API:", self.anthropic_base_url)
         self.anthropic_model = QLineEdit()
         self.anthropic_model.setPlaceholderText("claude-sonnet-5")
         form.addRow("Model:", self.anthropic_model)
         self.anthropic_key = self._password_edit()
+        self._key_edits["anthropic"] = self.anthropic_key
+        self._url_edits["anthropic"] = self.anthropic_base_url
+        self._model_edits["anthropic"] = self.anthropic_model
         form.addRow("Klucz API:", self._with_reveal(self.anthropic_key))
         form.addRow("", _online_warning_label())
+        return page
+
+    def _build_jev_page(self, provider: str) -> QWidget:
+        page = QWidget()
+        form = QFormLayout(page)
+        defaults = AppConfig()
+        url = QLineEdit()
+        url.setPlaceholderText(getattr(defaults, f"{provider}_base_url"))
+        model = QLineEdit()
+        model.setPlaceholderText(getattr(defaults, f"{provider}_model"))
+        key = self._password_edit()
+        self._url_edits[provider] = url
+        self._model_edits[provider] = model
+        self._key_edits[provider] = key
+        form.addRow("Adres API:", url)
+        form.addRow("Model:", model)
+        form.addRow("Klucz API (opcjonalny):", self._with_reveal(key))
+        self.vjev_runtime_dir = QLineEdit()
+        form.addRow("Katalog lokalnego Jev:", self.vjev_runtime_dir)
+        self.stop_jev_button = QPushButton("Zatrzymaj lokalny Jev / zwolnij GPU")
+        self.stop_jev_button.clicked.connect(lambda: self._on_test_clicked(stop_local=True))
+        form.addRow("", self.stop_jev_button)
+        form.addRow(
+            "",
+            _hint_label(
+                "Na localhost aplikacja uruchamia przygotowany model automatycznie przy "
+                "testowaniu połączenia lub rozpoczęciu analizy. Pierwsze załadowanie "
+                "wag może potrwać kilkadziesiąt sekund. Klucz nie jest wymagany. "
+                "Po zakończeniu lub anulowaniu partii Jev zwalnia pamięć GPU."
+            ),
+        )
+        form.addRow(
+            "",
+            _hint_label(
+                "Podpisy i parafki: pięć widoków strony, reguła sprawdzona na 120 stronach. "
+                "Wynik zawiera prawdopodobieństwo także przy braku podpisu. "
+                "Jev nie zlicza oznaczeń ani nie zwraca ich wycinków. "
+                "Test połączenia wysyła mały obraz testowy."
+            ),
+        )
         return page
 
     def _build_processing_group(self) -> QGroupBox:
@@ -204,22 +296,25 @@ class SettingsDialog(QDialog):
         return group
 
     def _build_prompt_group(self) -> QGroupBox:
-        group = QGroupBox("Prompt programu")
-        box = QVBoxLayout(group)
-        box.addWidget(
-            _hint_label(
-                "Część merytoryczna promptu wysyłanego do modelu dla każdej strony. "
-                "Wymagany format odpowiedzi (JSON) program dokleja automatycznie — "
-                "nie opisuj go tutaj."
-            )
-        )
+        group = QGroupBox("Prompt programu — zaawansowane")
+        group.setCheckable(True)
+        group.setChecked(False)
+        outer = QVBoxLayout(group)
+        content = QWidget()
+        box = QVBoxLayout(content)
+        box.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(content)
+        content.setVisible(False)
+        group.toggled.connect(content.setVisible)
+        self.prompt_hint = _hint_label("")
+        box.addWidget(self.prompt_hint)
         self.prompt_edit = QPlainTextEdit()
         self.prompt_edit.setFixedHeight(150)
         box.addWidget(self.prompt_edit)
         reset_row = QHBoxLayout()
         reset_row.addStretch(1)
         reset = QPushButton("Przywróć domyślny")
-        reset.clicked.connect(lambda: self.prompt_edit.setPlainText(PROMPT_INSTRUCTIONS))
+        reset.clicked.connect(lambda: self.prompt_edit.setPlainText(self._default_prompt()))
         reset_row.addWidget(reset)
         box.addLayout(reset_row)
         return group
@@ -247,6 +342,9 @@ class SettingsDialog(QDialog):
         toggle.toggled.connect(on_toggle)
         row.addWidget(edit, stretch=1)
         row.addWidget(toggle)
+        clear = QPushButton("Wyczyść")
+        clear.clicked.connect(edit.clear)
+        row.addWidget(clear)
         return wrapper
 
     # -- konfiguracja ------------------------------------------------------
@@ -257,18 +355,20 @@ class SettingsDialog(QDialog):
         self.stack.setCurrentIndex(_PROVIDER_ORDER.index(cfg.provider))
         self.ollama_url.setText(cfg.ollama_url)
         self.ollama_model.setEditText(cfg.ollama_model)
-        self.openai_base_url.setText(cfg.openai_base_url)
-        self.openai_model.setText(cfg.openai_model)
-        self.anthropic_model.setText(cfg.anthropic_model)
-        self.openai_key.setText(get_api_key("openai") or "")
-        self.anthropic_key.setText(get_api_key("anthropic") or "")
+        for provider, edit in self._url_edits.items():
+            edit.setText(getattr(cfg, f"{provider}_base_url"))
+        for provider, edit in self._model_edits.items():
+            edit.setText(getattr(cfg, f"{provider}_model"))
+        for provider, edit in self._key_edits.items():
+            edit.setText(get_api_key(provider) or "")
         self.max_pages.setValue(cfg.max_pages_per_doc)
         index = self.image_side.findData(cfg.model_image_max_side)
         self.image_side.setCurrentIndex(index if index >= 0 else 2)
         self.timeout.setValue(cfg.timeout_s)
         self.recursive.setChecked(cfg.recursive_folders)
         self.ollama_num_ctx.setValue(cfg.ollama_num_ctx)
-        self.prompt_edit.setPlainText(cfg.custom_prompt or PROMPT_INSTRUCTIONS)
+        self.vjev_runtime_dir.setText(cfg.vjev_runtime_dir)
+        self._on_provider_changed(self.provider_combo.currentIndex())
 
     def _collect_config(self) -> AppConfig:
         """Zbiera ustawienia z formularza (bez zapisywania)."""
@@ -278,42 +378,76 @@ class SettingsDialog(QDialog):
             self.ollama_url.text(), "http://localhost:11434", "Ollamy"
         )
         cfg.ollama_model = self.ollama_model.currentText().strip() or "gemma4:12b"
-        cfg.openai_base_url = normalize_ai_endpoint(
-            self.openai_base_url.text(), "https://api.openai.com/v1", "API OpenAI"
-        )
-        cfg.openai_model = self.openai_model.text().strip() or "gpt-4o"
-        cfg.anthropic_model = self.anthropic_model.text().strip() or "claude-sonnet-5"
+        defaults = AppConfig()
+        for provider, edit in self._url_edits.items():
+            name = f"{provider}_base_url"
+            setattr(
+                cfg,
+                name,
+                normalize_ai_endpoint(
+                    edit.text(), getattr(defaults, name), _PROVIDER_LABELS[provider]
+                ),
+            )
+        for provider, edit in self._model_edits.items():
+            name = f"{provider}_model"
+            setattr(cfg, name, edit.text().strip() or getattr(defaults, name))
         cfg.max_pages_per_doc = self.max_pages.value()
         cfg.model_image_max_side = self.image_side.currentData()
         cfg.timeout_s = self.timeout.value()
         cfg.recursive_folders = self.recursive.isChecked()
         cfg.ollama_num_ctx = self.ollama_num_ctx.value()
-        prompt_text = self.prompt_edit.toPlainText().strip()
-        if len(prompt_text) > MAX_CUSTOM_PROMPT_LENGTH:
+        cfg.vjev_runtime_dir = self.vjev_runtime_dir.text().strip() or defaults.vjev_runtime_dir
+        if self._prompt_family is not None:
+            self._prompt_drafts[self._prompt_family] = self.prompt_edit.toPlainText().strip()
+        if any(len(text) > MAX_CUSTOM_PROMPT_LENGTH for text in self._prompt_drafts.values()):
             raise ValueError(
                 f"Prompt programu może mieć najwyżej {MAX_CUSTOM_PROMPT_LENGTH} znaków."
             )
         # Domyślną treść zapisujemy jako pustą — aktualizacja programu może
         # wtedy poprawić prompt bez ręcznej interwencji użytkownika.
-        cfg.custom_prompt = "" if prompt_text in ("", PROMPT_INSTRUCTIONS.strip()) else prompt_text
+        llm_text = self._prompt_drafts["llm"].strip()
+        jev_text = self._prompt_drafts["jev"].strip()
+        cfg.custom_prompt = "" if llm_text in ("", PROMPT_INSTRUCTIONS.strip()) else llm_text
+        cfg.jev_custom_prompt = (
+            "" if jev_text in ("", JEV_PROMPT_INSTRUCTIONS.strip()) else jev_text
+        )
         return cfg
 
     def _current_api_key(self) -> str:
         provider = self.provider_combo.currentData()
-        if provider == "openai":
-            return self.openai_key.text().strip()
-        if provider == "anthropic":
-            return self.anthropic_key.text().strip()
-        return ""
+        return self._key_edits[provider].text().strip()
 
     # -- akcje -------------------------------------------------------------
 
     def _on_provider_changed(self, index: int) -> None:
         self.stack.setCurrentIndex(index)
+        self.stack.updateGeometry()
         self.test_result.setText("")
+        if self._prompt_family is not None:
+            self._prompt_drafts[self._prompt_family] = self.prompt_edit.toPlainText()
+        self._prompt_family = "jev" if self.provider_combo.currentData() == "vjev" else "llm"
+        self.prompt_edit.setPlainText(self._prompt_drafts[self._prompt_family])
+        self.image_side.setEnabled(self._prompt_family != "jev")
+        self.image_side.setToolTip(
+            "Jev używa stałych widoków 1120 px zgodnie ze sprawdzoną regułą."
+            if self._prompt_family == "jev"
+            else ""
+        )
+        self.prompt_hint.setText(
+            "Instrukcje dla pięciu widoków Jev; program dodaje 9 pytań decyzyjnych. "
+            "Jev nie generuje JSON. Zmiana promptu może zmienić skuteczność "
+            "i wiarygodność kalibracji — przebadano prompt domyślny."
+            if self._prompt_family == "jev"
+            else "Część merytoryczna promptu wysyłanego do modelu dla każdej strony. "
+            "Wymagany format odpowiedzi (JSON) program dokleja automatycznie — "
+            "nie opisuj go tutaj."
+        )
+
+    def _default_prompt(self) -> str:
+        return JEV_PROMPT_INSTRUCTIONS if self._prompt_family == "jev" else PROMPT_INSTRUCTIONS
 
     def _on_refresh_models(self) -> None:
-        if self._models_worker is not None and self._models_worker.isRunning():
+        if self._models_worker is not None:
             return
         try:
             url = normalize_ai_endpoint(self.ollama_url.text(), "http://localhost:11434", "Ollamy")
@@ -325,9 +459,10 @@ class SettingsDialog(QDialog):
         self.ollama_status.setText("Sprawdzanie Ollamy i listy modeli…")
         self.ollama_install_help.setText(_OLLAMA_INSTALL_HELP)
         self.ollama_install_help.setVisible(False)
-        self._models_worker = ModelListWorker(url, self)
+        self._models_worker = ModelListWorker(url, self, api_key=self.ollama_key.text().strip())
         self._models_worker.finished_with_result.connect(self._on_models_loaded)
         self._models_worker.finished.connect(self._on_models_worker_finished)
+        self._update_busy_state()
         self._models_worker.start()
 
     def _on_models_loaded(self, ok: bool, payload: object) -> None:
@@ -354,13 +489,21 @@ class SettingsDialog(QDialog):
     def _on_models_worker_finished(self) -> None:
         worker = self._models_worker
         self._models_worker = None
-        self.refresh_models.setEnabled(True)
+        self._update_busy_state()
         if worker is not None:
             worker.deleteLater()
 
-    def _on_test_clicked(self) -> None:
+    def _on_test_clicked(self, *, stop_local: bool = False) -> None:
+        if self._test_worker is not None:
+            return
         self.test_button.setEnabled(False)
-        self.test_result.setText("Łączenie…")
+        self.test_result.setText(
+            "Zatrzymywanie lokalnego Jev…"
+            if stop_local
+            else "Łączenie / ładowanie lokalnego modelu…"
+            if self.provider_combo.currentData() == "vjev"
+            else "Łączenie…"
+        )
         try:
             config = self._collect_config()
             model = create_vision_model(config, api_key=self._current_api_key())
@@ -368,9 +511,10 @@ class SettingsDialog(QDialog):
             self.test_button.setEnabled(True)
             self.test_result.setText(str(exc))
             return
-        self._test_worker = ConnectionTestWorker(model, self)
+        self._test_worker = ConnectionTestWorker(model, self, stop_local=stop_local)
         self._test_worker.finished_with_result.connect(self._on_test_finished)
         self._test_worker.finished.connect(self._on_test_worker_finished)
+        self._update_busy_state()
         self._test_worker.start()
 
     def _on_test_finished(self, ok: bool, message: str) -> None:
@@ -382,23 +526,25 @@ class SettingsDialog(QDialog):
     def _on_test_worker_finished(self) -> None:
         worker = self._test_worker
         self._test_worker = None
-        self.test_button.setEnabled(True)
+        self._update_busy_state()
         if worker is not None:
             worker.deleteLater()
 
     def _on_save(self) -> None:
+        if self._test_worker is not None or self._models_worker is not None:
+            return
         try:
             config = self._collect_config()
         except ValueError as exc:
             QMessageBox.critical(self, "Niepoprawne ustawienia AI", str(exc))
             return
-        if self._initial_local and not processing_is_local(config.provider, config.ollama_url):
+        if self._initial_local and not processing_is_local(config.provider, config.api_base_url):
             warning = OnlineWarningDialog(self)
             if warning.exec() != QDialog.DialogCode.Accepted:
                 return  # użytkownik nie potwierdził — dialog ustawień zostaje otwarty
         try:
-            set_api_key("openai", self.openai_key.text().strip())
-            set_api_key("anthropic", self.anthropic_key.text().strip())
+            for provider, edit in self._key_edits.items():
+                set_api_key(provider, edit.text().strip())
         except Exception:
             QMessageBox.warning(
                 self,
@@ -412,6 +558,19 @@ class SettingsDialog(QDialog):
 
     # -- sprzątanie --------------------------------------------------------
 
+    def _update_busy_state(self) -> None:
+        busy = self._test_worker is not None or self._models_worker is not None
+        self.buttons.setEnabled(not busy)
+        self.provider_combo.setEnabled(not busy)
+        self.stack.setEnabled(not busy)
+        self.test_button.setEnabled(self._test_worker is None)
+        self.refresh_models.setEnabled(self._models_worker is None)
+
+    def reject(self) -> None:
+        # Escape/Anuluj nie może zniszczyć rodzica aktywnego QThread.
+        if self._test_worker is None and self._models_worker is None:
+            super().reject()
+
     def showEvent(self, event) -> None:  # type: ignore[no-untyped-def] # noqa: N802 — API Qt
         super().showEvent(event)
         if not self._auto_refresh_started and self.provider_combo.currentData() == "ollama":
@@ -419,10 +578,7 @@ class SettingsDialog(QDialog):
             QTimer.singleShot(0, self._on_refresh_models)
 
     def closeEvent(self, event) -> None:  # type: ignore[no-untyped-def] # noqa: N802 — API Qt
-        if any(
-            worker is not None and worker.isRunning()
-            for worker in (self._test_worker, self._models_worker)
-        ):
+        if self._test_worker is not None or self._models_worker is not None:
             QMessageBox.information(
                 self,
                 "Trwa sprawdzanie połączenia",

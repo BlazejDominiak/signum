@@ -56,9 +56,50 @@ aborts it with a clear message.
 
 | Provider | Configuration | Notes |
 |---|---|---|
-| **Ollama** (default) | URL + model picked from the installed list | Local only for a loopback address (`localhost`, `127.0.0.1`, `::1`). A remote Ollama is treated as an online provider. Tested with `gemma4:12b`. |
+| **Ollama** (default) | API URL + model picked from the installed list + optional API key | Tested with `gemma4:12b`. |
 | **OpenAI-compatible API** | base URL + API key + model | Works with OpenAI, OpenRouter and any `/chat/completions`-compatible endpoint. |
-| **Claude (Anthropic)** | API key + model | Messages API with base64 image blocks. |
+| **Claude (Anthropic)** | base URL + API key + model | Messages API with base64 image blocks. Default URL: `https://api.anthropic.com/v1`. |
+| **vjev-vision** | base URL + served model ID + optional API key + local runtime directory | Default: `http://localhost:8800/v1`, model ID `vjev-vision`. Uses [vjev-serve](https://github.com/BubbleCal/vjev-serve) `/systemone`. A prepared local CUDA runtime is started automatically during connection testing or analysis; remote API servers can also be used. |
+
+The local runtime lives separately from the GUI installer. On this machine it is
+prepared in `H:/Tools/SignumJev`: Python 3.11 with existing CUDA Torch, additional
+packages on H:, and full `yah01/vjev-vision` weights. `runtime.json` specifies the
+absolute `python`, `packages`, and `model_dir` paths. Startup is offline and binds
+only `127.0.0.1`; it does not download models. The settings button **Zatrzymaj lokalny
+Jev / zwolnij GPU** stops only the server managed by Signum. Logs: `server.log`.
+An unprepared runtime produces an actionable error instead of raw connection traces.
+The GUI installer itself does not include the 9 GB model or CUDA libraries.
+For local diagnostics, `Signum.exe --self-test-jev` tests the prepared default
+localhost model from the packaged application and saves `packaged-self-test.json`
+in the runtime directory; it does not read cloud settings or use cloud API keys.
+
+Every provider has an editable API address, model field and protected API key field,
+with *Pokaż*, *Wyczyść*, *Testuj połączenie* and *Zapisz*. Enter the **base URL**
+(including `/v1` where shown), not the full inference route. Local processing is
+recognized by the selected endpoint's loopback address (`localhost`, `127.0.0.1`, `::1`),
+including vjev and compatible on-prem API servers. Remote endpoints require HTTPS.
+
+Jev uses a separate editable default prompt, nine typed questions and five views
+of each page: the full page and four overlapping quarters. The largest view score
+at or above **0.535** indicates a visible handwritten signature or initials.
+The displayed probability uses calibration fitted on the experimental sample;
+it is also shown for negative results and is not a guarantee for other documents.
+Stamps are reported separately and do not make a document signed.
+**Jev does not count signatures or return signature crops.** Open the source
+document from the results panel to verify it. Digital PDF signatures are still
+scanned and cropped independently; Jev results retain the filename as their title.
+The managed local Jev server releases GPU memory after an analysis batch.
+
+*Testuj połączenie* for Jev checks the selected model and sends a small synthetic
+image, which may incur API charges. A successful test validates transport and response
+shape; it does not measure detection quality. The five-view method achieved 120/120
+on the closed research sample, including tuning pages; both Jev and binary Gemma
+achieved 20/20 on the fresh confirmation subset. API cost has not been measured.
+The transport follows the
+[vjev API contract](https://github.com/BubbleCal/vjev-serve#the-api).
+The integration checks and research limitations are recorded in
+[the local Jev validation report](docs/JEV_VALIDATION.pl.md), including latency,
+the Gemma4 comparison, and limitations.
 
 API keys are stored in the **Windows Credential Manager** (via `keyring`) — never in
 config files. Settings live in `%APPDATA%\Signum\settings.json`.
@@ -87,8 +128,14 @@ which verifies that the selected service and model are actually available.
 Download `Signum-Setup-<version>.exe` from Releases and run it. Per-user install,
 no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate
-Python installation is not required. It reports whether optional Ollama was found
-in its standard Windows locations; Ollama is needed only for local processing.
+Python installation is not required for Signum itself. The installer offers optional
+third-party components and detects dedicated GPU memory through DXGI: Gemma 4 E2B
+for an 8 GB GPU, Gemma 4 12B for 16 GB, and local Jev for NVIDIA 16 GB.
+These are conservative memory recommendations, not performance guarantees.
+Choose the components and their storage folder; a progress window then downloads,
+prepares and checks the selected AI, and configures Signum without terminal commands.
+Existing running Ollama services and prepared Jev runtimes can be reused.
+External components retain their own licences and remain after uninstalling Signum.
 The installer never downloads AI software or models automatically. The
 installer includes a separate document-and-AI risk page with four required
 acknowledgements covering human verification, authorization to process files,
@@ -133,13 +180,19 @@ without connecting to an AI service or processing documents.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `provider` | `ollama` | `ollama` / `openai` / `anthropic` |
+| `provider` | `ollama` | `ollama` / `openai` / `anthropic` / `vjev` |
 | `ollama_url` | `http://localhost:11434` | Ollama endpoint |
 | `ollama_model` | `gemma4:12b` | must be a vision model |
 | `ollama_num_ctx` | `8192` | context window sent as `options.num_ctx` (Ollama's own default is only 4096) |
+| `openai_base_url` | `https://api.openai.com/v1` | OpenAI-compatible API base URL |
+| `anthropic_base_url` | `https://api.anthropic.com/v1` | Claude Messages API base URL |
+| `vjev_base_url` | `http://localhost:8800/v1` | vjev-serve API base URL |
+| `vjev_model` | `vjev-vision` | model ID advertised by `/v1/models` |
+| `vjev_runtime_dir` | `H:/Tools/SignumJev` | prepared local CUDA runtime; used only for loopback auto-start |
 | `max_pages_per_doc` | `10` | pages analyzed per document |
 | `model_image_max_side` | `1120` px | page image size sent to the model |
 | `custom_prompt` | `""` | user-edited task part of the prompt; empty = built-in (the JSON response format is always appended automatically) |
+| `jev_custom_prompt` | `""` | vjev decision instructions; separate from the LLM prompt, without a generated JSON schema |
 | `timeout_s` | `300` | per-request AI timeout |
 | `recursive_folders` | `true` | recurse into subfolders |
 
@@ -179,8 +232,8 @@ src/signum/
 ├── app.py            # GUI entry point
 ├── cli.py            # headless batch mode (signum-cli)
 ├── config.py         # settings JSON + API keys in Credential Manager
-├── ai/               # vision model clients (Ollama, OpenAI-compat, Anthropic),
-│                     # shared prompt, JSON-schema, robust response parser
+├── ai/               # vision clients (Ollama, OpenAI, Claude, vjev),
+│                     # generation/decision prompts and response parsers
 ├── core/             # domain models, file discovery, PDF/image rendering,
 │                     # digital signature scan, bbox cropping, batch pipeline
 ├── report/           # self-contained HTML + CSV export
@@ -192,8 +245,8 @@ a Polish user guide in [docs/INSTRUKCJA.pl.md](docs/INSTRUKCJA.pl.md).
 
 ## Privacy & limitations
 
-- With Ollama at a loopback address, documents are processed locally, but their
-  contents are still passed to an AI model. A LAN or Internet Ollama endpoint is
+- With an AI API at a loopback address, documents are processed locally, but their
+  contents are still passed to an AI model. A LAN or Internet API endpoint is
   remote and is labelled as such. Local execution alone does not determine whether
   the processing is authorized or appropriate.
 - With cloud providers, page images are sent to the provider's API — check your

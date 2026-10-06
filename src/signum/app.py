@@ -27,8 +27,8 @@ def _load_icon() -> QIcon:
 
 def main() -> int:
     """Uruchamia GUI Signum."""
-    if "--self-test" in sys.argv:
-        return _self_test()
+    if "--self-test" in sys.argv or "--self-test-jev" in sys.argv:
+        return _self_test(local_jev="--self-test-jev" in sys.argv)
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
@@ -36,6 +36,10 @@ def main() -> int:
     app.setApplicationName(APP_NAME)
     app.setApplicationVersion(__version__)
     app.setWindowIcon(_load_icon())
+    if "--setup-local-ai" in sys.argv:
+        from signum.setup_local_ai import run_setup_dialog  # noqa: PLC0415
+
+        return run_setup_dialog(sys.argv[1:])
     if not _acquire_instance_mutex():
         QMessageBox.information(
             None,
@@ -48,7 +52,7 @@ def main() -> int:
     return app.exec()
 
 
-def _self_test() -> int:
+def _self_test(*, local_jev: bool = False) -> int:
     """Minimalny test spakowanego runtime'u używany podczas budowania instalatora."""
     import keyring  # noqa: PLC0415
     import pypdf  # noqa: PLC0415
@@ -58,11 +62,44 @@ def _self_test() -> int:
 
     dependencies = (keyring, pypdf, pypdfium2, requests, Image)
     icon_path = resources.files("signum.ui.resources") / "signum.ico"
+    jev_bootstrap = resources.files("signum.ai") / "vjev_bootstrap.py"
     try:
         keyring.get_password("Signum self-test", "missing-test-entry")
     except Exception:
         return 1
-    return 0 if all(dependencies) and icon_path.is_file() else 1
+    if not all(dependencies) or not icon_path.is_file() or not jev_bootstrap.is_file():
+        return 1
+    if local_jev:
+        import json  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+
+        from signum.ai import AIError, create_vision_model  # noqa: PLC0415
+        from signum.config import AppConfig  # noqa: PLC0415
+
+        config = AppConfig(provider="vjev")  # diagnostyka tylko domyślnego localhost
+        model = create_vision_model(config, api_key="")
+        try:
+            message = model.check_connection()
+            analysis = model.analyze_image(Image.new("RGB", (640, 800), "white"), 1120)
+            result = {
+                "ok": analysis.signature_probability is not None,
+                "message": message,
+                "version": __version__,
+                "signature_probability": analysis.signature_probability,
+            }
+        except (AIError, ValueError) as exc:
+            result = {"ok": False, "message": str(exc), "version": __version__}
+        finally:
+            model.release_resources()
+        try:
+            (Path(config.vjev_runtime_dir) / "packaged-self-test.json").write_text(
+                json.dumps(result, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except OSError:
+            return 1
+        return 0 if result["ok"] else 1
+    return 0
 
 
 def _acquire_instance_mutex() -> bool:

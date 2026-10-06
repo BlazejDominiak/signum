@@ -13,6 +13,8 @@ pozostawiać w rękach użytkownika.
 
 from __future__ import annotations
 
+from signum.ai.jev_prompts import JEV_PROMPT_INSTRUCTIONS
+
 PROMPT_INSTRUCTIONS = """Jesteś ekspertem analizy dokumentów. Otrzymujesz obraz JEDNEJ strony dokumentu.
 
 Zadania:
@@ -31,11 +33,15 @@ Odpowiedz WYŁĄCZNIE poprawnym JSON zgodnym ze schematem:
 {"description": "...", "signatures": [{"type": "handwritten|initials|stamp", "confidence": 0-100, "box_2d": [ymin, xmin, ymax, xmax]}]}"""
 
 
-def build_page_prompt(custom_instructions: str = "") -> str:
+def build_page_prompt(
+    custom_instructions: str = "", provider: str = "ollama", jev_instructions: str = "",
+) -> str:
     """Składa pełny prompt strony: część merytoryczna + stały format odpowiedzi.
 
     Pusta wartość ``custom_instructions`` oznacza domyślną część merytoryczną.
     """
+    if provider == "vjev":
+        return jev_instructions.strip() or JEV_PROMPT_INSTRUCTIONS
     instructions = custom_instructions.strip() or PROMPT_INSTRUCTIONS
     return f"{instructions}\n\n{PROMPT_FORMAT}"
 

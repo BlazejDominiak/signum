@@ -1,6 +1,9 @@
-SIGNUM — DOCUMENT AND AI RISK NOTICE
+﻿SIGNUM — DOCUMENT AND AI RISK NOTICE
 
 Read this notice before installing the application.
+
+The program is educational and is not suitable for commercial use. Use it only
+with sample documents that contain no personal or sensitive data.
 
 1. PURPOSE AND LIMITATIONS
 
@@ -42,7 +45,6 @@ This also applies to a service inside an organization's network. Data may be
 processed or retained under the service operator's terms, safeguards, privacy
 policies, and jurisdiction.
 
-The installer requires four separate acknowledgements so that these risks are
-noticed before installation continues. The acknowledgements are for awareness;
-they are not an additional agreement, a restriction of the MIT License, or a
-promise about how the application will be used.
+The installer requires four separate acknowledgements: the educational nature
+of the program, using only sample documents without personal or sensitive data,
+and transferring document contents to a local or remote AI model.

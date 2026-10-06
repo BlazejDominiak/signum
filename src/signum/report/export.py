@@ -11,6 +11,7 @@ import base64
 import csv
 import html
 import io
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -113,6 +114,18 @@ def _document_html(result: DocumentResult) -> str:
             f"<div class='meta'>{html.escape(result.path.name)} — przeanalizowano "
             f"{pages_info} w {result.duration_s:.1f} s</div>"
         )
+        if result.pages_analyzed < result.page_count:
+            parts.append("<p class='meta'>Nie zbadano wszystkich stron dokumentu.</p>")
+        if result.page_signature_probabilities:
+            scores = "; ".join(
+                f"strona {page}: {value * 100:.1f}%"
+                for page, value in result.page_signature_probabilities.items()
+            )
+            parts.append(
+                "<p class='meta'>Prawdopodobieństwo obecności podpisu: "
+                + html.escape(scores)
+                + "</p>"
+            )
         for finding in result.findings:
             image_html = ""
             if finding.crop_png:
@@ -146,6 +159,8 @@ def _badge(result: DocumentResult) -> str:
     if result.status == DocumentStatus.CANCELLED:
         return "<span class='badge cancelled'>ANULOWANO</span>"
     if result.is_signed:
+        if result.page_signature_probabilities:
+            return "<span class='badge signed'>WIDOCZNY PODPIS</span>"
         count = len(result.findings)
         return f"<span class='badge signed'>PODPISANY ({count})</span>"
     return "<span class='badge unsigned'>BRAK PODPISU</span>"
@@ -167,7 +182,18 @@ def build_csv(batch: BatchResult) -> str:
     buf = io.StringIO()
     writer = csv.writer(buf, delimiter=";", lineterminator="\r\n")
     writer.writerow(
-        ["plik", "tytul", "status", "podpisany", "liczba_podpisow", "rodzaje", "max_pewnosc"]
+        [
+            "plik",
+            "tytul",
+            "status",
+            "podpisany",
+            "liczba_podpisow",
+            "rodzaje",
+            "max_pewnosc",
+            "p_podpisu_na_stronach",
+            "przeanalizowane_strony",
+            "wszystkie_strony",
+        ]
     )
     for r in batch.results:
         writer.writerow(
@@ -176,9 +202,14 @@ def build_csv(batch: BatchResult) -> str:
                 _safe_csv_cell(r.title),
                 _STATUS_LABELS[r.status],
                 "TAK" if r.is_signed else "NIE",
-                len(r.findings),
+                "" if r.page_signature_probabilities else len(r.findings),
                 r.kinds_summary,
                 r.max_confidence if r.max_confidence is not None else "",
+                json.dumps(r.page_signature_probabilities)
+                if r.page_signature_probabilities
+                else "",
+                r.pages_analyzed,
+                r.page_count,
             ]
         )
     return buf.getvalue()
