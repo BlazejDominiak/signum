@@ -54,3 +54,6 @@ Desktop.ini
 # Local scratch
 scratch/
 *.log
+
+# Example documents remain local; regenerate with scripts/generate_fixtures.py.
+/examples/
