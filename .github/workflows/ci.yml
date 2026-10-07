@@ -30,6 +30,8 @@ jobs:
         run: pip-audit
       - name: Ruff
         run: ruff check src tests scripts
+      - name: Keep local documents out of releases
+        run: python scripts/check_local_documents.py
       - name: Mypy
         run: mypy
       - name: Tests

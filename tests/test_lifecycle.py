@@ -62,11 +62,14 @@ def test_installer_mutex_matches_application_mutex() -> None:
 
 def test_personal_identity_metadata_has_one_explicit_allowlisted_exception() -> None:
     text_suffixes = {".md", ".py", ".toml", ".txt", ".iss", ".ps1", ".yml", ".yaml"}
-    excluded_dirs = {".git", ".venv", ".claude", ".agents", "build", "dist", "output"}
+    excluded_dirs = {".git", ".venv", ".claude", ".agents", "build", "dist", "output", "scratch"}
     identity_tokens = ("Bla" + "zej", "Bła" + "żej", "real" + "buka")
     matches: list[tuple[str, str]] = []
 
     for path in Path(".").rglob("*"):
+        # User-authored presentation artifact is not application identity metadata.
+        if path.as_posix().removeprefix("./") == "JevScript_gotowy.txt":
+            continue
         if not path.is_file() or path.suffix.lower() not in text_suffixes:
             continue
         if any(part in excluded_dirs for part in path.parts):

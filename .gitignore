@@ -55,5 +55,8 @@ Desktop.ini
 scratch/
 *.log
 
+# Input documents are local data, never source assets.
+*.[pP][dD][fF]
+
 # Example documents remain local; regenerate with scripts/generate_fixtures.py.
 /examples/

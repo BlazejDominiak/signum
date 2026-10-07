@@ -10,6 +10,9 @@ $python = Join-Path $root ".venv\Scripts\python.exe"
 $version = & $python -c "import signum; print(signum.__version__)"
 Write-Host "=== Signum $version ===" -ForegroundColor Cyan
 
+& $python (Join-Path $root "scripts\check_local_documents.py")
+if ($LASTEXITCODE -ne 0) { throw "Lokalne dokumenty nie mogą trafić do wydania" }
+
 Write-Host "[1/3] PyInstaller (dist\Signum)..." -ForegroundColor Cyan
 # Budowanie z terminala z dodatkowymi narzędziami w PATH może spakować obce DLL
 # (np. UCRT z Windows 11), które uniemożliwiają start programu na Windows 10.
@@ -29,6 +32,9 @@ try {
     $env:PATH = $signumOriginalPath
 }
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller zakończył się błędem" }
+
+& $python (Join-Path $root "scripts\check_local_documents.py") --bundle (Join-Path $root "dist\Signum")
+if ($LASTEXITCODE -ne 0) { throw "Pakiet zawiera lokalne dokumenty — przerwano budowę instalatora" }
 
 Write-Host "[2/3] Test dymny zbudowanego exe..." -ForegroundColor Cyan
 $exe = Join-Path $root "dist\Signum\Signum.exe"
