@@ -111,10 +111,10 @@ def test_brak_runtime_i_niepelne_wagi_maja_czytelny_blad(
     fake_runtime: Path, tmp_path: Path,
 ) -> None:
     url = "http://127.0.0.1:8800/v1"
-    with pytest.raises(AIConnectionError, match=r"runtime\.json"):
+    with pytest.raises(AIConnectionError, match="Instaluj / napraw"):
         start_local_vjev(url, str(tmp_path / "missing"), 10)
     (fake_runtime / "models/vjev-vision/weights.safetensors").unlink()
-    with pytest.raises(AIConnectionError, match="komplet wag"):
+    with pytest.raises(AIConnectionError, match="Instaluj / napraw"):
         start_local_vjev(url, str(fake_runtime), 10)
 
 

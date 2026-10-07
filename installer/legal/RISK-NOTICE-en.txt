@@ -48,3 +48,6 @@ policies, and jurisdiction.
 The installer requires four separate acknowledgements: the educational nature
 of the program, using only sample documents without personal or sensitive data,
 and transferring document contents to a local or remote AI model.
+
+
+Ollama, models, libraries and Python are external components that must be downloaded from trusted sources; the author of Signum accepts no responsibility for them.

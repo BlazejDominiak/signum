@@ -30,8 +30,9 @@ def test_explicit_model_selection_includes_ollama_and_rejects_unknown() -> None:
 
 
 def test_storage_checks_free_space_before_downloading(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("signum.setup_local_ai.shutil.disk_usage",
-                        lambda root: SimpleNamespace(free=5 * 1024**3))
+    monkeypatch.setattr(
+        "signum.setup_local_ai.shutil.disk_usage", lambda root: SimpleNamespace(free=5 * 1024**3)
+    )
     with pytest.raises(ValueError, match="35 GB"):
         validate_storage(str(tmp_path), {"jev"})
 
@@ -78,9 +79,10 @@ def test_cancel_stops_before_any_download(tmp_path) -> None:
 
 
 def test_existing_jev_is_reused_and_gpu_released_even_on_failure(tmp_path, monkeypatch) -> None:
-    preparer = LocalAIPreparer(tmp_path, Mock(), threading.Event())
+    preparer = LocalAIPreparer(tmp_path, Mock(), threading.Event(), check_only=True)
     preparer.download = Mock(side_effect=AssertionError("Unexpected download"))
-    monkeypatch.setattr("signum.ai.local_vjev._runtime_paths", Mock(return_value=()))
+    monkeypatch.setattr("signum.ai.local_vjev._runtime_paths", Mock(return_value=(tmp_path,) * 4))
+    monkeypatch.setattr("signum.setup_local_ai.probe_runtime", Mock(return_value="libraries OK"))
     model = Mock()
     model.analyze_image.side_effect = RuntimeError("image failed")
     factory = Mock(return_value=model)
@@ -104,8 +106,9 @@ def test_failed_ollama_pull_never_saves_ready_configuration(tmp_path, monkeypatc
     response.iter_lines.return_value = [b'{"error":"disk full"}']
     session.post.return_value = response
     monkeypatch.setattr(requests, "Session", Mock(return_value=session))
-    monkeypatch.setattr("signum.ai.ollama_client.OllamaVisionModel.list_models",
-                        Mock(return_value=[]))
+    monkeypatch.setattr(
+        "signum.ai.ollama_client.OllamaVisionModel.list_models", Mock(return_value=[])
+    )
     preparer = LocalAIPreparer(tmp_path, Mock(), threading.Event())
     with pytest.raises(RuntimeError, match="disk full"):
         preparer.prepare_ollama({"ollama", "ollama\\small"}, config)
@@ -121,16 +124,17 @@ def test_stopped_existing_ollama_is_started_without_download(tmp_path, monkeypat
     monkeypatch.setattr(requests, "Session", Mock(return_value=session))
     start = Mock()
     monkeypatch.setattr("signum.ai.local_ollama.start_local_ollama", start)
-    monkeypatch.setattr("signum.ai.ollama_client.OllamaVisionModel.list_models",
-                        Mock(return_value=[]))
+    monkeypatch.setattr(
+        "signum.ai.ollama_client.OllamaVisionModel.list_models", Mock(return_value=[])
+    )
     monkeypatch.setattr(AppConfig, "save", Mock())
     root = tmp_path / "ai"
     preparer = LocalAIPreparer(root, Mock(), threading.Event(), str(executable))
     preparer.download = Mock(side_effect=AssertionError("Unexpected download"))
     config = AppConfig()
     preparer.prepare_ollama({"ollama"}, config)
-    start.assert_called_once_with("http://127.0.0.1:11434", str(root / "ollama"))
-    assert json.loads((root / "ollama/runtime.json").read_text(encoding="utf-8")) == {
+    start.assert_called_once_with("http://127.0.0.1:11434", str(root / "ollama-launcher"))
+    assert json.loads((root / "ollama-launcher/runtime.json").read_text(encoding="utf-8")) == {
         "external_executable": str(executable),
     }
 
@@ -143,9 +147,14 @@ def test_existing_ollama_launcher_keeps_its_model_folder(tmp_path, monkeypatch) 
     executable.touch()
     root = tmp_path / "ai" / "ollama"
     root.mkdir(parents=True)
-    (root / "runtime.json").write_text(json.dumps({
-        "external_executable": str(executable),
-    }), encoding="utf-8")
+    (root / "runtime.json").write_text(
+        json.dumps(
+            {
+                "external_executable": str(executable),
+            }
+        ),
+        encoding="utf-8",
+    )
     session = Mock()
     session.get.side_effect = [requests.ConnectionError(), SimpleNamespace(status_code=200)]
     monkeypatch.setattr("signum.ai.local_ollama.requests.Session", Mock(return_value=session))
@@ -161,42 +170,53 @@ def test_existing_ollama_launcher_keeps_its_model_folder(tmp_path, monkeypatch) 
 def test_installer_has_utf8_bom_for_risk_text_and_component_choices() -> None:
     assert Path("installer/legal/RISK-NOTICE-pl.txt").read_bytes().startswith(b"\xef\xbb\xbf")
     source = Path("installer/signum.iss").read_text(encoding="utf-8-sig")
-    assert '[Components]' in source
-    assert 'ollama\\small' in source and 'ollama\\large' in source
-    assert '--setup-local-ai' in source
-    assert 'DetectGPU' in source and 'GpuMemoryMB >= 15000' in source
-    assert 'GpuVendor <> 4318' in source
+    assert "[Components]" in source
+    assert "ollama\\small" in source and "ollama\\large" in source
+    assert "--setup-local-ai" in source
+    assert "DetectGPU" in source and "GpuMemoryMB >= 15000" in source
+    assert "GpuVendor <> 4318" in source
 
 
 def test_fresh_jev_prepares_isolated_cuda_runtime_and_frozen_model(tmp_path, monkeypatch) -> None:
-    monkeypatch.setattr("signum.ai.local_vjev._runtime_paths",
-                        Mock(side_effect=AIConnectionError("not installed")))
+    monkeypatch.setattr(
+        "signum.ai.local_vjev._runtime_paths",
+        Mock(side_effect=[AIConnectionError("not installed"), (tmp_path,) * 4]),
+    )
+    monkeypatch.setattr("signum.setup_local_ai.probe_runtime", Mock(return_value="libraries OK"))
+    monkeypatch.setattr("signum.setup_local_ai.require_nvidia_gpu", Mock())
     monkeypatch.setattr(AppConfig, "save", Mock())
     model = Mock()
     model.analyze_image.return_value = SimpleNamespace(signature_probability=0.01, signatures=())
     monkeypatch.setattr("signum.ai.jev_client.JevVisionModel", Mock(return_value=model))
     metadata = Mock()
-    metadata.json.return_value = {"siblings": [
-        {"rfilename": "config.json"},
-        {"rfilename": "model.safetensors", "lfs": {"sha256": "a" * 64}},
-    ]}
+    metadata.json.return_value = {
+        "siblings": [
+            {"rfilename": "config.json"},
+            {"rfilename": "model.safetensors", "lfs": {"sha256": "a" * 64}},
+        ]
+    }
     preparer = LocalAIPreparer(tmp_path, Mock(), threading.Event())
     preparer.session.get = Mock(return_value=metadata)
+
     def download(url, target, expected_hash=""):
         target.parent.mkdir(parents=True, exist_ok=True)
         target.touch()
         return target
+
     def extract(archive, target):
         target.mkdir(parents=True, exist_ok=True)
         (target / "python.exe").touch()
+
     preparer.download = Mock(side_effect=download)
     preparer.run_process = Mock()
     monkeypatch.setattr("signum.setup_local_ai._safe_extract", extract)
     config = AppConfig(vjev_runtime_dir=str(tmp_path / "missing"))
     preparer.prepare_jev(config)
     commands = [call.args[0] for call in preparer.run_process.call_args_list]
-    assert any("torch==2.11.0" in cmd and "https://download.pytorch.org/whl/cu128" in cmd
-               for cmd in commands)
+    assert any(
+        "torch==2.11.0" in cmd and "https://download.pytorch.org/whl/cu128" in cmd
+        for cmd in commands
+    )
     assert any("--no-deps" in cmd for cmd in commands)
     assert all(cmd[0] == str(tmp_path / "jev/python/python.exe") for cmd in commands)
     assert (tmp_path / "jev/runtime.json").is_file()

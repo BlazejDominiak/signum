@@ -73,7 +73,7 @@ def _runtime_paths(runtime_dir: str) -> tuple[Path, Path, Path, Path]:
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise AIConnectionError(
             f"Lokalny Jev nie jest przygotowany w {root}. "
-            "Sprawdź katalog runtime i komplet wag modelu (runtime.json)."
+            "Otwórz Składniki AI, zaznacz Jev i wybierz Instaluj / napraw."
         ) from exc
     return root, python, packages, model
 

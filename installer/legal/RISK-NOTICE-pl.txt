@@ -49,3 +49,6 @@ jurysdykcją operatora usługi.
 Instalator wymaga czterech osobnych potwierdzeń: edukacyjnego charakteru
 programu, korzystania wyłącznie z dokumentów przykładowych bez danych osobowych
 ani wrażliwych oraz przekazywania treści do lokalnego lub zdalnego modelu AI.
+
+
+Ollama, modele, biblioteki i Python są składnikami zewnętrznymi, które należy pobierać ze sprawdzonych źródeł; autor Signum nie bierze za nie odpowiedzialności.

@@ -29,6 +29,8 @@ def main() -> int:
     """Uruchamia GUI Signum."""
     if "--self-test" in sys.argv or "--self-test-jev" in sys.argv:
         return _self_test(local_jev="--self-test-jev" in sys.argv)
+    if "--self-test-classification" in sys.argv:
+        return _self_test_classification()
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
@@ -63,11 +65,19 @@ def _self_test(*, local_jev: bool = False) -> int:
     dependencies = (keyring, pypdf, pypdfium2, requests, Image)
     icon_path = resources.files("signum.ui.resources") / "signum.ico"
     jev_bootstrap = resources.files("signum.ai") / "vjev_bootstrap.py"
+    probe = resources.files("signum.ai") / "runtime_probe.py"
+    text_bootstrap = resources.files("signum.ai") / "jevk5_text_worker.py"
     try:
         keyring.get_password("Signum self-test", "missing-test-entry")
     except Exception:
         return 1
-    if not all(dependencies) or not icon_path.is_file() or not jev_bootstrap.is_file():
+    if (
+        not all(dependencies)
+        or not icon_path.is_file()
+        or not jev_bootstrap.is_file()
+        or not text_bootstrap.is_file()
+        or not probe.is_file()
+    ):
         return 1
     if local_jev:
         import json  # noqa: PLC0415
@@ -76,7 +86,9 @@ def _self_test(*, local_jev: bool = False) -> int:
         from signum.ai import AIError, create_vision_model  # noqa: PLC0415
         from signum.config import AppConfig  # noqa: PLC0415
 
-        config = AppConfig(provider="vjev")  # diagnostyka tylko domyślnego localhost
+        config = AppConfig.load()
+        config.provider = "vjev"
+        config.vjev_base_url = "http://localhost:8800/v1"  # always local diagnostics
         model = create_vision_model(config, api_key="")
         try:
             message = model.check_connection()
@@ -100,6 +112,39 @@ def _self_test(*, local_jev: bool = False) -> int:
             return 1
         return 0 if result["ok"] else 1
     return 0
+
+
+def _self_test_classification() -> int:
+    """Opt-in packaged check of the external text runtime and its packaged bridge."""
+    import json  # noqa: PLC0415
+    import threading  # noqa: PLC0415
+    from pathlib import Path  # noqa: PLC0415
+
+    from signum.ai.text_classifiers import JevK5TextClassifier  # noqa: PLC0415
+    from signum.config import AppConfig  # noqa: PLC0415
+    from signum.core.classification import make_question  # noqa: PLC0415
+
+    config = AppConfig.load()
+    bridge = JevK5TextClassifier(config, threading.Event())
+    question = make_question(
+        [("Umowa", "An agreement or contract"), ("Raport", "A report")], "Choose the document type."
+    )
+    try:
+        text = bridge.prepare("This is a contract for delivery of goods.", question)
+        decision = bridge.classify(text, question)
+        result = {
+            "ok": decision.get("choice") == "c01",
+            "version": __version__,
+            "decision": decision,
+        }
+    except Exception as exc:
+        result = {"ok": False, "version": __version__, "error": str(exc)}
+    finally:
+        bridge.close()
+    destination = Path(config.classification_cache_dir) / "packaged-self-test.json"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+    return 0 if result["ok"] else 1
 
 
 def _acquire_instance_mutex() -> bool:

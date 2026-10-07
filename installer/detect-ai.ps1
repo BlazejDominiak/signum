@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$OutputPath)
+﻿param([Parameter(Mandatory=$true)][string]$OutputPath)
 $ErrorActionPreference = 'Stop'
 # Read-only discovery: no fixed version, no starts, downloads or drive scans.
 $candidates = [System.Collections.Generic.List[string]]::new()
@@ -119,6 +119,13 @@ if ($config.vjev_runtime_dir) {
         }
     } catch { $jevReady = $false }
 }
+$jevK5Ready = $false
+if ($config.classification_jev_python -and $config.classification_jev_model_dir -and $config.classification_jev_runtime) {
+    $jevK5Ready = (Test-Path -LiteralPath $config.classification_jev_python -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $config.classification_jev_runtime 'jevk5\__init__.py') -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $config.classification_jev_model_dir 'model.safetensors') -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $config.classification_jev_model_dir 'tokenizer.json') -PathType Leaf)
+}
 $result = @($executable, $serviceUrl, [string][int]($models -contains 'gemma4:e2b'),
-    [string][int]($models -contains 'gemma4:12b'), [string][int]$jevReady, [string][int]$modelsKnown)
+    [string][int]($models -contains 'gemma4:12b'), [string][int]$jevReady, [string][int]$modelsKnown, [string][int]$jevK5Ready)
 [IO.File]::WriteAllLines($OutputPath, $result, [Text.UTF8Encoding]::new($true))

@@ -34,6 +34,7 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 WizardSizePercent=130,130
+MinVersion=10.0.19045
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 AppMutex=Local\Signum-6D6C3F52-9C1B-4E6A-9A57-2B1FBD6A7E31
@@ -53,10 +54,10 @@ english.RiskCheckDocuments=I will use the program only with sample documents tha
 english.RiskCheckLocal=Local AI processes the document contents.
 english.RiskCheckRemote=Remote AI receives the document contents, which means they leave the computer over the internet and are processed by an external service.
 english.RiskRequired=Confirm all four points to continue.
-english.RequirementsNote=Optional components are third-party programs, models and libraries with their own licences. Downloads require internet, Windows 10 22H2 or newer and current GPU drivers.
+english.RequirementsNote=Ollama, models, libraries and Python are external components that must be downloaded from trusted sources; the author of Signum accepts no responsibility for them.
 english.ComponentsTitle=Components and local AI
 english.ComponentsDescription=Choose components using the detected hardware and installation status.
-english.Installed=already installed
+english.Installed=files detected — operation will be tested
 english.NotDetected=not detected
 english.ServiceDetected=running service detected
 english.ModelsUnknown=model status could not be verified
@@ -71,19 +72,20 @@ english.ComponentApp=Signum application (required)
 english.ComponentOllama=Ollama — third-party local AI service
 english.ComponentSmall=Gemma 4 E2B
 english.ComponentLarge=Gemma 4 12B
-english.ComponentJev=Local Jev
-english.SmallDetails=Vision model; 8 GB VRAM; ~4.6 GB download.
-english.LargeDetails=Vision model; 16 GB VRAM; ~8 GB download.
+english.ComponentJev=Jev — signature detection (Python + libraries + model)
+english.ComponentJevK5=JevK5 — document classification (Python + libraries + model)
+english.SmallDetails=Signatures and classification; 8 GB VRAM; ~4.6 GB download.
+english.LargeDetails=Signatures and classification; 16 GB VRAM; ~8 GB download.
 english.JevDetails=NVIDIA 16 GB; model and external libraries; ~15 GB download.
 english.TypeApp=Signum only / existing AI / remote API
 english.TypeCustom=Choose local AI components
 english.RecommendButton=Select recommended components
 english.StorageTitle=Where to store local AI
 english.StorageDescription=Models and external libraries can occupy tens of GB.
-english.StoragePrompt=Choose a folder on a drive with enough free space. Allow at least 20 GB for Ollama with one model, or 35 GB for Jev. Components are downloaded after Signum is copied. They remain separate from the application and are not removed when Signum is uninstalled.
+english.StoragePrompt=Choose a folder on a drive with enough free space. Allow at least 20 GB for Ollama with one model, or 35 GB for each of Jev / JevK5. Components are downloaded after Signum is copied. They remain separate from the application and are not removed when Signum is uninstalled.
 english.StorageLabel=AI models and libraries folder:
 english.StorageInvalid=Choose an absolute path on an existing drive, outside the Signum application folder.
-english.JevUnsupported=This Jev package needs an NVIDIA GPU with at least 16 GB dedicated VRAM. Uncheck Jev or choose a supported computer.
+english.JevUnsupported=Jev and JevK5 need an NVIDIA GPU with at least 16 GB dedicated VRAM. Uncheck Jev / JevK5 or choose a supported computer.
 english.LargeWarning=The selected large Ollama model is recommended for 16 GB VRAM. On this GPU, some work may run on the CPU and be much slower. Continue?
 polish.RiskPageTitle=Świadomość ryzyka dla dokumentów i AI
 polish.RiskPageDescription=Przeczytaj informację i potwierdź każdy punkt przed kontynuowaniem.
@@ -92,10 +94,10 @@ polish.RiskCheckDocuments=Będę korzystać z programu tylko na dokumentach przy
 polish.RiskCheckLocal=Lokalne AI przetwarza treść dokumentów.
 polish.RiskCheckRemote=Zdalne AI otrzymuje treść dokumentów, co oznacza, że opuszczają komputer przez sieć internetową i są przetwarzane przez zewnętrzną usługę.
 polish.RiskRequired=Aby kontynuować, potwierdź wszystkie cztery punkty.
-polish.RequirementsNote=Opcjonalne składniki to programy, modele i biblioteki innych autorów, na ich własnych licencjach. Pobieranie wymaga internetu, Windows 10 22H2 lub nowszego i aktualnych sterowników GPU.
+polish.RequirementsNote=Ollama, modele, biblioteki i Python są składnikami zewnętrznymi, które należy pobierać ze sprawdzonych źródeł; autor Signum nie bierze za nie odpowiedzialności.
 polish.ComponentsTitle=Składniki i lokalne AI
 polish.ComponentsDescription=Wybierz składniki na podstawie wykrytego sprzętu i stanu instalacji.
-polish.Installed=wykryto instalację
+polish.Installed=wykryto pliki — działanie zostanie sprawdzone
 polish.NotDetected=nie wykryto
 polish.ServiceDetected=wykryto działającą usługę
 polish.ModelsUnknown=nie udało się sprawdzić zainstalowanych modeli
@@ -110,19 +112,20 @@ polish.ComponentApp=Program Signum (wymagany)
 polish.ComponentOllama=Ollama — zewnętrzny program do lokalnego AI
 polish.ComponentSmall=Gemma 4 E2B
 polish.ComponentLarge=Gemma 4 12B
-polish.ComponentJev=Lokalny Jev
-polish.SmallDetails=Model wizyjny; 8 GB VRAM; ~4,6 GB do pobrania.
-polish.LargeDetails=Model wizyjny; 16 GB VRAM; ~8 GB do pobrania.
+polish.ComponentJev=Jev — sprawdzanie podpisów (Python + biblioteki + model)
+polish.ComponentJevK5=JevK5 — kategoryzacja (Python + biblioteki + model)
+polish.SmallDetails=Podpisy i kategoryzacja; 8 GB VRAM; ~4,6 GB do pobrania.
+polish.LargeDetails=Podpisy i kategoryzacja; 16 GB VRAM; ~8 GB do pobrania.
 polish.JevDetails=NVIDIA 16 GB; model i zewnętrzne biblioteki; ~15 GB do pobrania.
 polish.TypeApp=Tylko Signum / posiadane AI / zdalne API
 polish.TypeCustom=Wybór składników lokalnego AI
 polish.RecommendButton=Zaznacz proponowane składniki
 polish.StorageTitle=Miejsce na lokalne AI
 polish.StorageDescription=Modele i zewnętrzne biblioteki zajmują nawet kilkadziesiąt GB.
-polish.StoragePrompt=Wybierz katalog na dysku z wolnym miejscem. Dla Ollamy z jednym modelem przeznacz co najmniej 20 GB, dla Jev — 35 GB. Pobieranie rozpocznie się po skopiowaniu Signum. Te składniki są osobne i nie zostaną usunięte przy odinstalowaniu aplikacji.
+polish.StoragePrompt=Wybierz katalog na dysku z wolnym miejscem. Dla Ollamy z jednym modelem przeznacz co najmniej 20 GB, dla każdego z Jev / JevK5 — 35 GB. Pobieranie rozpocznie się po skopiowaniu Signum. Te składniki są osobne i nie zostaną usunięte przy odinstalowaniu aplikacji.
 polish.StorageLabel=Katalog modeli i bibliotek AI:
 polish.StorageInvalid=Wybierz pełną ścieżkę na istniejącym dysku, poza katalogiem programu Signum.
-polish.JevUnsupported=Ten pakiet Jev wymaga karty NVIDIA z co najmniej 16 GB dedykowanej pamięci. Odznacz Jev albo użyj zgodnego komputera.
+polish.JevUnsupported=Pakiety Jev i JevK5 wymagają karty NVIDIA z co najmniej 16 GB dedykowanej pamięci. Odznacz Jev / JevK5 albo użyj zgodnego komputera.
 polish.LargeWarning=Wybrany duży model Ollamy jest zalecany dla 16 GB VRAM. Na tej karcie część pracy może trafić na procesor i znacznie zwolnić. Kontynuować?
 
 [Types]
@@ -135,6 +138,7 @@ Name: "ollama"; Description: "{cm:ComponentOllama}"
 Name: "gemma_small"; Description: "{cm:ComponentSmall}"
 Name: "gemma_large"; Description: "{cm:ComponentLarge}"
 Name: "jev"; Description: "{cm:ComponentJev}"
+Name: "jevk5"; Description: "{cm:ComponentJevK5}"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -175,11 +179,13 @@ var
   SmallInstalled: Boolean;
   LargeInstalled: Boolean;
   JevInstalled: Boolean;
+  JevK5Installed: Boolean;
   ModelsKnown: Boolean;
 
 function LocalAISelected: Boolean;
 begin
   Result := WizardIsComponentSelected('ollama') or WizardIsComponentSelected('jev') or
+    WizardIsComponentSelected('jevk5') or
     WizardIsComponentSelected('gemma_small') or WizardIsComponentSelected('gemma_large');
 end;
 
@@ -190,6 +196,7 @@ begin
   if WizardIsComponentSelected('gemma_small') then Result := Result + ',ollama\small';
   if WizardIsComponentSelected('gemma_large') then Result := Result + ',ollama\large';
   if WizardIsComponentSelected('jev') then Result := Result + ',jev';
+  if WizardIsComponentSelected('jevk5') then Result := Result + ',jevk5';
 end;
 
 function ExistingOllama(Param: String): String;
@@ -260,6 +267,7 @@ begin
         LargeInstalled := Info[3] = '1';
         JevInstalled := Info[4] = '1';
         ModelsKnown := Info[5] = '1';
+        if GetArrayLength(Info) >= 7 then JevK5Installed := Info[6] = '1';
       end;
 end;
 
@@ -287,7 +295,7 @@ begin
     Recommendation := CustomMessage('GpuDetected') + ' ' + GpuName +
       ' (' + IntToStr(GpuMemoryMB) + ' MB VRAM).' + #13#10 + Recommendation;
   HardwareSummary.Caption := Recommendation + #13#10 + OllamaMessage;
-  WizardForm.ComponentsList.ItemEnabled[1] := (OllamaPath = '') and (OllamaURL = '');
+  WizardForm.ComponentsList.ItemEnabled[1] := True;
   if not WizardForm.ComponentsList.ItemEnabled[1] then
   begin
     WizardForm.ComponentsList.Checked[1] := False;
@@ -317,6 +325,14 @@ begin
     WizardForm.ComponentsList.ItemSubItem[4] := CustomMessage('JevDetails');
   WizardForm.ComponentsList.ItemEnabled[4] :=
     JevInstalled or ((GpuVendor = 4318) and (GpuMemoryMB >= 15000));
+  Status := '';
+  if JevK5Installed then Status := ' — ' + CustomMessage('Installed');
+  if (GpuVendor <> 4318) or (GpuMemoryMB < 15000) then
+    Status := Status + ' — ' + CustomMessage('JevUnavailable');
+  WizardForm.ComponentsList.ItemCaption[5] := CustomMessage('ComponentJevK5') + Status;
+  WizardForm.ComponentsList.ItemSubItem[5] := CustomMessage('JevDetails');
+  WizardForm.ComponentsList.ItemEnabled[5] :=
+    JevK5Installed or ((GpuVendor = 4318) and (GpuMemoryMB >= 15000));
 end;
 
 function RisksConfirmed: Boolean;
@@ -488,7 +504,7 @@ begin
   end;
   if CurPageID = wpSelectComponents then
   begin
-    if WizardIsComponentSelected('jev') and
+    if (WizardIsComponentSelected('jev') or WizardIsComponentSelected('jevk5')) and
        ((GpuVendor <> 4318) or (GpuMemoryMB < 15000)) then
     begin
       MsgBox(CustomMessage('JevUnsupported'), mbInformation, MB_OK);
