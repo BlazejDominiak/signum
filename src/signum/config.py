@@ -12,6 +12,7 @@ import contextlib
 import json
 import logging
 from dataclasses import asdict, dataclass, fields
+from dataclasses import field as dataclass_field
 from pathlib import Path
 from typing import Any
 
@@ -37,6 +38,17 @@ def config_file() -> Path:
     return config_dir() / "settings.json"
 
 
+def default_ai_directory() -> Path:
+    # Prefer the large data drive when present; no drive letter is required.
+    if Path("H:/").is_dir():
+        return Path("H:/Tools/SignumAI")
+    return Path(platformdirs.user_documents_dir()) / "SignumAI"
+
+
+def default_cache_directory() -> str:
+    return str(default_ai_directory() / "cache" / "classification")
+
+
 @dataclass(slots=True)
 class AppConfig:
     """Wszystkie trwałe ustawienia aplikacji (bez sekretów)."""
@@ -53,7 +65,8 @@ class AppConfig:
     anthropic_model: str = "claude-sonnet-5"
     vjev_base_url: str = "http://localhost:8800/v1"
     vjev_model: str = "vjev-vision"
-    vjev_runtime_dir: str = "H:/Tools/SignumJev"
+    ai_directory: str = dataclass_field(default_factory=lambda: str(default_ai_directory()))
+    vjev_runtime_dir: str = ""
     vjev_additional_analysis: bool = False  # eksperymentalne kategorie i lokalizacja
     timeout_s: int = 300
     max_pages_per_doc: int = 10
@@ -62,6 +75,19 @@ class AppConfig:
     jev_custom_prompt: str = ""  # instrukcje decyzji vjev
     recursive_folders: bool = True
     last_dir: str = ""
+    classification_provider: str = "gemma"  # legacy selection
+    classification_selection: str = "selected"
+    classification_models: str = ""  # JSON profiles; API keys stay in keyring
+    classification_categories: str = ""  # JSON names + descriptions; empty uses examples
+    classification_prompt: str = ""
+    classification_ollama_url: str = "http://localhost:11434"
+    classification_ollama_model: str = "gemma4:12b"
+    classification_env_file: str = ""
+    classification_jev_python: str = ""
+    classification_jev_model_dir: str = ""
+    classification_jev_runtime: str = ""
+    classification_jev_packages: str = ""
+    classification_cache_dir: str = dataclass_field(default_factory=default_cache_directory)
 
     @property
     def api_base_url(self) -> str:
@@ -120,6 +146,26 @@ class AppConfig:
         config.custom_prompt = config.custom_prompt[:MAX_CUSTOM_PROMPT_LENGTH]
         config.jev_custom_prompt = config.jev_custom_prompt[:MAX_CUSTOM_PROMPT_LENGTH]
         config.last_dir = config.last_dir[:32_767]
+        if config.classification_provider not in {"venice", "jevk5", "gemma", "all"}:
+            config.classification_provider = defaults.classification_provider
+        config.classification_prompt = config.classification_prompt[:4000]
+        config.classification_categories = config.classification_categories[:20000]
+        # Migrate stale machine-specific defaults; preserve real existing installs.
+        for name in (
+            "vjev_runtime_dir",
+            "classification_env_file",
+            "classification_jev_python",
+            "classification_jev_model_dir",
+            "classification_jev_runtime",
+            "classification_jev_packages",
+            "classification_cache_dir",
+            "ai_directory",
+        ):
+            value = getattr(config, name)
+            if (value and not Path(value).anchor) or (
+                value and Path(value).anchor and not Path(Path(value).anchor).exists()
+            ):
+                setattr(config, name, getattr(defaults, name))
         return config
 
     def save(self) -> None:

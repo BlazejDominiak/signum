@@ -111,7 +111,7 @@ def test_stary_plik_uzupelnia_nowe_adresy_i_modele(isolated_config: Path) -> Non
     loaded = AppConfig.load()
     assert loaded.api_base_url == "https://api.anthropic.com/v1"
     assert loaded.vjev_model == "vjev-vision"
-    assert loaded.vjev_runtime_dir == "H:/Tools/SignumJev"
+    assert loaded.vjev_runtime_dir == ""
 
 
 def test_migracja_blednego_id_modelu_jev(isolated_config: Path) -> None:
