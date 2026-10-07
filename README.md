@@ -1,4 +1,4 @@
-# Signum — AI document signature detection
+# Signum — document categorization and signature detection
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Qt for Python](https://img.shields.io/badge/GUI-PySide6-41cd52.svg)](https://doc.qt.io/qtforpython-6/)
@@ -6,8 +6,24 @@
 [![Linted with Ruff](https://img.shields.io/badge/ruff-passing-brightgreen)](https://docs.astral.sh/ruff/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-A Windows desktop application that scans PDFs and document images and answers one question:
-**is this document signed?**
+A Windows desktop application with two separate workspaces:
+**document categorization** and **signature detection**.
+
+The **Kategoryzowanie dokumentów** tab classifies PDF text into 2–12 editable
+categories. Add your own model configurations: Ollama, an API with a custom URL,
+model and key (Chat Completions, Messages or Decisions), or a local JevK5 runtime.
+Compare any selected configurations sequentially on identical text inputs. Categories and prompts
+are saved independently of signature settings. Load your own PDFs, sample up to
+100 files from a folder, or open a locally saved benchmark protocol. Colored category
+badges connect the editor with results. The English default prompt is visible beside
+the results. Both tabs show preparation, local loading, model processing and total
+times. Test connections in **Ustawienia AI** and double-click a PDF to open it.
+Results and timings can be exported to CSV or JSON.
+**Test PDFs are local only and are not included in the repository or installer.**
+Git ignores PDF inputs; CI and the installer build check delivery inputs with
+`scripts/check_local_documents.py`. See the [Polish usage guide](docs/INSTRUKCJA.pl.md).
+
+The **Sprawdzanie podpisów** tab keeps the existing visual and structural analysis:
 
 Drop in up to a thousand scans and PDFs, click *Przetwórz* (Process), and Signum:
 
@@ -61,9 +77,9 @@ aborts it with a clear message.
 | **Claude (Anthropic)** | base URL + API key + model | Messages API with base64 image blocks. Default URL: `https://api.anthropic.com/v1`. |
 | **vjev-vision** | base URL + served model ID + optional API key + local runtime directory | Default: `http://localhost:8800/v1`, model ID `vjev-vision`. Uses [vjev-serve](https://github.com/BubbleCal/vjev-serve) `/systemone`. A prepared local CUDA runtime is started automatically during connection testing or analysis; remote API servers can also be used. |
 
-The local runtime lives separately from the GUI installer. On this machine it is
-prepared in `H:/Tools/SignumJev`: Python 3.11 with existing CUDA Torch, additional
-packages on H:, and full `yah01/vjev-vision` weights. `runtime.json` specifies the
+Local runtimes live in the folder selected during setup. **Składniki AI** installs
+Python, CUDA libraries and the chosen Jev or JevK5 model, or reuses an existing
+installation after dependency and inference checks. `runtime.json` specifies the
 absolute `python`, `packages`, and `model_dir` paths. Startup is offline and binds
 only `127.0.0.1`; it does not download models. The settings button **Zatrzymaj lokalny
 Jev / zwolnij GPU** stops only the server managed by Signum. Logs: `server.log`.
@@ -72,6 +88,14 @@ The GUI installer itself does not include the 9 GB model or CUDA libraries.
 For local diagnostics, `Signum.exe --self-test-jev` tests the prepared default
 localhost model from the packaged application and saves `packaged-self-test.json`
 in the runtime directory; it does not read cloud settings or use cloud API keys.
+
+Ollama and Jev have independent **Dodatkowa analiza** checkboxes. Ollama keeps
+its existing description-and-crops mode enabled by default; disabling it requests
+only signature and stamp presence. Jev keeps its frozen basic classifier by default;
+the optional experimental extension adds up to two of 48 categories and approximate
+crops using a 4 × 5 grid, adjacent-cell fusion and verification. The extension
+preserves the basic presence decision. CLI equivalents are `--additional-analysis`
+and `--no-additional-analysis`. See [the Polish guide](docs/INSTRUKCJA.pl.md).
 
 Every provider has an editable API address, model field and protected API key field,
 with *Pokaż*, *Wyczyść*, *Testuj połączenie* and *Zapisz*. Enter the **base URL**
@@ -85,7 +109,7 @@ at or above **0.535** indicates a visible handwritten signature or initials.
 The displayed probability uses calibration fitted on the experimental sample;
 it is also shown for negative results and is not a guarantee for other documents.
 Stamps are reported separately and do not make a document signed.
-**Jev does not count signatures or return signature crops.** Open the source
+**Basic Jev does not count signatures or return signature crops.** Open the source
 document from the results panel to verify it. Digital PDF signatures are still
 scanned and cropped independently; Jev results retain the filename as their title.
 The managed local Jev server releases GPU memory after an analysis batch.
@@ -130,13 +154,18 @@ no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate
 Python installation is not required for Signum itself. The installer offers optional
 third-party components and detects dedicated GPU memory through DXGI: Gemma 4 E2B
-for an 8 GB GPU, Gemma 4 12B for 16 GB, and local Jev for NVIDIA 16 GB.
+for an 8 GB GPU, Gemma 4 12B for 16 GB, and Jev (signatures) / JevK5 (text classification) for NVIDIA 16 GB.
 These are conservative memory recommendations, not performance guarantees.
 Choose the components and their storage folder; a progress window then downloads,
 prepares and checks the selected AI, and configures Signum without terminal commands.
-Existing running Ollama services and prepared Jev runtimes can be reused.
+Existing running Ollama services and prepared Jev / JevK5 runtimes can be reused.
+**Składniki AI** in either workflow provides checks, installation and repair, including
+additional named Ollama models. Errors include recovery steps for libraries, drivers,
+memory, disk space and API authentication. Without H:, storage defaults to the user's
+Documents/SignumAI; the user can choose another drive. Model profiles are configured
+after a successful inference test. The check-only action performs no downloads.
 External components retain their own licences and remain after uninstalling Signum.
-The installer never downloads AI software or models automatically. The
+Downloads occur only for components selected by the user. The
 installer includes a separate document-and-AI risk page with four required
 acknowledgements covering human verification, authorization to process files,
 local AI processing, and transfer to an Internet provider. Silent installation
@@ -175,6 +204,12 @@ signum-cli umowa.pdf skan.jpg --provider ollama --model gemma4:12b --max-pages 5
 
 Without `--acknowledge-risks`, CLI prints the complete risk notice and exits
 without connecting to an AI service or processing documents.
+
+Exit codes: `0` when the batch finishes without document errors, `1` when a
+document fails or the batch is interrupted by a connection error, and `2` for
+invalid arguments, missing input, missing risk acknowledgement, or failed preflight.
+Reports are still written for batches containing document errors. A failed or
+incomplete PDF structure scan is reported as an error, not as absence of signatures.
 
 ## Configuration
 

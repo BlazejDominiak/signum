@@ -1,6 +1,62 @@
 # Signum — instrukcja użytkownika
 
-Signum sprawdza, **czy dokumenty są podpisane**. Obsługuje PDF-y oraz skany
+Signum ma dwie niezależne zakładki: **Kategoryzowanie dokumentów**
+oraz **Sprawdzanie podpisów**. Każda ma własną kolejkę i wyniki.
+
+## Kategoryzowanie dokumentów
+
+1. Otwórz zakładkę **Kategoryzowanie dokumentów** i dodaj PDF-y lub folder.
+   **Losuj 100 z folderu…** wybiera do 100 plików. **Zestaw lokalny…**
+   otwiera PDF-y wskazane w zapisanym protokole testu na tym komputerze.
+   Dokumenty testowe nie są dołączone do repozytorium ani instalatora.
+2. W tabeli po lewej wpisz własne nazwy kategorii i opcjonalne opisy.
+   Do dyspozycji jest 12 wierszy; puste wiersze są pomijane, wymagane są co najmniej
+   dwie różne kategorie. Przycisk **Przykładowe** przywraca 12 rodzajów dokumentów
+   i przykładową instrukcję. Kolor kategorii powtarza się przy jej wynikach.
+   Prompt jest widoczny pod tabelą, a jego domyślna treść jest po angielsku.
+   Zmiany zapisują się automatycznie, niezależnie od ustawień podpisów.
+3. Otwórz **Ustawienia AI…**. Dodaj własne modele, w razie potrzeby duplikując
+   konfigurację. Zaznacz modele do porównania albo wybierz pojedynczy model
+   z listy na głównym ekranie. Liczba przejść wynosi od 1 do 10.
+4. Kliknij **Kategoryzuj** lub **Porównaj modele** i potwierdź okno przed analizą.
+   Przy usługach zdalnych okno wskazuje wybrane adresy API.
+5. Tabela pokazuje kategorię i czas działania modelu dla każdej próby.
+   Kafelki rozbijają pomiar na przygotowanie tekstu, ładowanie lokalnego modelu,
+   działanie modelu i czas łączny. Pasek pod wynikami pokazuje czas całego porównania.
+6. Dwukrotnie kliknij wiersz PDF-u, aby go otworzyć. Menu pod prawym przyciskiem
+   umożliwia również otwarcie folderu. Działa przed analizą i w wynikach.
+7. **Zapisz wyniki…** eksportuje CSV lub pełny raport JSON, również po anulowaniu.
+   Raport zawiera ścieżki PDF-ów, kategorie, czasy i skróty wejść; nie zawiera
+   tekstów dokumentów ani kluczy API.
+
+**Ustawienia AI…** oferują:
+- **Ollama** — adres serwera, dowolny model wpisany ręcznie lub wybrany
+  przez **Odśwież listę**, opcjonalny klucz.
+- **AI od dostawcy** — adres API, model, klucz i format: Chat Completions
+  (OpenAI-compatible), Messages (Anthropic) lub Decisions (np. Jev przez Venice).
+- **JevK5 — lokalnie, PyTorch** — przygotuj przez **Składniki AI → JevK5 → Instaluj / napraw**;
+  ścieżki zostaną wpisane automatycznie. Możesz również wskazać własną instalację.
+
+**Testuj połączenie** wysyła syntetyczny tekst i sprawdza odpowiedź wybranego
+modelu, także przed zapisaniem konfiguracji. Klucze pozostają w systemowym
+magazynie poświadczeń. Dotychczasowe konfiguracje są przenoszone do nowej listy;
+zapisany własny prompt pozostaje bez zmian. Aplikacja nie pobiera modeli w tle.
+
+Kategoryzacja korzysta z warstwy tekstowej PDF, bez OCR. Skan bez tekstu otrzyma
+komunikat o braku warstwy tekstowej. Początek dokumentu (do 12 000 znaków)
+jest skracany do wspólnego budżetu bajtów, a przy wybranym JevK5 również do
+jego budżetu tokenów. Samo istnienie lokalnego JevK5 nie uruchamia jego tokenizera.
+Wszystkie modele dostają identyczny przygotowany tekst.
+
+Działanie modelu obejmuje żądanie API i ewentualne oczekiwanie na limit.
+Ładowanie Ollamy i JevK5 odbywa się osobno, bez próbnej klasyfikacji do rozgrzewki.
+Czas łączny obejmuje także obsługę połączenia i zwolnienie zasobów. Przy API
+zarządzanym poza aplikacją czas ładowania po stronie serwera nie jest osobno dostępny.
+Modele są uruchamiane kolejno; zakładka podpisów jest wtedy niedostępna.
+
+## Sprawdzanie podpisów
+
+Ta funkcja sprawdza, **czy dokumenty są podpisane**. Obsługuje PDF-y oraz skany
 (JPG, PNG, TIFF, BMP, WEBP) i wykrywa:
 
 - podpisy odręczne,
@@ -13,6 +69,8 @@ Program **nie ocenia ważności prawnej ani poprawności kryptograficznej** podp
 stwierdza wyłącznie ich obecność i pokazuje wycinki do ręcznej weryfikacji.
 
 ## Instalacja
+
+Wymagany jest Windows 10 22H2 lub nowszy (w tym Windows 11); instalator odrzuca starsze wersje.
 
 1. Uruchom `Signum-Setup-<wersja>.exe` i przejdź przez kreator (instalacja nie
    wymaga uprawnień administratora). Osobny ekran świadomości ryzyka wymaga
@@ -28,20 +86,48 @@ stwierdza wyłącznie ich obecność i pokazuje wycinki do ręcznej weryfikacji.
    jego podpis Authenticode lub sumę SHA-256 podaną przez wydawcę.
 2. Dla lokalnego AI wybierz składniki. Instalator odczytuje dedykowaną pamięć
    GPU na tym samym ekranie i oznacza zalecany model: Gemma 4 E2B
-   dla 8 GB albo Gemma 4 12B dla 16 GB. Jev wymaga w tym pakiecie NVIDIA 16 GB.
+   dla 8 GB albo Gemma 4 12B dla 16 GB. Jev (podpisy) i JevK5 (kategoryzacja) wymagają w tym pakiecie NVIDIA 16 GB.
    Przycisk **Zaznacz proponowane składniki** zaznacza zalecany model.
    Wykryta Ollama jest oznaczona na liście i nie jest instalowana ponownie.
-   Zainstalowane modele i przygotowany Jev mają oznaczenie stanu instalacji.
-3. Wybierz katalog modeli i bibliotek. Na tym komputerze domyślnie jest to
-   `H:/Tools/SignumAI`. Pozostaw przynajmniej 20 GB dla Ollamy z jednym modelem
-   i 35 GB dla Jev; przy obu pakietach dodaj te wartości.
+   Wykrycie plików jest oznaczone osobno od testu działania bibliotek i modelu.
+3. Wybierz katalog modeli i bibliotek. Jeśli istnieje dysk H:, propozycją jest
+   `H:/Tools/SignumAI`; w przeciwnym razie `Dokumenty/SignumAI`. Można wybrać inny dysk.
+   Pozostaw przynajmniej 20 GB dla Ollamy z modelem i po 35 GB dla Jev / JevK5.
 4. Po skopiowaniu aplikacji otworzy się okno przygotowania AI. Pobiera zaznaczone
    zewnętrzne programy, biblioteki i modele, pokazuje postęp oraz ich źródła
    i licencje. Możesz anulować lub ponowić przygotowanie. Po udanym sprawdzeniu
    modelu ustawienia Signum zapisują się automatycznie.
    Działająca Ollama zachowuje własny katalog modeli, a posiadane modele nie
-   są ponownie pobierane. Przygotowany Jev także jest wykorzystywany ponownie.
+   są ponownie pobierane. Jev i JevK5 są wykorzystywane ponownie po udanym sprawdzeniu bibliotek i próbnej analizie.
    Biblioteki i modele pozostają oddzielnie od programu po jego odinstalowaniu.
+
+## Doinstalowanie modeli i naprawa
+
+**Składniki AI…** są dostępne w obu zakładkach i w Ustawieniach AI.
+Zaznacz składnik i kliknij **Sprawdź**. Test nie pobiera plików; sprawdza biblioteki,
+CUDA i przykładową odpowiedź modelu. „Wykryto pliki” samo w sobie nie oznacza gotowości.
+Przycisk **Instaluj / napraw** uzupełnia brakującą instalację. Działające środowiska
+są używane ponownie. Naprawa środowiska zewnętrznego przygotowuje osobną instalację
+w wybranym folderze; nie usuwa globalnego Pythona użytkownika.
+
+Aby pobrać inny model Ollamy, wpisz jego nazwę z biblioteki Ollamy w polu pod listą
+składników. Modele tekstowe służą do kategoryzacji; do podpisów wybierz model obsługujący
+obrazy. Nowe, sprawdzone modele trafiają do listy w Ustawieniach AI kategoryzacji.
+
+Po błędzie odczytaj „Jak naprawić” w komunikacie lub kliknij dwukrotnie komórkę **Błąd**
+w wynikach kategoryzacji. Szczegółowy log przygotowania: `setup.log` w wybranym folderze.
+
+| Problem | Postępowanie |
+|---|---|
+| Brak Pythona, modułu, plików wag lub niezgodne biblioteki | Składniki AI → odpowiedni model → Instaluj / napraw, następnie Sprawdź. |
+| CUDA / sterownik / karta bez 16 GB VRAM | Zaktualizuj sterownik NVIDIA z witryny producenta; bez odpowiedniej karty użyj Ollamy z mniejszym modelem albo API. |
+| DLL / Visual C++ | Zainstaluj Microsoft Visual C++ Redistributable x64 z odnośnika w komunikacie i uruchom komputer ponownie. |
+| Brak pamięci GPU | Zamknij pozostałe aplikacje używające GPU lub wybierz mniejszy model. |
+| Brak miejsca lub praw zapisu | Wybierz inny folder w Składnikach AI; uruchomiona zewnętrzna Ollama zachowuje własny folder modeli. |
+| Błąd API 401/403 lub 429 | Popraw klucz/uprawnienia albo sprawdź limit konta; ponów Testuj połączenie. |
+
+Ollama, modele, biblioteki i Python są składnikami zewnętrznymi, które należy pobierać
+ze sprawdzonych źródeł; autor Signum nie bierze za nie odpowiedzialności.
 
 ## Pierwsze uruchomienie — ustawienia AI
 
@@ -58,14 +144,12 @@ Otwórz **Ustawienia AI…** i wybierz dostawcę:
   tryb online i musi korzystać z HTTPS. Dodatkowo możesz ustawić **okno kontekstu
   (num_ctx)** — Ollama sama z siebie używa tylko 4096 tokenów; Signum domyślnie
   ustawia 8192 (większe okno = większe zużycie pamięci karty graficznej).
-- **OpenAI / API zgodne z OpenAI** — podaj adres API, nazwę modelu i klucz API.
-- **Claude (Anthropic)** — podaj adres API (domyślnie
-  `https://api.anthropic.com/v1`), nazwę modelu i klucz API.
+- **AI od dostawcy** — wybierz format API, podaj adres, model i klucz,
+  następnie użyj **Testuj połączenie**.
 - **vjev-vision (on-prem / API)** — domyślny adres to `http://localhost:8800/v1`,
   model **`vjev-vision`** (identyfikator serwera, a nie nazwa repozytorium Hugging Face).
   Przy **Testuj połączenie** lub rozpoczęciu analizy Signum uruchamia przygotowany
-  lokalny model. Wagi, dodatkowe biblioteki i log znajdują się osobno na H:,
-  w `H:/Tools/SignumJev`. Pierwsze ładowanie może potrwać kilkadziesiąt sekund;
+  lokalny model. Wagi, biblioteki i log znajdują się w folderze wybranym przy instalacji. Pierwsze ładowanie może potrwać kilkadziesiąt sekund;
   kolejne dokumenty korzystają z już załadowanego modelu. Klucz lokalnie jest zbędny.
   Przycisk **Zatrzymaj lokalny Jev / zwolnij GPU** zwalnia pamięć karty po testach.
   Po zakończeniu lub anulowaniu analizy program zwalnia ją automatycznie.
@@ -86,10 +170,34 @@ typowanych dostarcza ocen do heurystyki z progiem 0,535. Program pokazuje
 prawdopodobieństwo obecności podpisu lub parafki także przy wyniku ujemnym.
 Kalibracja pochodzi z próby eksperymentalnej; nie gwarantuje jakości na innych dokumentach.
 Pieczątka jest osobnym znaleziskiem i sama nie oznacza podpisanego dokumentu.
-**Jev nie zlicza podpisów i nie zwraca wycinków**. Podpisy cyfrowe są nadal
+**Podstawowy Jev nie zlicza podpisów i nie zwraca wycinków**. Podpisy cyfrowe są nadal
 wykrywane niezależnie ze struktury PDF. Tytułem pozostaje nazwa pliku.
 Przycisk **Otwórz dokument źródłowy** pozwala zweryfikować wynik.
 Jeżeli limit stron pomija część PDF-a, brak podpisu dotyczy tylko badanej części.
+
+### Dodatkowa analiza
+
+W ustawieniach Ollamy (np. Gemmy) oraz Jev znajduje się osobny przełącznik
+**Dodatkowa analiza**. Ustawienia obu dostawców są zapamiętywane niezależnie.
+
+- **Ollama, wyłączona:** tylko obecność podpisu/parafki i pieczątki, bez opisu,
+  liczenia oznaczeń i wycinków. W tym trybie używany jest stały, krótki prompt.
+  Oceny liczbowe pochodzą bezpośrednio od modelu; nie są kalibrowane.
+- **Ollama, włączona:** dotychczasowa pełna analiza z opisem i współrzędnymi
+  do wycięcia oznaczeń. Ta opcja jest domyślnie włączona, aby zachować wcześniejsze działanie.
+- **Jev, wyłączona:** dotychczasowy klasyfikator pięciu widoków bez zmian.
+- **Jev, włączona:** dodatkowo maksymalnie dwie kategorie dokumentu z listy 48
+  oraz przybliżone wycinki. Program sprawdza siatkę 4 × 5, łączy sąsiednie trafienia
+  i ocenia scalone obszary. Wycinek może obejmować grupę podpisów. Jeśli lokalizacja
+  się nie uda, pozostaje podstawowe wykrycie bez wycinka. Kategorie i wycinki są
+  eksperymentalne; włączenie dodatków wydłuża pracę. Opcja jest domyślnie wyłączona.
+
+Wynik obecności podpisu i jego prawdopodobieństwo w Jev pochodzą zawsze z tej samej
+podstawowej reguły. Klasyfikacja rodzaju dokumentu nie wpływa na wykrywanie podpisu.
+Podpisy cyfrowe są nadal sprawdzane niezależnie w obu trybach.
+
+CLI obsługuje odpowiednio `--additional-analysis` oraz `--no-additional-analysis`.
+Bez tych flag korzysta z zapisanych ustawień.
 
 **Uwaga — konfiguracje zdalne:** przy przełączeniu z lokalnego API na zdalne
 API program wyświetla ostrzeżenie, że analizowane dokumenty
@@ -177,5 +285,5 @@ Bez flagi `--acknowledge-risks` CLI wyświetla ostrzeżenie i kończy działanie
 | „Model … nie jest zainstalowany" | `ollama pull <model>` |
 | Bardzo długi czas analizy | mniejszy model, mniejszy „rozmiar obrazu dla modelu", mniejszy limit stron |
 | PDF ze statusem „Błąd: … zaszyfrowany" | zdejmij hasło z pliku przed analizą |
-| Brak wycinka przy wykrytym podpisie | Jev raportuje tylko obecność na stronie; dla LLM model mógł nie podać wiarygodnej ramki. Zweryfikuj w pliku |
+| Brak wycinka przy wykrytym podpisie | Włącz „Dodatkową analizę” w ustawieniach Ollamy lub Jev. Także w tym trybie lokalizacja może się nie udać mimo wykrycia podpisu. Zweryfikuj w pliku |
 | Wycinek pokazuje fragment bez podpisu | lokalizacja z modelu bywa przybliżona — spójrz na miniaturę strony z czerwoną ramką w raporcie HTML |

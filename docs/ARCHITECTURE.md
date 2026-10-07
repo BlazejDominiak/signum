@@ -2,7 +2,9 @@
 
 ## Goals & constraints
 
-- **One question, answered reliably:** *is this document signed?* — with human-verifiable
+- **Separate workflows:** PDF text categorization and signature detection have independent
+  queues, settings, prompts, results and exports. Signature detection asks *is this document signed?*
+  with human-verifiable
   evidence (crops + confidence), not a black-box verdict.
 - **Batch-scale:** up to ~1000 files in one run → sequential processing, flat memory
   profile, per-file fault isolation, progress + ETA + cancellation.
@@ -12,6 +14,21 @@
   permissive licenses only (hence `pypdfium2` instead of AGPL PyMuPDF).
 
 ## Layering
+
+Text categorization uses `ui/classification_panel.py` and `ClassificationWorker`,
+with orchestration and result types in `core/classification.py`. It never invokes
+the signature pipeline. `ai/model_profiles.py` stores configurable model identities
+and endpoint settings without secrets; `ui/models_dialog.py` edits them and tests
+connections using synthetic text. `ai/text_classifiers.py` implements Chat Completions,
+Messages, Decisions and Ollama JSON choices. JevK5 runs in an owned external Python/CUDA process through
+`jevk5_text_worker.py`, shipped as data in the GUI package. Tokenization happens
+once before a comparison; text hashes remain identical across providers and repeats.
+Each model is released before the next, and the two UI workflows cannot run together.
+Venice rate-limit waits are cancellable and included in measured classification time.
+Local load requests are timed separately from inference, without cloud warmups.
+Signature clients track HTTP request durations and Ollama loading metadata so image
+preparation is excluded from inference. Timings survive partial failures and cancellation.
+Both workflows use `ui/batch_risk_dialog.py` before starting.
 
 ```mermaid
 flowchart TD
@@ -64,7 +81,12 @@ Kluczowe decyzje:
   zapisany osobno jako `jev_custom_prompt`. Pięć widoków powstaje przed zmniejszeniem
   obrazu; każdy JPEG ma limit 1120 px. Parametry metody są zamrożone w
   `ai/jev_signature.py` i porównywane z protokołem badania w testach.
-  Jev nie zlicza podpisów, nie podaje ramek ani nie klasyfikuje rodzaju dokumentu.
+  Podstawowy Jev nie zlicza podpisów, nie podaje ramek ani nie klasyfikuje rodzaju dokumentu.
+  Opcjonalne `vjev_additional_analysis` uruchamia `jev_additional.enrich_analysis`
+  dopiero po zamrożonej regule: 48 niezależnych pytań o kategorie (top 2 powyżej
+  0,6), 20 kafelków, spójne składowe ośmiu sąsiadów i ponowna ocena scalonych
+  wycinków. Lokalizacja nie dodaje ani nie usuwa podstawowego wykrycia ani nie
+  zmienia `signature_probability`. Jej oceny nie są kalibrowane; ramki są przybliżone.
   Brakujące lub niepoprawne decyzje powodują `AIResponseError`, nigdy pusty wynik
   oznaczający brak podpisu. Preflight sprawdza listę modeli i syntetyczny obraz.
   Lokalność każdego dostawcy zależy od rzeczywistego adresu wybranego API.
@@ -80,6 +102,12 @@ Kluczowe decyzje:
   to fakt; pytanie modelu wizyjnego o nie byłoby mniej wiarygodne. Widget podpisu
   (jeśli widoczny, `/Rect` o niezerowej powierzchni) jest wycinany z renderu strony
   po przeliczeniu współrzędnych PDF (origin lewy-dolny, punkty) na piksele.
+  Przeliczenie uwzględnia `/Rotate` oraz początek widocznego obszaru strony.
+  Typ pola `/FT` jest dziedziczony w hierarchii formularza; osobne widgety
+  tego samego pola nie zwiększają liczby podpisów.
+- **Pamięć renderowania:** `open_pages` udostępnia kolejno strony PDF i klatki TIFF.
+  Obraz strony jest zwalniany przed następną stroną, a kontekst zamyka dokument
+  także przy błędzie lub anulowaniu. W wynikach pozostają tylko wycinki i miniatury.
 - **Puste pola podpisu** są raportowane osobno i nie liczą się jako podpis.
 - **bounding boxy:** konwencja `[ymin, xmin, ymax, xmax]` w skali 0–1000
   (zbadana empirycznie na gemma4:12b — IoU 0.6–0.9). Ramki są walidowane
@@ -104,12 +132,15 @@ Kluczowe decyzje:
   dokleić śmieci po obiekcie (zaobserwowane: `<|tool_response>`) — parser
   wycina pierwszy zbalansowany obiekt JSON z uwzględnieniem stringów i escape'ów.
   Błędne pojedyncze wpisy podpisów są pomijane, nie unieważniają strony.
+  Brak listy `signatures`, jej niepoprawny typ lub wyłącznie błędne wpisy
+  powodują `AIResponseError`. Tylko poprawna pusta lista oznacza brak znalezisk.
 
 ## Error policy
 
 | Zdarzenie | Reakcja |
 |---|---|
 | uszkodzony/nieczytelny plik | wynik `ERROR`, partia idzie dalej |
+| błąd lub ograniczenie skanu struktury PDF (w tym XFA) | analiza wizualna jest kontynuowana; wynik `ERROR` z przyczyną, bez potwierdzenia braku podpisu |
 | zła odpowiedź modelu (`AIResponseError`) | 1 ponowienie strony; potem `ERROR` pliku |
 | brak połączenia (`AIConnectionError`) | przerwanie partii (`abort_error`) — kolejne pliki i tak by poległy; nieprzetworzone dostają `CANCELLED` |
 | anulowanie przez użytkownika | sprawdzane między stronami; nieprzetworzone pliki → `CANCELLED` |
@@ -153,3 +184,26 @@ runtime'u → Inno Setup 6 (per-user, PL/EN, stały AppId dla aktualizacji).
 Instalator zawiera Pythona i biblioteki, wykrywa opcjonalną Ollamę w standardowych
 lokalizacjach, a aplikacja sprawdza usługę i model przed każdą partią. Wersja płynie z jednego źródła:
 `signum.__version__` → hatchling (`pyproject`) → `build_installer.ps1` → ISCC.
+
+
+### Local component lifecycle
+
+`ComponentsDialog` and the installer call the same `LocalAIPreparer`. Only selected
+components are installed. Discovery labels files as untested; `runtime_probe.py`
+runs in the external interpreter, imports required modules, checks CUDA computation,
+loads the tokenizer and reads safetensors headers. Preparation then performs a real
+synthetic inference. Configuration is saved only after that component succeeds.
+
+JevK5 has a separate managed Python/packages/model directory and pinned source/model
+revisions. Embedded Python receives explicit library paths; it cannot rely on
+PYTHONPATH. Healthy external runtimes are reused; a broken external runtime is
+replaced in configuration by a managed installation without deleting the original.
+Model weights require SHA-256 metadata. Download and package staging stay below the
+chosen AI directory. Pip uses official PyPI/PyTorch indexes with user pip configuration
+and alternate-index environment variables disabled.
+
+Checks and failures are not a clean-machine certification. Release acceptance must
+include installing from the candidate EXE on a Windows machine without Python,
+Ollama or drive H:, testing a supported GPU, interrupting/retrying downloads, and
+repairing a deliberately missing package/model file. Verify external API use without
+local AI components as well. Do not publish solely on the bundled EXE self-test.

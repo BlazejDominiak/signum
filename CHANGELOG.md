@@ -2,6 +2,101 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer](https://semver.org/).
 
+## [1.1.3] — 2026-10-07
+
+### Added
+- „Składniki AI” w obu widokach oraz ustawieniach: sprawdzanie, instalacja i naprawa,
+  wybór folderu i pobieranie dowolnego nazwanego modelu Ollamy.
+- Instalacja JevK5 z osobnym Pythonem, bibliotekami CUDA, przypiętą wersją źródeł
+  i wagami sprawdzanymi sumą SHA-256. Osobne opisy Jev do podpisów i JevK5 do tekstu.
+- Testy rzeczywistych importów bibliotek, operacji CUDA, tokenizera, plików wag
+  i przykładowej odpowiedzi modelu przed uznaniem składnika za gotowy.
+- Instrukcje naprawy błędów bibliotek, sterownika, pamięci, dysku i API oraz
+  informacja o odpowiedzialności za zewnętrzne składniki w instalatorze PL/EN.
+
+### Fixed
+- Usunięto domyślne ścieżki Pythona, bibliotek, JevK5 i pliku .env konkretnego komputera.
+  Bez H: program korzysta z wybranego folderu lub Dokumenty/SignumAI.
+- Modele przygotowane w instalatorze trafiają do konfiguracji kategoryzacji;
+  wybór E2B nie pozostawia niepobranego 12B jako jedynego modelu.
+- Embedded Python otrzymuje jawne ścieżki bibliotek; nie zależy od PYTHONPATH.
+  Tryb sprawdzania nie pobiera ani nie instaluje składników.
+
+### Validation
+- Testy automatyczne obejmują brak dysku H:, niekompletne instalacje, ponowne
+  użycie środowisk i publikowanie konfiguracji dopiero po udanym teście modelu.
+- Pakiet wymaga osobnego odbioru na czystym Windows przed publikacją;
+  lokalny test bibliotek/GPU nie zastępuje instalacji na drugim komputerze.
+
+## [1.1.2] — 2026-10-07
+
+### Changed
+- Wspólny układ pasków dokumentów, ustawień AI i przycisków uruchamiania.
+- Własne konfiguracje modeli do porównania: Ollama, dowolne obsługiwane API
+  i lokalny runtime JevK5; dodawanie, duplikowanie, wybór oraz test połączenia.
+- Jedna opcja „AI od dostawcy” z adresem, modelem, kluczem i formatem API.
+- Angielski prompt kategoryzacji widoczny od razu; usunięto zbędne opisy z UI.
+- Osobne czasy przygotowania, ładowania i działania modeli oraz czas całkowity,
+  również w eksportach. Bez dodatkowych rozgrzewkowych zapytań do chmury.
+
+### Added
+- Otwieranie PDF-ów dwukrotnym kliknięciem i folderów z menu kontekstowego.
+- Wspólne potwierdzenie przed analizą dla obu zakładek.
+
+## [1.1.1] — 2026-10-07
+
+### Changed
+- Uporządkowany interfejs, stałe kolory kategorii w edytorze i wynikach,
+  osobne kafelki pomiarów trzech modeli oraz zwijana edycja promptu.
+- Pasek postępu i czytelny pusty stan; zmiana kolejki usuwa poprzednie pomiary.
+- Testowe PDF-y pozostają lokalne. Git ignoruje wszystkie wejściowe PDF-y,
+  a CI i budowanie instalatora kontrolują brak dokumentów i plików `.env`.
+
+## [1.1.0] — 2026-10-07
+
+### Added
+- Dwie osobne zakładki: sprawdzanie podpisów i kategoryzowanie dokumentów.
+- Kategoryzowanie tekstu PDF do 2–12 własnych kategorii, z edytowalnymi opisami
+  i promptem, zapisywanymi niezależnie od ustawień podpisów.
+- Jev przez Venice, lokalny JevK5 i Gemma przez Ollamę; porównanie trzech modeli
+  na identycznych wejściach, od 1 do 10 przejść, oddzielne czasy przygotowania i modeli.
+- Wczytanie zestawu 100 PDF-ów z benchmarku, losowanie do 100 PDF-ów z folderu,
+  własne pliki, anulowanie oraz eksport CSV/JSON bez tekstów źródłowych.
+- Kontrola limitu API Venice z oczekiwaniem wliczonym w czas i anulowaniem przerwy.
+- JevK5 w osobnym procesie istniejącego Pythona CUDA; pakiet GUI nie zawiera wag
+  ani dodatkowej kopii bibliotek Torch.
+
+## [1.0.10] — 2026-10-07
+
+### Added
+- Osobne przełączniki „Dodatkowa analiza” dla Ollamy i vjev-vision.
+  Ollama może ograniczyć odpowiedź do obecności podpisu i pieczątki,
+  bez generowania opisu dokumentu i współrzędnych.
+- Eksperymentalna analiza dodatkowa Jev: 48 niezależnych kategorii,
+  siatka 4 × 5, łączenie sąsiednich trafień i weryfikacja scalonych obszarów.
+  Podstawowa reguła pięciu widoków i jej wynik pozostają bez zmian.
+- CLI: `--additional-analysis` i `--no-additional-analysis`.
+- Powtarzalny eksperyment lokalny zapisujący surowe odpowiedzi, czasy obliczeń
+  i ładowania modeli oraz podglądy przybliżonych wycinków.
+
+## [1.0.9] — 2026-10-07
+
+### Fixed
+- Nieprawidłowy schemat odpowiedzi AI powoduje ponowienie i ewentualny błąd,
+  zamiast fałszywego wyniku „brak podpisu”.
+- Skan PDF uwzględnia dziedziczenie typu pola podpisu; wycinki uwzględniają
+  obrót strony i przesunięcie jej widocznego obszaru.
+- Błędy i ograniczenia skanu struktury PDF docierają do wyniku i raportów.
+- CLI zwraca kod błędu również przy niepowodzeniu pojedynczych dokumentów;
+  sprawdzenie połączenia OpenAI odrzuca błędy usługi, w tym HTTP 503.
+- Konfiguracja JSON o nieprawidłowym typie nie przerywa uruchamiania aplikacji.
+- Test metadanych pomija lokalny katalog roboczy `scratch`.
+
+### Changed
+- Analiza renderuje strony PDF i klatki TIFF pojedynczo, zwalniając obrazy
+  także po błędzie lub anulowaniu, zamiast przechowywać wszystkie strony w pamięci.
+- Dodano testy regresji problemów wykrytych podczas audytu kodu.
+
 ## [1.0.4] — 2026-07-22
 
 ### Added
