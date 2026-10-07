@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from signum.ai import create_vision_model
 from signum.core.models import DocumentResult, DocumentStatus, SignatureFinding, SignatureKind
 from signum.ui.main_window import BatchRiskDialog, MainWindow
 from signum.ui.settings_dialog import OnlineWarningDialog, SettingsDialog
@@ -109,7 +108,8 @@ class TestMainWindow:
         )
         window._on_file_done(0, result)
         assert window.table.item(0, 4).text() == "Błąd"
-        assert window.table.item(0, 4).toolTip() == "zepsuty plik"
+        assert window.table.item(0, 4).toolTip().startswith("zepsuty plik")
+        assert "czytniku PDF" in window.table.item(0, 4).toolTip()
 
     def test_panel_szczegolow_z_wycinkiem(self, window: MainWindow, docs_dir: Path) -> None:
         window._add_documents([docs_dir])
@@ -172,7 +172,7 @@ class TestMainWindow:
 
         monkeypatch.setattr(window, "_confirm_batch_risk", reject_risk)
 
-        window._start_batch(create_vision_model(window._config))
+        window._on_process()
 
         assert calls == 1
         assert len(window._files) == 5
@@ -193,7 +193,10 @@ class TestSettingsDialog:
         config = AppConfig(provider=provider)
         dialog = SettingsDialog(config)
         qtbot.addWidget(dialog)
-        assert dialog.provider_combo.currentData() == provider
+        assert dialog._provider() == provider
+        assert dialog.provider_combo.currentData() == (
+            "api" if provider in {"openai", "anthropic"} else provider
+        )
         if provider == "ollama":
             dialog.ollama_url.setText("https://model.example.test")
             dialog.ollama_model.setEditText("my-vision-model")
@@ -222,10 +225,10 @@ class TestSettingsDialog:
         dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("vjev"))
         assert dialog.prompt_edit.toPlainText() == JEV_PROMPT_INSTRUCTIONS
         dialog.prompt_edit.setPlainText("Jev instructions")
-        dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("openai"))
+        dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("api"))
         dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("vjev"))
         assert dialog.prompt_edit.toPlainText() == "Jev instructions"
-        dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("anthropic"))
+        dialog.provider_combo.setCurrentIndex(dialog.provider_combo.findData("api"))
         assert dialog.prompt_edit.toPlainText() == "LLM instructions"
         config = dialog._collect_config()
         assert config.custom_prompt == "LLM instructions"

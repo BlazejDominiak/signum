@@ -8,10 +8,12 @@ from unittest.mock import Mock
 import pytest
 from PIL import Image
 
+from signum.ai import create_vision_model
 from signum.ai.base import AIResponseError, PageAnalysis, VisualSignature
 from signum.ai.basic_analysis import parse_basic_analysis
 from signum.ai.jev_additional import CATEGORIES, connected_cells, enrich_analysis, grid_boxes
 from signum.ai.ollama_client import OllamaVisionModel
+from signum.config import AppConfig
 from signum.core.models import SignatureKind
 
 
@@ -121,3 +123,26 @@ def test_ollama_basic_omits_description_boxes_and_full_custom_prompt():
     assert [s.kind for s in result.signatures] == [SignatureKind.STAMP]
     assert result.signatures[0].box_2d is None
     assert model.last_metrics[0]["eval_count"] == 15
+
+
+def test_factory_and_settings_keep_modes_independent(qtbot, monkeypatch, isolated_config):
+    from signum.ui.settings_dialog import SettingsDialog
+
+    monkeypatch.setattr("signum.ui.settings_dialog.get_api_key", lambda provider: "")
+    cfg = AppConfig(ollama_additional_analysis=False, vjev_additional_analysis=True)
+    dialog = SettingsDialog(cfg)
+    qtbot.addWidget(dialog)
+    assert not dialog.ollama_additional_analysis.isChecked()
+    assert dialog.vjev_additional_analysis.isChecked()
+    collected = dialog._collect_config()
+    collected.save()
+    loaded = AppConfig.load()
+    assert not create_vision_model(loaded, api_key="")._additional_analysis
+    loaded.provider = "vjev"
+    assert create_vision_model(loaded, api_key="")._additional_analysis
+    assert AppConfig().ollama_additional_analysis
+    assert not AppConfig().vjev_additional_analysis
+    dialog.ollama_additional_analysis.setChecked(True)
+    assert dialog.prompt_edit.isEnabledTo(dialog.prompt_edit.parentWidget())
+    dialog.ollama_additional_analysis.setChecked(False)
+    assert not dialog.prompt_edit.isEnabledTo(dialog.prompt_edit.parentWidget())

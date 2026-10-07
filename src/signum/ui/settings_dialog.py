@@ -41,20 +41,21 @@ from signum.config import (
     get_api_key,
     set_api_key,
 )
+from signum.local_components import repair_instructions
 from signum.network import normalize_ai_endpoint, processing_is_local
+from signum.ui.components_dialog import ComponentsDialog
 from signum.ui.worker import ConnectionTestWorker, ModelListWorker
 
-_PROVIDER_ORDER = PROVIDERS
+_PROVIDER_ORDER = ("ollama", "api", "vjev")
 _PROVIDER_LABELS = {
     "ollama": "Ollama (lokalna lub zdalna)",
-    "openai": "OpenAI / API zgodne z OpenAI",
-    "anthropic": "Claude (Anthropic)",
+    "api": "AI od dostawcy",
+    "openai": "AI od dostawcy",
+    "anthropic": "AI od dostawcy",
     "vjev": "vjev-vision (on-prem / API)",
 }
 _OLLAMA_INSTALL_HELP = (
-    "Nie wykryto działającej Ollamy. Zainstaluj ją z "
-    '<a href="https://docs.ollama.com/windows">oficjalnej instrukcji dla Windows</a>, '
-    "uruchom usługę, wykonaj <code>ollama pull gemma4:12b</code> i odśwież listę."
+    "Otwórz Składniki AI, zaznacz Ollamę i wybrany model, następnie użyj Instaluj / napraw."
 )
 
 
@@ -92,11 +93,17 @@ class SettingsDialog(QDialog):
         self.setMinimumWidth(520)
         self._build_ui()
         self._load_config()
+        self.ollama_additional_analysis.toggled.connect(
+            lambda: self._on_provider_changed(self.provider_combo.currentIndex())
+        )
 
     # -- budowa UI ---------------------------------------------------------
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
+        self.components_button = QPushButton("Składniki AI — instaluj / napraw…")
+        self.components_button.clicked.connect(self._components)
+        outer.addWidget(self.components_button)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -112,7 +119,15 @@ class SettingsDialog(QDialog):
         for key in _PROVIDER_ORDER:
             self.provider_combo.addItem(_PROVIDER_LABELS[key], userData=key)
         self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)
-        provider_form.addRow("Dostawca AI:", self.provider_combo)
+        provider_form.addRow("Połączenie:", self.provider_combo)
+        self.api_format = QComboBox()
+        self.api_format.addItem("Chat Completions (OpenAI-compatible)", "openai")
+        self.api_format.addItem("Messages (Anthropic)", "anthropic")
+        self.api_format.currentIndexChanged.connect(
+            lambda: self._on_provider_changed(self.provider_combo.currentIndex())
+        )
+        provider_form.addRow("Format API:", self.api_format)
+        self.provider_form = provider_form
         layout.addLayout(provider_form)
 
         self.stack = _ProviderStack()
@@ -161,6 +176,11 @@ class SettingsDialog(QDialog):
         model_row.addWidget(self.ollama_model, stretch=1)
         model_row.addWidget(self.refresh_models)
         form.addRow("Model:", model_row)
+        self.ollama_additional_analysis = QCheckBox("Dodatkowa analiza")
+        self.ollama_additional_analysis.setToolTip(
+            "Opis dokumentu i wycinki oznaczeń. Po wyłączeniu: tylko obecność podpisu i pieczątki."
+        )
+        form.addRow("", self.ollama_additional_analysis)
         self.ollama_key = self._password_edit()
         self._key_edits["ollama"] = self.ollama_key
         form.addRow("Klucz API (opcjonalny):", self._with_reveal(self.ollama_key))
@@ -182,13 +202,6 @@ class SettingsDialog(QDialog):
         self.ollama_num_ctx.setSingleStep(2048)
         self.ollama_num_ctx.setSuffix(" tokenów")
         form.addRow("Okno kontekstu (num_ctx):", self.ollama_num_ctx)
-        form.addRow(
-            "",
-            _hint_label(
-                "Ollama domyślnie używa zaledwie 4096 tokenów; gemma4:12b obsługuje "
-                "do 256 tys. Większe okno zwiększa zużycie pamięci (RAM/VRAM)."
-            ),
-        )
         return page
 
     def _build_openai_page(self) -> QWidget:
@@ -205,7 +218,6 @@ class SettingsDialog(QDialog):
         self._url_edits["openai"] = self.openai_base_url
         self._model_edits["openai"] = self.openai_model
         form.addRow("Klucz API:", self._with_reveal(self.openai_key))
-        form.addRow("", _online_warning_label())
         return page
 
     def _build_anthropic_page(self) -> QWidget:
@@ -222,7 +234,6 @@ class SettingsDialog(QDialog):
         self._url_edits["anthropic"] = self.anthropic_base_url
         self._model_edits["anthropic"] = self.anthropic_model
         form.addRow("Klucz API:", self._with_reveal(self.anthropic_key))
-        form.addRow("", _online_warning_label())
         return page
 
     def _build_jev_page(self, provider: str) -> QWidget:
@@ -242,27 +253,15 @@ class SettingsDialog(QDialog):
         form.addRow("Klucz API (opcjonalny):", self._with_reveal(key))
         self.vjev_runtime_dir = QLineEdit()
         form.addRow("Katalog lokalnego Jev:", self.vjev_runtime_dir)
+        self.vjev_additional_analysis = QCheckBox("Dodatkowa analiza")
+        self.vjev_additional_analysis.setToolTip(
+            "Eksperymentalny wybór kategorii dokumentu i przybliżone wycinki oznaczeń. "
+            "Wydłuża analizę; podstawowa ocena obecności podpisu pozostaje bez zmian."
+        )
+        form.addRow("", self.vjev_additional_analysis)
         self.stop_jev_button = QPushButton("Zatrzymaj lokalny Jev / zwolnij GPU")
         self.stop_jev_button.clicked.connect(lambda: self._on_test_clicked(stop_local=True))
         form.addRow("", self.stop_jev_button)
-        form.addRow(
-            "",
-            _hint_label(
-                "Na localhost aplikacja uruchamia przygotowany model automatycznie przy "
-                "testowaniu połączenia lub rozpoczęciu analizy. Pierwsze załadowanie "
-                "wag może potrwać kilkadziesiąt sekund. Klucz nie jest wymagany. "
-                "Po zakończeniu lub anulowaniu partii Jev zwalnia pamięć GPU."
-            ),
-        )
-        form.addRow(
-            "",
-            _hint_label(
-                "Podpisy i parafki: pięć widoków strony, reguła sprawdzona na 120 stronach. "
-                "Wynik zawiera prawdopodobieństwo także przy braku podpisu. "
-                "Jev nie zlicza oznaczeń ani nie zwraca ich wycinków. "
-                "Test połączenia wysyła mały obraz testowy."
-            ),
-        )
         return page
 
     def _build_processing_group(self) -> QGroupBox:
@@ -277,15 +276,6 @@ class SettingsDialog(QDialog):
         for value in (768, 1024, 1120, 1400, 1600, 2048):
             self.image_side.addItem(f"{value} px", userData=value)
         form.addRow("Rozmiar obrazu dla modelu:", self.image_side)
-        form.addRow(
-            "",
-            _hint_label(
-                "Uwaga: dla gemma4 Ollama i tak zmniejsza obraz do ~0,65 Mpx "
-                "(sztywny limit 280 tokenów wizyjnych po stronie Ollamy) — "
-                "rozmiary powyżej 1120 px wykorzystają głównie modele chmurowe."
-            ),
-        )
-
         self.timeout = QSpinBox()
         self.timeout.setRange(30, 3600)
         self.timeout.setSuffix(" s")
@@ -351,8 +341,12 @@ class SettingsDialog(QDialog):
 
     def _load_config(self) -> None:
         cfg = self._config
-        self.provider_combo.setCurrentIndex(_PROVIDER_ORDER.index(cfg.provider))
-        self.stack.setCurrentIndex(_PROVIDER_ORDER.index(cfg.provider))
+        self.api_format.setCurrentIndex(max(0, self.api_format.findData(cfg.provider)))
+        self.provider_combo.setCurrentIndex(
+            _PROVIDER_ORDER.index(
+                "api" if cfg.provider in {"openai", "anthropic"} else cfg.provider
+            )
+        )
         self.ollama_url.setText(cfg.ollama_url)
         self.ollama_model.setEditText(cfg.ollama_model)
         for provider, edit in self._url_edits.items():
@@ -367,13 +361,15 @@ class SettingsDialog(QDialog):
         self.timeout.setValue(cfg.timeout_s)
         self.recursive.setChecked(cfg.recursive_folders)
         self.ollama_num_ctx.setValue(cfg.ollama_num_ctx)
+        self.ollama_additional_analysis.setChecked(cfg.ollama_additional_analysis)
+        self.vjev_additional_analysis.setChecked(cfg.vjev_additional_analysis)
         self.vjev_runtime_dir.setText(cfg.vjev_runtime_dir)
         self._on_provider_changed(self.provider_combo.currentIndex())
 
     def _collect_config(self) -> AppConfig:
         """Zbiera ustawienia z formularza (bez zapisywania)."""
         cfg = replace(self._config)
-        cfg.provider = self.provider_combo.currentData()
+        cfg.provider = self._provider()
         cfg.ollama_url = normalize_ai_endpoint(
             self.ollama_url.text(), "http://localhost:11434", "Ollamy"
         )
@@ -396,6 +392,8 @@ class SettingsDialog(QDialog):
         cfg.timeout_s = self.timeout.value()
         cfg.recursive_folders = self.recursive.isChecked()
         cfg.ollama_num_ctx = self.ollama_num_ctx.value()
+        cfg.ollama_additional_analysis = self.ollama_additional_analysis.isChecked()
+        cfg.vjev_additional_analysis = self.vjev_additional_analysis.isChecked()
         cfg.vjev_runtime_dir = self.vjev_runtime_dir.text().strip() or defaults.vjev_runtime_dir
         if self._prompt_family is not None:
             self._prompt_drafts[self._prompt_family] = self.prompt_edit.toPlainText().strip()
@@ -414,13 +412,20 @@ class SettingsDialog(QDialog):
         return cfg
 
     def _current_api_key(self) -> str:
-        provider = self.provider_combo.currentData()
+        provider = self._provider()
         return self._key_edits[provider].text().strip()
 
     # -- akcje -------------------------------------------------------------
 
+    def _provider(self) -> str:
+        selected = self.provider_combo.currentData()
+        return str(self.api_format.currentData() if selected == "api" else selected)
+
     def _on_provider_changed(self, index: int) -> None:
-        self.stack.setCurrentIndex(index)
+        self.provider_form.setRowVisible(
+            self.api_format, self.provider_combo.currentData() == "api"
+        )
+        self.stack.setCurrentIndex(PROVIDERS.index(self._provider()))
         self.stack.updateGeometry()
         self.test_result.setText("")
         if self._prompt_family is not None:
@@ -433,15 +438,17 @@ class SettingsDialog(QDialog):
             if self._prompt_family == "jev"
             else ""
         )
-        self.prompt_hint.setText(
-            "Instrukcje dla pięciu widoków Jev; program dodaje 9 pytań decyzyjnych. "
-            "Jev nie generuje JSON. Zmiana promptu może zmienić skuteczność "
-            "i wiarygodność kalibracji — przebadano prompt domyślny."
-            if self._prompt_family == "jev"
-            else "Część merytoryczna promptu wysyłanego do modelu dla każdej strony. "
-            "Wymagany format odpowiedzi (JSON) program dokleja automatycznie — "
-            "nie opisuj go tutaj."
+        self.prompt_hint.setText("Instrukcje analizy strony.")
+        basic_ollama = (
+            self.provider_combo.currentData() == "ollama"
+            and not self.ollama_additional_analysis.isChecked()
         )
+        self.prompt_edit.setEnabled(not basic_ollama)
+        if basic_ollama:
+            self.prompt_hint.setText(
+                "Analiza podstawowa używa stałych pytań o podpis i pieczątkę. "
+                "Zapisany tutaj prompt będzie używany po włączeniu dodatkowej analizy."
+            )
 
     def _default_prompt(self) -> str:
         return JEV_PROMPT_INSTRUCTIONS if self._prompt_family == "jev" else PROMPT_INSTRUCTIONS
@@ -482,7 +489,7 @@ class SettingsDialog(QDialog):
         else:
             self.ollama_status.setText("Ollama działa, ale nie ma pobranego żadnego modelu.")
             self.ollama_install_help.setText(
-                "Uruchom w PowerShell: <code>ollama pull gemma4:12b</code>, a potem odśwież listę."
+                "Otwórz Składniki AI i wybierz model do pobrania, następnie odśwież listę."
             )
             self.ollama_install_help.setVisible(True)
 
@@ -517,9 +524,16 @@ class SettingsDialog(QDialog):
         self._update_busy_state()
         self._test_worker.start()
 
+    def _components(self) -> None:
+        ComponentsDialog(self._config, self).exec()
+        self._load_config()
+
     def _on_test_finished(self, ok: bool, message: str) -> None:
         prefix = "✔ " if ok else "✘ "
-        self.test_result.setText(prefix + message)
+        self.test_result.setText(
+            prefix
+            + (message if ok else repair_instructions(message, self.provider_combo.currentData()))
+        )
         color = "#2e7d32" if ok else "#c62828"
         self.test_result.setStyleSheet(f"color: {color};")
 
@@ -562,8 +576,10 @@ class SettingsDialog(QDialog):
         busy = self._test_worker is not None or self._models_worker is not None
         self.buttons.setEnabled(not busy)
         self.provider_combo.setEnabled(not busy)
+        self.api_format.setEnabled(not busy)
         self.stack.setEnabled(not busy)
         self.test_button.setEnabled(self._test_worker is None)
+        self.components_button.setEnabled(not busy)
         self.refresh_models.setEnabled(self._models_worker is None)
 
     def reject(self) -> None:
