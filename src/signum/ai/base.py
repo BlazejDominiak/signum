@@ -50,6 +50,9 @@ class VisionModel(ABC):
     zwracając ten sam typ wyniku bez generowania tekstu.
     """
 
+    loading_seconds: float = 0.0
+    request_seconds: float | None = None
+
     @property
     @abstractmethod
     def name(self) -> str:

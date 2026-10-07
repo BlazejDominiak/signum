@@ -7,7 +7,24 @@ from unittest.mock import Mock
 import pytest
 
 from signum.ai import create_vision_model
+from signum.ai.base import AIResponseError
+from signum.ai.openai_client import OpenAIVisionModel
 from signum.config import AppConfig
+
+
+@pytest.mark.parametrize("status", [301, 400, 401, 403, 429, 500, 502, 503])
+def test_openai_preflight_odrzuca_bledy(status: int) -> None:
+    model = OpenAIVisionModel("http://localhost:8000/v1", "", "test")
+    model._session.get = Mock(return_value=Mock(status_code=status))
+    with pytest.raises(AIResponseError, match=str(status)):
+        model.check_connection()
+
+
+@pytest.mark.parametrize("status", [404, 405])
+def test_openai_proxy_bez_listy_modeli_ma_jawny_komunikat(status: int) -> None:
+    model = OpenAIVisionModel("http://localhost:8000/v1", "", "test")
+    model._session.get = Mock(return_value=Mock(status_code=status))
+    assert "niepotwierdzona" in model.check_connection()
 
 
 def test_claude_uzywa_wlasnego_adresu_i_natywnych_blokow_obrazu() -> None:

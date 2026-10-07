@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import base64
 import logging
+import time
 from typing import Any
 
 import requests
 
-from signum.ai.base import AIConnectionError, AIResponseError, VisionModel
+from signum.ai.base import AIConnectionError, AIResponseError, PageAnalysis, VisionModel
+from signum.ai.basic_analysis import BASIC_PROMPT, BASIC_SCHEMA, parse_basic_analysis
 from signum.ai.parsing import extract_first_json_object
 from signum.ai.prompts import RESPONSE_SCHEMA
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
@@ -37,6 +39,7 @@ class OllamaVisionModel(VisionModel):
         num_ctx: int = DEFAULT_NUM_CTX,
         api_key: str = "",
         runtime_dir: str = "",
+        additional_analysis: bool = True,
     ) -> None:
         self._base_url = normalize_ai_endpoint(base_url, DEFAULT_URL, "Ollamy")
         self._session = requests.Session()
@@ -49,10 +52,32 @@ class OllamaVisionModel(VisionModel):
         self._num_ctx = num_ctx
         self._api_key = api_key
         self._runtime_dir = runtime_dir
+        self._additional_analysis = additional_analysis
+        self.last_metrics: list[dict[str, Any]] = []
+        self.loading_seconds = 0.0
+        self.request_seconds: float = 0.0
 
     @property
     def name(self) -> str:
-        return f"Ollama: {self._model}"
+        mode = "dodatkowa analiza" if self._additional_analysis else "analiza podstawowa"
+        return f"Ollama: {self._model} ({mode})"
+
+    def analyze_page(self, image_jpeg: bytes, prompt: str | None = None) -> PageAnalysis:
+        self.last_metrics = []
+        if self._additional_analysis:
+            return super().analyze_page(image_jpeg, prompt)
+        # A separate fixed contract prevents description/bbox instructions from leaking
+        # into the basic mode, including when the GUI supplies its full-analysis prompt.
+        payload = {
+            "model": self._model,
+            "messages": [{
+                "role": "user", "content": BASIC_PROMPT,
+                "images": [base64.b64encode(image_jpeg).decode("ascii")],
+            }],
+            "stream": False, "think": False, "format": BASIC_SCHEMA,
+            "options": {"temperature": 0, "num_ctx": self._num_ctx, "num_predict": 96},
+        }
+        return parse_basic_analysis(self._post_chat(payload))
 
     def _generate(self, image_jpeg: bytes, prompt: str) -> str:
         for structured in (False, True):
@@ -98,6 +123,10 @@ class OllamaVisionModel(VisionModel):
         }
         if structured:
             payload["format"] = RESPONSE_SCHEMA
+        return self._post_chat(payload)
+
+    def _post_chat(self, payload: dict[str, Any]) -> str:
+        started = time.perf_counter()
         try:
             response = self._session.post(
                 f"{self._base_url}/api/chat",
@@ -109,6 +138,8 @@ class OllamaVisionModel(VisionModel):
             raise AIConnectionError(
                 f"Brak połączenia z Ollamą pod {self._base_url}: {exc}"
             ) from exc
+        finally:
+            self.request_seconds += time.perf_counter() - started
         if response.status_code != 200:
             raise AIResponseError(f"Ollama zwróciła HTTP {response.status_code}")
         try:
@@ -116,10 +147,21 @@ class OllamaVisionModel(VisionModel):
             content = data["message"]["content"]
         except (ValueError, KeyError, TypeError) as exc:
             raise AIResponseError(f"Niepoprawna odpowiedź Ollamy: {exc}") from exc
+        if is_loopback_endpoint(self._base_url) and not self._model.lower().endswith("cloud"):
+            self.loading_seconds += min(
+                time.perf_counter() - started, max(0, float(data.get("load_duration", 0)) / 1e9)
+            )
         if data.get("done_reason") == "length":
             raise AIResponseError("Model osiągnął limit odpowiedzi przed zakończeniem analizy")
         if not isinstance(content, str) or not content.strip():
             raise AIResponseError("Model zwrócił pustą odpowiedź końcową")
+        self.last_metrics.append({
+            "wall_s": time.perf_counter() - started,
+            **{key: data.get(key) for key in (
+                "model", "total_duration", "load_duration", "prompt_eval_count",
+                "prompt_eval_duration", "eval_count", "eval_duration", "done_reason",
+            )},
+        })
         return content
 
     def check_connection(self) -> str:
@@ -147,6 +189,20 @@ class OllamaVisionModel(VisionModel):
                 f"Pobierz go poleceniem: ollama pull {self._model}"
             )
         return f"Ollama {version.get('version', '?')} — model {self._model} dostępny"
+
+    def load_model(self) -> None:
+        if not is_loopback_endpoint(self._base_url) or self._model.lower().endswith("cloud"):
+            return
+        try:
+            response = self._session.post(
+                self._base_url + "/api/generate",
+                json={"model": self._model, "keep_alive": "10m", "stream": False,
+                      "options": {"num_ctx": self._num_ctx}},
+                timeout=self._timeout_s, allow_redirects=False,
+            )
+            response.raise_for_status()
+        except requests.RequestException as exc:
+            raise AIConnectionError(f"Nie udało się załadować modelu {self._model}: {exc}") from exc
 
     def release_resources(self) -> None:
         if not is_loopback_endpoint(self._base_url):

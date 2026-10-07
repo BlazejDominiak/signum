@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, Signal
@@ -19,8 +20,13 @@ class BatchWorker(QThread):
     file_done = Signal(int, object)  # indeks, DocumentResult
     batch_done = Signal(object)  # BatchResult
 
-    def __init__(self, files: list[Path], analyzer: DocumentAnalyzer) -> None:
+    def __init__(
+        self, files: list[Path], analyzer: DocumentAnalyzer,
+        preflight_s: float = 0, loading_s: float = 0,
+    ) -> None:
         super().__init__()
+        self._preflight_s = preflight_s
+        self._loading_s = loading_s
         self._files = files
         self._analyzer = analyzer
         self._cancel = CancelToken()
@@ -30,6 +36,7 @@ class BatchWorker(QThread):
         self._cancel.cancel()
 
     def run(self) -> None:
+        started = time.time()
         try:
             batch = run_batch(
                 self._files,
@@ -39,9 +46,15 @@ class BatchWorker(QThread):
                 on_file_done=self.file_done.emit,
             )
         except Exception as exc:  # obrona: wyjątek nie może zabić wątku po cichu
-            batch = BatchResult(abort_error=f"Nieoczekiwany błąd: {exc}")
-        finally:
+            batch = BatchResult(started_at=started, abort_error=f"Nieoczekiwany błąd: {exc}")
+        try:
             self._analyzer.release_resources()
+        except Exception as exc:
+            batch.abort_error = batch.abort_error or f"Nie udało się zwolnić modelu: {exc}"
+        batch.started_at -= self._preflight_s
+        batch.finished_at = time.time()
+        batch.loading_s += self._loading_s
+        batch.preflight_s = max(0, self._preflight_s - self._loading_s)
         self.batch_done.emit(batch)
 
 

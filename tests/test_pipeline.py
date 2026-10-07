@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from unittest.mock import Mock
+
+import pytest
 
 from signum.ai.base import AIConnectionError, AIResponseError, VisionModel
 from signum.ai.prompts import PAGE_PROMPT
@@ -66,6 +69,146 @@ def test_komunikat_bledu_nie_ujawnia_pelnej_sciezki(tmp_path: Path) -> None:
 
 
 class TestDocumentAnalyzer:
+    @pytest.mark.parametrize("provider", ["openai", "anthropic"])
+    @pytest.mark.parametrize("raw", ["{}", '{"signatures":null}'])
+    def test_nieprawidlowy_schemat_jest_ponawiany(
+        self, tmp_path: Path, provider: str, raw: str,
+    ) -> None:
+        from signum.ai import create_vision_model
+        from signum.config import AppConfig
+
+        model = create_vision_model(AppConfig(provider=provider), api_key="test")
+        payload = (
+            {"choices": [{"message": {"content": raw}}]} if provider == "openai"
+            else {"content": [{"type": "text", "text": raw}]}
+        )
+        model._session.post = Mock(return_value=Mock(
+            status_code=200, json=Mock(return_value=payload),
+        ))
+        result = _analyzer(model).analyze(_scan_file(tmp_path), CancelToken())
+        assert result.status == DocumentStatus.ERROR
+        assert model._session.post.call_count == 2
+
+    def test_blad_struktury_pdf_dociera_do_raportow(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        import csv
+        import io
+
+        from signum.report.export import build_csv, build_html
+
+        pdf = tmp_path / "document.pdf"
+        pdf.write_bytes(docfactory.make_text_pdf())
+        monkeypatch.setattr(
+            "signum.core.digital.PdfReader", Mock(side_effect=ValueError("scan error")),
+        )
+        model = FakeVisionModel(response={"signatures": []})
+        result = _analyzer(model).analyze(pdf, CancelToken())
+        assert model.calls == 1  # analiza wizualna wciąż dostępna
+        assert result.status == DocumentStatus.ERROR
+        assert "scan error" in result.error
+        report = build_html(BatchResult([result]))
+        assert "scan error" in report
+        assert "BRAK PODPISU" not in report
+        row = next(csv.DictReader(io.StringIO(build_csv(BatchResult([result]))), delimiter=";"))
+        assert row["podpisany"] == ""
+
+    def test_blad_pozniejszej_strony_jest_bledem_dokumentu(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from signum.core import rendering
+
+        pdf = tmp_path / "partly-broken.pdf"
+        pdf.write_bytes(docfactory.make_text_pdf(pages=3))
+        original = rendering._render_page
+
+        def render(document, number):
+            if number == 2:
+                raise ValueError("broken page")
+            return original(document, number)
+
+        monkeypatch.setattr(rendering, "_render_page", render)
+        model = FakeVisionModel(response={"signatures": []})
+        result = _analyzer(model).analyze(pdf, CancelToken())
+        assert result.status == DocumentStatus.ERROR
+        assert "broken page" in result.error
+        assert result.pages_analyzed == model.calls == 1
+
+    def test_blad_ai_zachowuje_wykryty_podpis_cyfrowy(
+        self, tmp_path: Path, signed_pdf_bytes: bytes,
+    ) -> None:
+        pdf = tmp_path / "signed.pdf"
+        pdf.write_bytes(signed_pdf_bytes)
+        model = FakeVisionModel(fail_with=AIResponseError("bad response"))
+        result = _analyzer(model).analyze(pdf, CancelToken())
+        assert result.status == DocumentStatus.ERROR
+        assert result.is_signed
+        assert result.findings[0].kind == SignatureKind.DIGITAL
+
+    @pytest.mark.parametrize("outcome", ["ok", "cancel", "error", "connection"])
+    def test_analiza_nie_gromadzi_obrazow_i_zwalnia_zasoby(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, outcome: str,
+    ) -> None:
+        from signum.ai.base import PageAnalysis
+        from signum.core import rendering
+        from signum.core.pipeline import BatchCancelledError
+
+        pdf = tmp_path / "long.pdf"
+        pdf.write_bytes(docfactory.make_text_pdf(pages=20))
+        rendered = []
+        documents = []
+        original_render = rendering._render_page
+        original_open = rendering.pdfium.PdfDocument
+
+        def capture_open(*args, **kwargs):
+            document = original_open(*args, **kwargs)
+            document.close = Mock(wraps=document.close)
+            documents.append(document)
+            return document
+
+        def capture_render(document, number):
+            for previous in rendered:
+                with pytest.raises(ValueError, match="closed"):
+                    previous.image.getpixel((0, 0))
+            page = original_render(document, number)
+            rendered.append(page)
+            return page
+
+        cancel = CancelToken()
+        model = FakeVisionModel()
+
+        def analyze_image(*args, **kwargs):
+            assert len(rendered) == model.calls + 1
+            model.calls += 1
+            if outcome == "cancel":
+                cancel.cancel()
+            if outcome == "error":
+                raise AIResponseError("invalid")
+            if outcome == "connection":
+                raise AIConnectionError("offline")
+            return PageAnalysis("", ())
+
+        monkeypatch.setattr(rendering.pdfium, "PdfDocument", capture_open)
+        monkeypatch.setattr(rendering, "_render_page", capture_render)
+        monkeypatch.setattr(model, "analyze_image", analyze_image)
+        if outcome in {"cancel", "connection"}:
+            with pytest.raises(BatchCancelledError if outcome == "cancel" else AIConnectionError):
+                _analyzer(model, 20).analyze(pdf, cancel)
+        else:
+            # Dwie próby tej samej strony przy błędzie odpowiedzi.
+            if outcome == "error":
+                monkeypatch.setattr(
+                    model, "analyze_image", Mock(side_effect=AIResponseError("bad")),
+                )
+            result = _analyzer(model, 20).analyze(pdf, cancel)
+            assert result.status == (DocumentStatus.OK if outcome == "ok" else DocumentStatus.ERROR)
+        assert len(rendered) == (20 if outcome == "ok" else 1)
+        for page in rendered:
+            with pytest.raises(ValueError, match="closed"):
+                page.image.getpixel((0, 0))
+        assert len(documents) == 1
+        documents[0].close.assert_called_once()
+
     def test_skan_z_podpisem(self, tmp_path: Path) -> None:
         result = _analyzer(FakeVisionModel()).analyze(_scan_file(tmp_path), CancelToken())
         assert result.status is DocumentStatus.OK

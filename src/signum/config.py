@@ -46,6 +46,7 @@ class AppConfig:
     ollama_model: str = "gemma4:12b"
     ollama_num_ctx: int = 8192  # okno kontekstu (domyślne Ollamy to zaledwie 4096)
     ollama_runtime_dir: str = ""  # opcjonalna samodzielna Ollama z instalatora
+    ollama_additional_analysis: bool = True  # dotychczasowy opis i wycinki
     openai_base_url: str = "https://api.openai.com/v1"
     openai_model: str = "gpt-4o"
     anthropic_base_url: str = "https://api.anthropic.com/v1"
@@ -53,6 +54,7 @@ class AppConfig:
     vjev_base_url: str = "http://localhost:8800/v1"
     vjev_model: str = "vjev-vision"
     vjev_runtime_dir: str = "H:/Tools/SignumJev"
+    vjev_additional_analysis: bool = False  # eksperymentalne kategorie i lokalizacja
     timeout_s: int = 300
     max_pages_per_doc: int = 10
     model_image_max_side: int = 1120
@@ -82,11 +84,14 @@ class AppConfig:
         """Wczytuje ustawienia; przy braku/uszkodzeniu pliku zwraca domyślne."""
         path = config_file()
         try:
-            raw: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+            raw = json.loads(path.read_text(encoding="utf-8"))
         except FileNotFoundError:
             return cls()
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, ValueError) as exc:
             logger.warning("Nie można wczytać %s (%s) — używam domyślnych", path, exc)
+            return cls()
+        if not isinstance(raw, dict):
+            logger.warning("Konfiguracja %s nie jest obiektem JSON — używam domyślnych", path)
             return cls()
         defaults = cls()
         kwargs: dict[str, Any] = {}

@@ -36,6 +36,13 @@ def test_uszkodzony_plik_daje_domyslne(isolated_config: Path) -> None:
     assert config.provider == "ollama"
 
 
+@pytest.mark.parametrize("raw", ["null", "[]", "42", "true", '"provider"'])
+def test_konfiguracja_musi_byc_obiektem(isolated_config: Path, raw: str) -> None:
+    isolated_config.parent.mkdir(parents=True, exist_ok=True)
+    isolated_config.write_text(raw, encoding="utf-8")
+    assert AppConfig.load() == AppConfig()
+
+
 def test_nieznane_klucze_sa_ignorowane(isolated_config: Path) -> None:
     isolated_config.parent.mkdir(parents=True, exist_ok=True)
     isolated_config.write_text(

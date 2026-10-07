@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import Mock
 
 import pytest
 from PIL import Image
@@ -11,10 +12,75 @@ from signum.core import rendering
 from signum.core.rendering import (
     DocumentReadError,
     load_pages,
+    open_pages,
     render_pdf_page,
     to_model_jpeg,
 )
 from tests import docfactory
+
+
+@pytest.mark.parametrize("rotation", [0, 90, 180, 270])
+@pytest.mark.parametrize("offset", [False, True])
+def test_wycinek_pdf_uwzglednia_obrot_i_cropbox(
+    tmp_path: Path, rotation: int, offset: bool,
+) -> None:
+    import io
+
+    from PIL import ImageChops
+    from pypdf import PdfWriter
+    from pypdf.generic import RectangleObject
+    from reportlab.pdfgen import canvas
+
+    from signum.core.cropping import crop_pdf_rect
+
+    buffer = io.BytesIO()
+    document = canvas.Canvas(buffer, pagesize=(400, 500))
+    document.setFillColorRGB(1, 0, 0)
+    document.rect(250, 130, 100, 40, fill=1, stroke=0)
+    document.showPage()
+    document.save()
+    writer = PdfWriter(clone_from=io.BytesIO(buffer.getvalue()))
+    writer.pages[0].rotate(rotation)
+    if offset:
+        writer.pages[0].cropbox = RectangleObject((50, 100, 390, 480))
+    path = tmp_path / "rotated.pdf"
+    writer.write(path)
+    with open_pages(path, 1) as (pages, _):
+        page = next(pages)
+        assert page.page_size_pt is not None
+        crop = crop_pdf_rect(
+            page.image, (250, 130, 350, 170), page.page_size_pt,
+            page.page_bbox_pt, page.rotation,
+        )
+        assert crop is not None
+        red = ImageChops.subtract(*crop.split()[:2]).point(lambda x: 255 if x > 150 else 0)
+        assert red.histogram()[255] > crop.width * crop.height * 0.5
+
+
+@pytest.mark.parametrize("suffix", [".pdf", ".tif"])
+def test_strumien_renderuje_na_zadanie_i_zamyka_biezacy_obraz(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, suffix: str,
+) -> None:
+    path = tmp_path / f"pages{suffix}"
+    if suffix == ".pdf":
+        path.write_bytes(docfactory.make_text_pdf(pages=3))
+        render = Mock(wraps=rendering._render_page)
+        monkeypatch.setattr(rendering, "_render_page", render)
+    else:
+        frames = [Image.new("RGB", (20, 20), color) for color in ("red", "green", "blue")]
+        frames[0].save(path, save_all=True, append_images=frames[1:])
+    with open_pages(path, 3) as (pages, total):
+        assert total == 3
+        if suffix == ".pdf":
+            assert render.call_count == 0
+        first = next(pages)
+        second = next(pages)
+        with pytest.raises(ValueError, match="closed"):
+            first.image.getpixel((0, 0))
+        if suffix == ".pdf":
+            assert render.call_count == 2
+    with pytest.raises(ValueError, match="closed"):
+        second.image.getpixel((0, 0))
 
 
 def test_pdf_renderuje_wszystkie_strony_do_limitu(tmp_path: Path) -> None:

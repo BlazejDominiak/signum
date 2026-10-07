@@ -133,6 +133,7 @@ def _walk_field(
     result: DigitalScanResult,
     state: _WalkState,
     depth: int,
+    inherited_type: str = "",
 ) -> None:
     if depth > MAX_FIELD_DEPTH or state.object_count >= MAX_FIELD_OBJECTS:
         if not state.limit_reported:
@@ -154,16 +155,21 @@ def _walk_field(
     ]
 
     kids = _resolve(field_obj.get("/Kids"))
-    if isinstance(kids, ArrayObject) and "/V" not in field_obj and "/FT" not in field_obj:
+    field_type = str(field_obj.get("/FT", inherited_type))
+    # Dzieci z nazwą/typem/wartością są polami; pozostałe widgety opisują
+    # wygląd tego samego pola i nie mogą mnożyć liczby podpisów.
+    child_fields = []
+    if isinstance(kids, ArrayObject):
         for kid in kids:
-            _walk_field(kid, full_name, reader, result, state, depth + 1)
-        return
+            child = _resolve(kid)
+            if isinstance(child, DictionaryObject) and any(
+                key in child for key in ("/T", "/FT", "/V", "/Kids")
+            ):
+                child_fields.append(kid)
+    for kid in child_fields:
+        _walk_field(kid, full_name, reader, result, state, depth + 1, field_type)
 
-    if str(field_obj.get("/FT", "")) != "/Sig":
-        # Pola inne niż podpis mogą mieć dzieci-podpisy w hierarchii.
-        if isinstance(kids, ArrayObject):
-            for kid in kids:
-                _walk_field(kid, full_name, reader, result, state, depth + 1)
+    if field_type != "/Sig" or (child_fields and "/V" not in field_obj):
         return
 
     value = _resolve(field_obj.get("/V"))

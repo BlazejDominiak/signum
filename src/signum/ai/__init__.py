@@ -42,6 +42,7 @@ def create_vision_model(config: AppConfig, api_key: str | None = None) -> Vision
             num_ctx=config.ollama_num_ctx,
             api_key=key,
             runtime_dir=config.ollama_runtime_dir,
+            additional_analysis=config.ollama_additional_analysis,
         )
     if config.provider == "openai":
         return OpenAIVisionModel(
@@ -64,5 +65,6 @@ def create_vision_model(config: AppConfig, api_key: str | None = None) -> Vision
             model=getattr(config, f"{config.provider}_model"),
             timeout_s=config.timeout_s,
             runtime_dir=config.vjev_runtime_dir,
+            additional_analysis=config.vjev_additional_analysis,
         )
     raise ValueError(f"Nieznany dostawca AI: {config.provider!r}")

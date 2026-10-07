@@ -43,9 +43,11 @@ def crop_pdf_rect(
     page: Image.Image,
     rect_pt: tuple[float, float, float, float],
     page_size_pt: tuple[float, float],
+    page_bbox_pt: tuple[float, float, float, float] | None = None,
+    rotation: int = 0,
 ) -> Image.Image | None:
     """Wycina prostokąt podany w punktach PDF (origin w lewym dolnym rogu)."""
-    pixels = _pdf_rect_pixels(page, rect_pt, page_size_pt)
+    pixels = _pdf_rect_pixels(page, rect_pt, page_size_pt, page_bbox_pt, rotation)
     if pixels is None:
         return None
     return _crop_pixels(page, *pixels)
@@ -55,9 +57,11 @@ def overview_pdf_rect(
     page: Image.Image,
     rect_pt: tuple[float, float, float, float],
     page_size_pt: tuple[float, float],
+    page_bbox_pt: tuple[float, float, float, float] | None = None,
+    rotation: int = 0,
 ) -> Image.Image | None:
     """Miniatura strony z zaznaczonym prostokątem podanym w punktach PDF."""
-    pixels = _pdf_rect_pixels(page, rect_pt, page_size_pt)
+    pixels = _pdf_rect_pixels(page, rect_pt, page_size_pt, page_bbox_pt, rotation)
     if pixels is None:
         return None
     return _overview_pixels(page, *pixels)
@@ -79,19 +83,25 @@ def _pdf_rect_pixels(
     page: Image.Image,
     rect_pt: tuple[float, float, float, float],
     page_size_pt: tuple[float, float],
+    page_bbox_pt: tuple[float, float, float, float] | None = None,
+    rotation: int = 0,
 ) -> tuple[float, float, float, float] | None:
-    page_w_pt, page_h_pt = page_size_pt
+    left, bottom, right, top = page_bbox_pt or (0, 0, *page_size_pt)
+    page_w_pt, page_h_pt = right - left, top - bottom
     if page_w_pt <= 0 or page_h_pt <= 0:
         return None
-    scale_x = page.width / page_w_pt
-    scale_y = page.height / page_h_pt
     x0_pt, y0_pt, x1_pt, y1_pt = rect_pt
-    # Oś Y w PDF rośnie do góry, w obrazie — w dół.
+    points = []
+    for x_pt, y_pt in ((x0_pt, y0_pt), (x0_pt, y1_pt), (x1_pt, y0_pt), (x1_pt, y1_pt)):
+        x, y = (x_pt - left) / page_w_pt, (y_pt - bottom) / page_h_pt
+        # /Rotate obraca stronę zgodnie z ruchem wskazówek zegara.
+        x, y = {
+            0: (x, 1 - y), 90: (y, x), 180: (1 - x, y), 270: (1 - y, 1 - x),
+        }[rotation % 360]
+        points.append((x * page.width, y * page.height))
     return (
-        x0_pt * scale_x,
-        (page_h_pt - y1_pt) * scale_y,
-        x1_pt * scale_x,
-        (page_h_pt - y0_pt) * scale_y,
+        min(x for x, _ in points), min(y for _, y in points),
+        max(x for x, _ in points), max(y for _, y in points),
     )
 
 

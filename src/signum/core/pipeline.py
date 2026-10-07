@@ -28,7 +28,7 @@ from signum.core.rendering import (
     DocumentReadError,
     PageImage,
     is_pdf,
-    load_pages,
+    open_pages,
     render_pdf_page,
 )
 
@@ -63,6 +63,10 @@ class BatchResult:
     model_name: str = ""
     started_at: float = 0.0
     finished_at: float = 0.0
+    preparation_s: float = 0.0
+    loading_s: float = 0.0
+    inference_s: float = 0.0
+    preflight_s: float = 0.0
     abort_error: str | None = None  # ustawione, gdy partię przerwał błąd połączenia
 
     @property
@@ -92,6 +96,7 @@ class DocumentAnalyzer:
         self._max_pages = max_pages
         self._image_max_side = image_max_side
         self._prompt = prompt  # None = domyślny prompt programu
+        self.last_result: DocumentResult | None = None
 
     @property
     def model_name(self) -> str:
@@ -108,60 +113,79 @@ class DocumentAnalyzer:
         :class:`AIConnectionError` i :class:`BatchCancelledError` propagują wyżej.
         """
         result = DocumentResult(path=path)
+        self.last_result = result
         started = time.monotonic()
         try:
             self._analyze_into(result, path, cancel)
-            result.status = DocumentStatus.OK
+            result.status = DocumentStatus.ERROR if result.error else DocumentStatus.OK
         except (BatchCancelledError, AIConnectionError):
             raise
         except (DocumentReadError, AIError, OSError) as exc:
             result.status = DocumentStatus.ERROR
-            result.error = _safe_document_error(exc, path)
+            result.error = "; ".join(filter(None, (result.error, _safe_document_error(exc, path))))
         finally:
             result.duration_s = time.monotonic() - started
+            result.preparation_s = max(
+                0.0, result.duration_s - result.inference_s - result.loading_s
+            )
         return result
 
     def _analyze_into(self, result: DocumentResult, path: Path, cancel: CancelToken) -> None:
         _raise_if_cancelled(cancel)
-        pages, total = load_pages(path, self._max_pages)
-        result.page_count = total
-
-        digital_findings: list[SignatureFinding] = []
-        if is_pdf(path):
-            digital_findings = self._digital_findings(path, pages)
-
-        for page in pages:
-            _raise_if_cancelled(cancel)
-            analysis = self._analyze_page_with_retry(page, cancel)
-            if analysis.signature_probability is not None:
-                result.page_signature_probabilities[page.number] = analysis.signature_probability
-            if analysis.description and not result.title:
-                result.title = analysis.description
-            for sig in analysis.signatures:
-                crop_png = None
-                overview_jpeg = None
-                if sig.box_2d is not None:
-                    crop = crop_box_2d(page.image, sig.box_2d)
-                    if crop is not None:
-                        crop_png = to_png_bytes(crop)
-                    overview = overview_box_2d(page.image, sig.box_2d)
-                    if overview is not None:
-                        overview_jpeg = to_jpeg_bytes(overview)
-                result.findings.append(
-                    SignatureFinding(
-                        kind=sig.kind,
-                        page=page.number,
-                        confidence=sig.confidence,
-                        crop_png=crop_png,
-                        overview_jpeg=overview_jpeg,
-                        detail=sig.detail,
-                    )
-                )
-            result.pages_analyzed += 1
-
-        result.findings.extend(digital_findings)
+        with open_pages(path, self._max_pages) as (pages, total):
+            result.page_count = total
+            if is_pdf(path):
+                self._digital_findings(path, result, cancel)
+            for page in pages:
+                _raise_if_cancelled(cancel)
+                self._analyze_visual_page(result, page, cancel)
+                _raise_if_cancelled(cancel)
         if not result.title:
             result.title = path.stem
+
+    def _analyze_visual_page(
+        self, result: DocumentResult, page: PageImage, cancel: CancelToken
+    ) -> None:
+        started = time.perf_counter()
+        loading_before = self._model.loading_seconds
+        requests_before = self._model.request_seconds
+        try:
+            analysis = self._analyze_page_with_retry(page, cancel)
+        finally:
+            duration = time.perf_counter() - started
+            loading = min(duration, max(0.0, self._model.loading_seconds - loading_before))
+            result.loading_s += loading
+            requests_after = self._model.request_seconds
+            request_time = (
+                max(0.0, requests_after - requests_before)
+                if requests_before is not None and requests_after is not None else duration
+            )
+            result.inference_s += max(0.0, min(duration, request_time) - loading)
+        if analysis.signature_probability is not None:
+            result.page_signature_probabilities[page.number] = analysis.signature_probability
+        if analysis.description and not result.title:
+            result.title = analysis.description
+        for sig in analysis.signatures:
+            crop_png = None
+            overview_jpeg = None
+            if sig.box_2d is not None:
+                crop = crop_box_2d(page.image, sig.box_2d)
+                if crop is not None:
+                    crop_png = to_png_bytes(crop)
+                overview = overview_box_2d(page.image, sig.box_2d)
+                if overview is not None:
+                    overview_jpeg = to_jpeg_bytes(overview)
+            result.findings.append(
+                SignatureFinding(
+                    kind=sig.kind,
+                    page=page.number,
+                    confidence=sig.confidence,
+                    crop_png=crop_png,
+                    overview_jpeg=overview_jpeg,
+                    detail=sig.detail,
+                )
+            )
+        result.pages_analyzed += 1
 
     def _analyze_page_with_retry(self, page: PageImage, cancel: CancelToken) -> PageAnalysis:
         last_error: AIError | None = None
@@ -180,14 +204,15 @@ class DocumentAnalyzer:
         raise last_error if last_error else AIError("Nieznany błąd modelu")
 
     def _digital_findings(
-        self, path: Path, rendered_pages: list[PageImage]
-    ) -> list[SignatureFinding]:
+        self, path: Path, result: DocumentResult, cancel: CancelToken
+    ) -> None:
         scan = scan_digital_signatures(path)
-        by_number = {page.number: page for page in rendered_pages}
-        findings = []
+        if scan.notes:
+            result.error = _safe_document_error(DocumentReadError("; ".join(scan.notes)), path)
         for sig in scan.signatures:
-            crop_png, overview_jpeg = self._digital_images(path, sig, by_number)
-            findings.append(
+            _raise_if_cancelled(cancel)
+            crop_png, overview_jpeg = self._digital_images(path, sig)
+            result.findings.append(
                 SignatureFinding(
                     kind=SignatureKind.DIGITAL,
                     page=sig.page or 1,
@@ -197,26 +222,32 @@ class DocumentAnalyzer:
                     detail=sig.detail,
                 )
             )
-        return findings
 
     def _digital_images(
-        self, path: Path, sig: DigitalSignature, rendered: dict[int, PageImage]
+        self, path: Path, sig: DigitalSignature
     ) -> tuple[bytes | None, bytes | None]:
         """Wycinek i miniatura widocznego widgetu podpisu cyfrowego (jeśli istnieje)."""
         if sig.page is None or sig.rect_pt is None:
             return None, None
         try:
-            page = rendered.get(sig.page) or render_pdf_page(path, sig.page)
+            page = render_pdf_page(path, sig.page)
         except DocumentReadError:
             return None, None
-        if page.page_size_pt is None:
-            return None, None
-        crop = crop_pdf_rect(page.image, sig.rect_pt, page.page_size_pt)
-        overview = overview_pdf_rect(page.image, sig.rect_pt, page.page_size_pt)
-        return (
-            to_png_bytes(crop) if crop is not None else None,
-            to_jpeg_bytes(overview) if overview is not None else None,
-        )
+        try:
+            if page.page_size_pt is None:
+                return None, None
+            crop = crop_pdf_rect(
+                page.image, sig.rect_pt, page.page_size_pt, page.page_bbox_pt, page.rotation,
+            )
+            overview = overview_pdf_rect(
+                page.image, sig.rect_pt, page.page_size_pt, page.page_bbox_pt, page.rotation,
+            )
+            return (
+                to_png_bytes(crop) if crop is not None else None,
+                to_jpeg_bytes(overview) if overview is not None else None,
+            )
+        finally:
+            page.image.close()
 
 
 ProgressCallback = Callable[[int, int, Path], None]
@@ -250,15 +281,20 @@ def run_batch(
         try:
             result = analyzer.analyze(path, cancel)
         except BatchCancelledError:
+            partial = analyzer.last_result
+            if partial is not None:
+                partial.status = DocumentStatus.CANCELLED
+                batch.results.append(partial)
             batch.results.extend(
-                DocumentResult(path=p, status=DocumentStatus.CANCELLED) for p in files[index:]
+                DocumentResult(path=p, status=DocumentStatus.CANCELLED) for p in files[index + 1:]
             )
             break
         except AIConnectionError as exc:
             batch.abort_error = str(exc)
-            batch.results.append(
-                DocumentResult(path=path, status=DocumentStatus.ERROR, error=str(exc))
-            )
+            partial = analyzer.last_result or DocumentResult(path=path)
+            partial.status = DocumentStatus.ERROR
+            partial.error = str(exc)
+            batch.results.append(partial)
             batch.results.extend(
                 DocumentResult(path=p, status=DocumentStatus.CANCELLED) for p in files[index + 1 :]
             )
@@ -266,6 +302,9 @@ def run_batch(
         batch.results.append(result)
         if on_file_done is not None:
             on_file_done(index, result)
+    batch.preparation_s = sum(r.preparation_s for r in batch.results)
+    batch.loading_s = sum(r.loading_s for r in batch.results)
+    batch.inference_s = sum(r.inference_s for r in batch.results)
     batch.finished_at = time.time()
     return batch
 

@@ -10,6 +10,8 @@ from __future__ import annotations
 import io
 import math
 import warnings
+from collections.abc import Generator, Iterator
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,6 +46,8 @@ class PageImage:
     number: int  # 1-bazowy numer strony
     image: Image.Image  # RGB, pełna rozdzielczość robocza
     page_size_pt: tuple[float, float] | None = None  # (szerokość, wysokość) w punktach
+    page_bbox_pt: tuple[float, float, float, float] | None = None
+    rotation: int = 0
 
 
 def is_pdf(path: Path) -> bool:
@@ -51,27 +55,45 @@ def is_pdf(path: Path) -> bool:
 
 
 def load_pages(path: Path, max_pages: int) -> tuple[list[PageImage], int]:
-    """Wczytuje do ``max_pages`` stron dokumentu.
+    """Wczytuje kopie stron do listy. Analiza używa strumieniowego ``open_pages``."""
+    with open_pages(path, max_pages) as (pages, total):
+        return [
+            PageImage(p.number, p.image.copy(), p.page_size_pt, p.page_bbox_pt, p.rotation)
+            for p in pages
+        ], total
 
-    Zwraca (strony, łączna_liczba_stron). Obsługuje PDF, obrazy jedno-
-    i wielostronicowe (TIFF). Rzuca :class:`DocumentReadError` dla plików
-    uszkodzonych lub zabezpieczonych hasłem.
+
+@contextmanager
+def open_pages(path: Path, max_pages: int) -> Iterator[tuple[Iterator[PageImage], int]]:
+    """Udostępnia strony pojedynczo; obraz jest ważny do kolejnego kroku iteratora.
+
+    Zamknięcie kontekstu zwalnia bieżący obraz i dokument również po błędzie
+    modelu lub anulowaniu. Wyjątki konsumenta nie są błędami odczytu pliku.
     """
-    try:
-        size = path.stat().st_size
-        if size > MAX_INPUT_FILE_BYTES:
-            raise DocumentReadError(
-                f"Plik ma {size / (1024 * 1024):.1f} MB; limit bezpieczeństwa wynosi "
-                f"{MAX_INPUT_FILE_BYTES // (1024 * 1024)} MB"
-            )
-        max_pages = max(1, min(int(max_pages), 500))
-        if is_pdf(path):
-            return _load_pdf_pages(path, max_pages)
-        return _load_image_pages(path, max_pages)
-    except DocumentReadError:
-        raise
-    except Exception as exc:  # pdfium/Pillow rzucają własne, różnorodne wyjątki
-        raise DocumentReadError(f"Nie można odczytać pliku: {exc}") from exc
+    with ExitStack() as resources:
+        try:
+            size = path.stat().st_size
+            if size > MAX_INPUT_FILE_BYTES:
+                raise DocumentReadError(
+                    f"Plik ma {size / (1024 * 1024):.1f} MB; limit bezpieczeństwa wynosi "
+                    f"{MAX_INPUT_FILE_BYTES // (1024 * 1024)} MB"
+                )
+            limit = max(1, min(int(max_pages), 500))
+            if is_pdf(path):
+                pdf = pdfium.PdfDocument(str(path))
+                resources.callback(pdf.close)
+                total = len(pdf)
+                pages = _iter_pdf_pages(pdf, min(total, limit))
+            else:
+                resources.enter_context(warnings.catch_warnings())
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                source = resources.enter_context(Image.open(path))
+                total = getattr(source, "n_frames", 1)
+                pages = _iter_image_pages(source, min(total, limit))
+        except Exception as exc:
+            raise DocumentReadError(f"Nie można odczytać pliku: {exc}") from exc
+        resources.callback(pages.close)
+        yield pages, total
 
 
 def render_pdf_page(path: Path, page_number: int) -> PageImage:
@@ -85,25 +107,33 @@ def render_pdf_page(path: Path, page_number: int) -> PageImage:
         if not 1 <= page_number <= len(pdf):
             raise DocumentReadError(f"Strona {page_number} poza zakresem")
         return _render_page(pdf, page_number)
-    finally:
-        pdf.close()
-
-
-def _load_pdf_pages(path: Path, max_pages: int) -> tuple[list[PageImage], int]:
-    try:
-        pdf = pdfium.PdfDocument(str(path))
     except Exception as exc:
-        raise DocumentReadError(f"Nie można otworzyć PDF: {exc}") from exc
-    try:
-        total = len(pdf)
-        pages = [_render_page(pdf, i + 1) for i in range(min(total, max_pages))]
-        return pages, total
+        raise DocumentReadError(f"Nie można odczytać strony {page_number}: {exc}") from exc
     finally:
         pdf.close()
+
+
+def _iter_pdf_pages(pdf: pdfium.PdfDocument, count: int) -> Generator[PageImage, None, None]:
+    for number in range(1, count + 1):
+        try:
+            page = _render_page(pdf, number)
+        except Exception as exc:
+            raise DocumentReadError(f"Nie można odczytać strony {number}: {exc}") from exc
+        try:
+            yield page
+        finally:
+            page.image.close()
 
 
 def _render_page(pdf: pdfium.PdfDocument, page_number: int) -> PageImage:
     page = pdf[page_number - 1]
+    try:
+        return _render_open_page(page, page_number)
+    finally:
+        page.close()
+
+
+def _render_open_page(page: pdfium.PdfPage, page_number: int) -> PageImage:
     width_pt, height_pt = page.get_size()
     if (
         not math.isfinite(width_pt)
@@ -117,24 +147,31 @@ def _render_page(pdf: pdfium.PdfDocument, page_number: int) -> PageImage:
     if longest > MAX_WORKING_SIDE:
         scale = MAX_WORKING_SIDE / max(width_pt, height_pt)
     bitmap = page.render(scale=scale)
-    image = bitmap.to_pil().convert("RGB")
-    return PageImage(number=page_number, image=image, page_size_pt=(width_pt, height_pt))
+    try:
+        image = bitmap.to_pil().convert("RGB")
+    finally:
+        bitmap.close()
+    return PageImage(
+        number=page_number, image=image, page_size_pt=(width_pt, height_pt),
+        page_bbox_pt=page.get_bbox(), rotation=page.get_rotation(),
+    )
 
 
-def _load_image_pages(path: Path, max_pages: int) -> tuple[list[PageImage], int]:
-    pages: list[PageImage] = []
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", Image.DecompressionBombWarning)
-        with Image.open(path) as im:
-            total = getattr(im, "n_frames", 1)
-            for frame in range(min(total, max_pages)):
-                if total > 1:
-                    im.seek(frame)
-                frame_img = ImageOps.exif_transpose(im) or im
-                frame_img = frame_img.convert("RGB")
-                frame_img = _cap_size(frame_img)
-                pages.append(PageImage(number=frame + 1, image=frame_img))
-    return pages, total
+def _iter_image_pages(source: Image.Image, count: int) -> Generator[PageImage, None, None]:
+    for frame in range(count):
+        try:
+            source.seek(frame)
+            with ImageOps.exif_transpose(source) as oriented:
+                rgb = oriented.convert("RGB")
+            image = _cap_size(rgb)
+            if image is not rgb:
+                rgb.close()
+        except Exception as exc:
+            raise DocumentReadError(f"Nie można odczytać obrazu {frame + 1}: {exc}") from exc
+        try:
+            yield PageImage(number=frame + 1, image=image)
+        finally:
+            image.close()
 
 
 def _cap_size(image: Image.Image) -> Image.Image:

@@ -93,7 +93,10 @@ def _summary_html(batch: BatchResult) -> str:
         f"<div><b>{batch.signed_count}</b>z podpisami</div>"
         f"<div><b>{unsigned}</b>bez podpisów</div>"
         f"<div><b>{batch.error_count}</b>błędów</div>"
-        f"<div><b>{batch.duration_s:.0f}&nbsp;s</b>czas analizy</div>"
+        f"<div><b>{batch.duration_s:.2f}&nbsp;s</b>łącznie</div>"
+        f"<div><b>{batch.preparation_s:.2f}&nbsp;s</b>przygotowanie</div>"
+        f"<div><b>{batch.loading_s:.2f}&nbsp;s</b>ładowanie modelu</div>"
+        f"<div><b>{batch.inference_s:.2f}&nbsp;s</b>działanie modelu</div>"
         f"<div><b>{ok}</b>przetworzonych</div>"
         "</div>"
     )
@@ -193,6 +196,7 @@ def build_csv(batch: BatchResult) -> str:
             "p_podpisu_na_stronach",
             "przeanalizowane_strony",
             "wszystkie_strony",
+            "przygotowanie_s", "ladowanie_s", "dzialanie_s", "lacznie_s",
         ]
     )
     for r in batch.results:
@@ -201,7 +205,7 @@ def build_csv(batch: BatchResult) -> str:
                 _safe_csv_cell(r.path.name),
                 _safe_csv_cell(r.title),
                 _STATUS_LABELS[r.status],
-                "TAK" if r.is_signed else "NIE",
+                "TAK" if r.is_signed else ("NIE" if r.status == DocumentStatus.OK else ""),
                 "" if r.page_signature_probabilities else len(r.findings),
                 r.kinds_summary,
                 r.max_confidence if r.max_confidence is not None else "",
@@ -210,6 +214,7 @@ def build_csv(batch: BatchResult) -> str:
                 else "",
                 r.pages_analyzed,
                 r.page_count,
+                r.preparation_s, r.loading_s, r.inference_s, r.duration_s,
             ]
         )
     return buf.getvalue()

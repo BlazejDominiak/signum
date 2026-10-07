@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import time
 
 import requests
 
@@ -27,6 +28,7 @@ class AnthropicVisionModel(VisionModel):
         self._api_key = api_key
         self._model = model
         self._timeout_s = timeout_s
+        self.request_seconds: float = 0.0
 
     @property
     def name(self) -> str:
@@ -63,6 +65,7 @@ class AnthropicVisionModel(VisionModel):
                 }
             ],
         }
+        started = time.perf_counter()
         try:
             response = self._session.post(
                 f"{self._base_url}/messages",
@@ -73,6 +76,8 @@ class AnthropicVisionModel(VisionModel):
             )
         except requests.exceptions.RequestException as exc:
             raise AIConnectionError(f"Brak połączenia z Claude API: {exc}") from exc
+        finally:
+            self.request_seconds += time.perf_counter() - started
         if response.status_code != 200:
             raise AIResponseError(f"Claude API zwróciło HTTP {response.status_code}")
         try:

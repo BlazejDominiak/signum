@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import time
 
 import requests
 
@@ -27,6 +28,7 @@ class OpenAIVisionModel(VisionModel):
         self._model = model
         self._timeout_s = timeout_s
         self._supports_json_format = True
+        self.request_seconds: float = 0.0
 
     @property
     def name(self) -> str:
@@ -72,6 +74,7 @@ class OpenAIVisionModel(VisionModel):
             raise AIResponseError(f"Niepoprawna odpowiedź API: {exc}") from exc
 
     def _post(self, endpoint: str, payload: dict) -> requests.Response:
+        started = time.perf_counter()
         try:
             return self._session.post(
                 f"{self._base_url}{endpoint}",
@@ -82,6 +85,8 @@ class OpenAIVisionModel(VisionModel):
             )
         except requests.exceptions.RequestException as exc:
             raise AIConnectionError(f"Brak połączenia z {self._base_url}: {exc}") from exc
+        finally:
+            self.request_seconds += time.perf_counter() - started
 
     def check_connection(self) -> str:
         if not self._api_key and not is_loopback_endpoint(self._base_url):
@@ -97,7 +102,12 @@ class OpenAIVisionModel(VisionModel):
             raise AIConnectionError(f"Brak połączenia z {self._base_url}: {exc}") from exc
         if response.status_code == 401:
             raise AIResponseError("Klucz API odrzucony (HTTP 401)")
-        if response.status_code != 200:
+        if response.status_code in {404, 405}:
             # Niektóre proxy nie wystawiają /models — to nie przesądza o błędzie.
-            return f"Endpoint {self._base_url} odpowiada (HTTP {response.status_code})"
+            return (
+                f"Endpoint {self._base_url} nie udostępnia listy modeli "
+                f"(HTTP {response.status_code}); dostępność analizy niepotwierdzona"
+            )
+        if response.status_code != 200:
+            raise AIResponseError(f"Sprawdzenie API nie powiodło się (HTTP {response.status_code})")
         return f"Połączono z {self._base_url} — klucz API przyjęty"

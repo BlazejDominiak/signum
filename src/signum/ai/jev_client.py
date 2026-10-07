@@ -6,6 +6,7 @@ import base64
 import io
 import logging
 import math
+import time
 from collections.abc import Callable
 from typing import Any
 
@@ -20,6 +21,7 @@ from signum.ai.base import (
     VisionModel,
     VisualSignature,
 )
+from signum.ai.jev_additional import enrich_analysis
 from signum.ai.jev_prompts import DOCUMENT_TYPES, JEV_PROMPT_INSTRUCTIONS, decision_questions
 from signum.ai.jev_signature import QUALITY_QUESTIONS, parse_signature_views, signature_views
 from signum.ai.local_vjev import start_local_vjev, stop_local_vjev
@@ -41,12 +43,16 @@ class JevVisionModel(VisionModel):
         api_key: str = "",
         timeout_s: int = 300,
         runtime_dir: str = "",
+        additional_analysis: bool = False,
     ) -> None:
+        self.loading_seconds = 0.0
+        self.request_seconds: float = 0.0
         self._base_url = normalize_ai_endpoint(base_url, DEFAULT_URL, "API Jev")
         self._model = model
         self._timeout_s = timeout_s
         self._api_key = api_key
         self._runtime_dir = runtime_dir
+        self._additional_analysis = additional_analysis
         self._session = requests.Session()
         self._session.trust_env = not is_loopback_endpoint(self._base_url)
         if api_key:
@@ -54,9 +60,11 @@ class JevVisionModel(VisionModel):
 
     @property
     def name(self) -> str:
-        return f"vjev-vision: {self._model}"
+        suffix = " (dodatkowa analiza)" if self._additional_analysis else ""
+        return f"vjev-vision: {self._model}{suffix}"
 
     def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
+        started = time.perf_counter()
         try:
             response = self._session.request(
                 method,
@@ -70,6 +78,8 @@ class JevVisionModel(VisionModel):
                 f"Serwer vjev nie odpowiada pod {self._base_url}. "
                 "Lokalny model musi być uruchomiony przed analizą."
             ) from exc
+        finally:
+            self.request_seconds += time.perf_counter() - started
         if response.status_code != 200:
             hint = {
                 401: "Klucz API odrzucony",
@@ -138,7 +148,10 @@ class JevVisionModel(VisionModel):
                     QUALITY_QUESTIONS,
                 )
             )
-        return parse_signature_views(responses)
+        basic = parse_signature_views(responses)
+        if self._additional_analysis:
+            return enrich_analysis(image, basic, self._decide, check_cancelled)
+        return basic
 
     def check_connection(self) -> str:
         try:
@@ -146,7 +159,11 @@ class JevVisionModel(VisionModel):
         except AIConnectionError:
             if not self._runtime_dir or not is_loopback_endpoint(self._base_url):
                 raise
-            start_local_vjev(self._base_url, self._runtime_dir, self._timeout_s)
+            started = time.perf_counter()
+            try:
+                start_local_vjev(self._base_url, self._runtime_dir, self._timeout_s)
+            finally:
+                self.loading_seconds += time.perf_counter() - started
             data = self._request("GET", "models")
         models = data.get("models")
         if not isinstance(models, list) or not all(isinstance(item, dict) for item in models):

@@ -136,7 +136,9 @@ class TestCsv:
         rows = list(csv.reader(io.StringIO(build_csv(batch)), delimiter=";"))
         assert rows[1][4] == ""
         assert json.loads(rows[1][7]) == {"1": 0.172}
-        assert rows[1][8:] == ["1", "10"]
+        assert rows[1][8:10] == ["1", "10"]
+        assert rows[0][10:] == ["przygotowanie_s", "ladowanie_s", "dzialanie_s", "lacznie_s"]
+        assert rows[1][10:] == ["0.0", "0.0", "0.0", "0.0"]
         html = build_html(batch)
         assert "strona 1: 17.2%" in html
         assert "Nie zbadano wszystkich stron" in html

@@ -33,6 +33,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--provider", choices=PROVIDERS)
     parser.add_argument("--model", help="nazwa modelu (nadpisuje ustawienia)")
     parser.add_argument(
+        "--additional-analysis", action=argparse.BooleanOptionalAction, default=None,
+        help="opis/kategorie i wycinki dla Ollamy lub Jev; --no-additional-analysis wyłącza",
+    )
+    parser.add_argument(
         "--max-pages", type=_positive_int, metavar="N", help="limit stron na dokument"
     )
     parser.add_argument(
@@ -53,6 +57,11 @@ def main(argv: list[str] | None = None) -> int:
         setattr(config, f"{config.provider}_model", args.model)
     if args.max_pages is not None:
         config.max_pages_per_doc = args.max_pages
+    if args.additional_analysis is not None:
+        if config.provider not in {"ollama", "vjev"}:
+            print("Przełącznik dodatkowej analizy obsługuje Ollamę i Jev.", file=sys.stderr)
+            return 2
+        setattr(config, f"{config.provider}_additional_analysis", args.additional_analysis)
 
     files = collect_documents(args.paths, recursive=not args.no_recursive)
     if not files:
@@ -108,7 +117,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.csv:
         write_csv(args.csv, batch)
         print(f"Raport CSV: {args.csv}")
-    return 1 if batch.abort_error else 0
+    return 1 if batch.abort_error or batch.error_count else 0
 
 
 def _summarize(result: DocumentResult) -> str:

@@ -36,6 +36,14 @@ class TestExtractFirstJsonObject:
 
 
 class TestParsePageAnalysis:
+    @pytest.mark.parametrize("raw", [
+        "{}", '{"signatures":null}', '{"signatures":{}}',
+        '{"signatures":[null]}', '{"signatures":[{"type":"unknown"}]}',
+    ])
+    def test_nieprawidlowy_wynik_nie_oznacza_braku_podpisow(self, raw: str) -> None:
+        with pytest.raises(AIResponseError):
+            parse_page_analysis(raw)
+
     def test_pelna_odpowiedz(self) -> None:
         raw = (
             '{"description": "Umowa najmu", "signatures": ['

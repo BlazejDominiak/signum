@@ -4,7 +4,8 @@ Nawet ze structured outputs modele potrafią dokleić śmieci po JSON-ie
 (zaobserwowane na gemma4:12b: poprawny obiekt + ``<|tool_response>``),
 dlatego zawsze wycinamy pierwszy zbalansowany obiekt JSON z tekstu.
 Niepoprawne wpisy podpisów pomijamy pojedynczo — jeden zły element nie
-unieważnia całej strony.
+unieważnia całej strony. Brak listy lub lista wyłącznie błędnych wpisów
+powoduje błąd odpowiedzi, aby nie uznać jej za potwierdzenie braku podpisów.
 """
 
 from __future__ import annotations
@@ -75,11 +76,14 @@ def parse_page_analysis(raw: str) -> PageAnalysis:
 
     signatures: list[VisualSignature] = []
     raw_signatures = data.get("signatures")
-    if isinstance(raw_signatures, list):
-        for entry in raw_signatures:
-            parsed = _parse_signature(entry)
-            if parsed is not None:
-                signatures.append(parsed)
+    if not isinstance(raw_signatures, list):
+        raise AIResponseError("Odpowiedź modelu nie zawiera listy signatures")
+    for entry in raw_signatures:
+        parsed = _parse_signature(entry)
+        if parsed is not None:
+            signatures.append(parsed)
+    if raw_signatures and not signatures:
+        raise AIResponseError("Lista signatures nie zawiera poprawnych wpisów")
     return PageAnalysis(description=description, signatures=tuple(signatures))
 
 
