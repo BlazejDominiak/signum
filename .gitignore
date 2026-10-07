@@ -60,3 +60,9 @@ scratch/
 
 # Example documents remain local; regenerate with scripts/generate_fixtures.py.
 /examples/
+
+# Keep only the current installer and its checksum in the repository.
+!installer/output/
+installer/output/*
+!installer/output/Signum-Setup-1.1.3.exe
+!installer/output/Signum-Setup-1.1.3.exe.sha256

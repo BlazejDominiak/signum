@@ -149,7 +149,10 @@ which verifies that the selected service and model are actually available.
 
 ### Installer (recommended)
 
-Download `Signum-Setup-<version>.exe` from Releases and run it. Per-user install,
+Download [Signum-Setup-1.1.3.exe](installer/output/Signum-Setup-1.1.3.exe)
+from this repository ([SHA-256](installer/output/Signum-Setup-1.1.3.exe.sha256)).
+This candidate still needs clean-Windows acceptance testing and publisher signing.
+Run the installer to begin setup. Per-user install,
 no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate
 Python installation is not required for Signum itself. The installer offers optional
