@@ -30,7 +30,7 @@ dependencies = [
     "pypdf>=6.19.0",
     "Pillow>=10.4",
     "requests>=2.32",
-    "platformdirs>=4.0",
+    "platformdirs>=4.11.0",
     "keyring>=25.0",
 ]
 
