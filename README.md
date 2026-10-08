@@ -14,11 +14,18 @@ categories. Add your own model configurations: Ollama, an API with a custom URL,
 model and key (Chat Completions, Messages or Decisions), or a local JevK5 runtime.
 Compare any selected configurations sequentially on identical text inputs. Categories and prompts
 are saved independently of signature settings. Load your own PDFs, sample up to
-100 files from a folder, or open a locally saved benchmark protocol. Colored category
-badges connect the editor with results. The English default prompt is visible beside
-the results. Both tabs show preparation, local loading, model processing and total
+100 files from a folder, or open a locally saved benchmark protocol. Small color markers connect labels with results. The compact desktop layout puts
+documents and file commands first; expand **Instrukcja klasyfikacji** to edit the
+English default prompt, and **Pomiary** to inspect model timings. Both tabs show preparation, local loading, model processing and total
 times. Test connections in **Ustawienia AI** and double-click a PDF to open it.
 Results and timings can be exported to CSV or JSON.
+Use **Skopiuj do folderów…** or **Przenieś do folderów…** to organize the selected
+collection into label-named folders. Choose a destination, select a model/pass
+when comparing runs, and review every target path before applying the operation.
+Existing files are never overwritten; duplicate names receive numbered suffixes.
+Files without a successful classification are skipped. Moves verify the copied
+bytes before deleting the source and update paths in both workspaces and reports.
+Cancellation keeps completed files and leaves the remaining sources in place.
 **Test PDFs are local only and are not included in the repository or installer.**
 Git ignores PDF inputs; CI and the installer build check delivery inputs with
 `scripts/check_local_documents.py`. See the [Polish usage guide](docs/INSTRUKCJA.pl.md).
@@ -149,9 +156,8 @@ which verifies that the selected service and model are actually available.
 
 ### Installer (recommended)
 
-Download [Signum-Setup-1.1.3.exe](installer/output/Signum-Setup-1.1.3.exe)
-from this repository ([SHA-256](installer/output/Signum-Setup-1.1.3.exe.sha256)).
-This candidate still needs clean-Windows acceptance testing and publisher signing.
+Signum is a demo project. Download [Signum-Setup-1.1.4.exe](installer/output/Signum-Setup-1.1.4.exe)
+and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.4.exe.sha256).
 Run the installer to begin setup. Per-user install,
 no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate
@@ -194,7 +200,7 @@ ollama pull gemma4:12b
 ## Usage
 
 **GUI:** start Signum → (first run) *Ustawienia AI* → choose provider and model →
-drag & drop files/folders or use *Dodaj pliki…* / *Pracuj na folderze…* → *Przetwórz* →
+drag & drop files/folders or use *Dodaj pliki…* / *Dodaj folder…* → *Przetwórz* →
 confirm the single risk notice for the whole batch → review results and signature
 crops → *Zapisz raport…* (HTML/CSV).
 
@@ -260,8 +266,8 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1
 The build script runs a self-test of the packaged executable before invoking
 Inno Setup. This verifies the bundled Python runtime, required libraries and UI
 resources rather than merely checking that an `.exe` file exists. It also prints
-the SHA-256 digest and warns when the result lacks a valid Authenticode signature.
-Build outputs are ignored by Git; do not commit an installer to this repository.
+and saves the SHA-256 digest next to the installer. No signing certificate is required.
+The current demo installer and its checksum are tracked in Git; other build outputs are ignored.
 
 ### Project structure
 

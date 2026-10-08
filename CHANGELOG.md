@@ -2,6 +2,44 @@
 
 Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+## [1.1.4] — 2026-10-08
+
+### Fixed
+- Zachowanie klasyfikacji po anulowaniu selektora, dodaniu duplikatu i rozszerzeniu kolejki.
+- Wspólny werdykt zakresu analizy w GUI, CSV, HTML i CLI; częściowy wynik nie oznacza
+  braku podpisu w całym dokumencie. Puste struktury podpisu nie dają wyniku pozytywnego.
+- Zachowanie ukończonych wyników przy błędzie dalszej analizy i poprawna informacja
+  o przetwarzaniu Ollama Cloud w CLI.
+- Powiązanie klasyfikacji z tożsamością i SHA-256 pliku; zmieniony PDF wymaga analizy.
+- Wznawianie pobierania z kontrolą zakresu i sumy, sprawdzanie miejsca dla brakujących
+  modeli także przy istniejącej Ollamie, zachowanie katalogu AI podczas aktualizacji.
+- Wynik przygotowania AI wraca do instalatora; tryb cichy działa bez okien i zwraca
+  kod 10 przy niepowodzeniu AI. Ponowienie pomija składniki już sprawdzone w tej sesji.
+- Aktualizacja pypdf, urllib3 i cryptography; aktualizacja pip w CI.
+
+### Added
+- Ręczna korekta etykiety, wybór dokumentów do porządkowania i automatyczny zapis kolekcji
+  bez treści PDF-ów. Trwały dziennik operacji z oryginalnymi ścieżkami i sumami plików.
+- Scenariusze instalacji, aktualizacji, błędu przygotowania w trybie silent i odinstalowania
+  na jednorazowym runnerze Windows w CI.
+
+### Changed
+- Szczegóły i logi przygotowania AI są rozwijane; okno używa wspólnego stylu aplikacji.
+
+
+### Added
+- Kopiowanie i przenoszenie kolekcji PDF do folderów według etykiet: wybór przebiegu,
+  podgląd ścieżek, numerowanie kolizji, postęp i anulowanie.
+- Weryfikacja kopii przed usunięciem źródła; aktualizacja ścieżek w obu zakładkach
+  i raportach po pełnym lub częściowym przeniesieniu.
+
+### Changed
+- Zwarty interfejs biurowy: neutralne powierzchnie, prostokątne kontrolki, małe
+  oznaczenia etykiet i więcej miejsca na dokumenty.
+- Prompt, opisy etykiet i pomiary rozwijane na żądanie; polecenia testowe w menu Więcej.
+
 ## [1.1.3] — 2026-10-07
 
 ### Added

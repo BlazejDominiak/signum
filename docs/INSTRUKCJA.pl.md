@@ -6,28 +6,73 @@ oraz **Sprawdzanie podpisów**. Każda ma własną kolejkę i wyniki.
 ## Kategoryzowanie dokumentów
 
 1. Otwórz zakładkę **Kategoryzowanie dokumentów** i dodaj PDF-y lub folder.
-   **Losuj 100 z folderu…** wybiera do 100 plików. **Zestaw lokalny…**
+   Menu **Więcej → Losuj 100 z folderu…** wybiera do 100 plików. **Otwórz zestaw lokalny…**
    otwiera PDF-y wskazane w zapisanym protokole testu na tym komputerze.
    Dokumenty testowe nie są dołączone do repozytorium ani instalatora.
-2. W tabeli po lewej wpisz własne nazwy kategorii i opcjonalne opisy.
+2. W tabeli po lewej wpisz własne etykiety. Przycisk **Opisy** pokazuje dodatkową
+   kolumnę z edytowalnymi wskazówkami dla modelu.
    Do dyspozycji jest 12 wierszy; puste wiersze są pomijane, wymagane są co najmniej
    dwie różne kategorie. Przycisk **Przykładowe** przywraca 12 rodzajów dokumentów
    i przykładową instrukcję. Kolor kategorii powtarza się przy jej wynikach.
-   Prompt jest widoczny pod tabelą, a jego domyślna treść jest po angielsku.
+   Przycisk **Instrukcja klasyfikacji** rozwija edytor promptu pod tabelą.
+   Domyślna treść jest po angielsku.
    Zmiany zapisują się automatycznie, niezależnie od ustawień podpisów.
 3. Otwórz **Ustawienia AI…**. Dodaj własne modele, w razie potrzeby duplikując
    konfigurację. Zaznacz modele do porównania albo wybierz pojedynczy model
    z listy na głównym ekranie. Liczba przejść wynosi od 1 do 10.
 4. Kliknij **Kategoryzuj** lub **Porównaj modele** i potwierdź okno przed analizą.
    Przy usługach zdalnych okno wskazuje wybrane adresy API.
-5. Tabela pokazuje kategorię i czas działania modelu dla każdej próby.
-   Kafelki rozbijają pomiar na przygotowanie tekstu, ładowanie lokalnego modelu,
-   działanie modelu i czas łączny. Pasek pod wynikami pokazuje czas całego porównania.
+5. Tabela pokazuje etykietę, model i status każdej próby.
+   Przycisk **Pomiary** rozwija czasy przygotowania tekstu, ładowania,
+   działania modeli i całego porównania.
 6. Dwukrotnie kliknij wiersz PDF-u, aby go otworzyć. Menu pod prawym przyciskiem
    umożliwia również otwarcie folderu. Działa przed analizą i w wynikach.
-7. **Zapisz wyniki…** eksportuje CSV lub pełny raport JSON, również po anulowaniu.
+7. **Skopiuj do folderów…** lub **Przenieś do folderów…** układa kolekcję
+   według etykiet — szczegóły poniżej.
+8. **Zapisz wyniki…** eksportuje CSV lub pełny raport JSON, również po anulowaniu.
    Raport zawiera ścieżki PDF-ów, kategorie, czasy i skróty wejść; nie zawiera
    tekstów dokumentów ani kluczy API.
+
+### Porządkowanie kolekcji w folderach
+
+Po zakończeniu klasyfikacji wybierz **Skopiuj do folderów…** lub
+**Przenieś do folderów…** na pasku poleceń. Operacja obejmuje zaznaczone dokumenty z wynikiem wybranego przebiegu.
+Wskaż folder docelowy. Jeśli wykonywano kilka modeli lub przejść, wybierz jeden
+wynik w polu **Etykiety z**. Etykiety pochodzą z wybranego przebiegu analizy;
+zmiana listy kategorii po analizie nie zmienia istniejących wyników.
+
+Przed operacją zaznacz wiersz i użyj **Zmień etykietę…**, aby poprawić kategorię.
+Odznaczenie pola obok nazwy pliku wyłącza go z porządkowania. Korekta jest zapisywana
+jako ręczna; pierwotny wynik modelu pozostaje w danych sesji.
+
+Kolekcja i jej wyniki zapisują się automatycznie i wracają po uruchomieniu programu.
+Plik `%APPDATA%/Signum/collection.json` zawiera ścieżki, etykiety i identyfikatory plików,
+a nie wyekstrahowaną treść PDF. **Wyczyść listę** usuwa bieżącą sesję. Historia operacji
+jest dostępna przez **Więcej → Dziennik operacji**; nie oznacza automatycznego cofania.
+
+Tabela pokazuje każdy dokument, docelową ścieżkę i pliki pomijane. Kliknięcie
+**Skopiuj** lub **Przenieś** wykonuje wyświetlony plan, np.:
+
+```text
+Wybrany folder/
+  Umowy i porozumienia/Umowa najmu.pdf
+  Finanse i rozliczenia/Faktura.pdf
+```
+
+- Kopiowanie zachowuje oryginały. Przenoszenie usuwa źródło dopiero po sprawdzeniu
+  kopii sumą SHA-256 i aktualizuje ścieżki w obu zakładkach oraz eksportach.
+- Istniejące pliki nie są nadpisywane. Powtarzające się nazwy dostają przyrostki
+  `(2)`, `(3)` itd.; dokładna nazwa jest widoczna w podglądzie.
+- Znaki niedozwolone w nazwach folderów Windows są zastępowane `_`. Kolizje nazw
+  etykiet po tej zmianie tworzą osobne numerowane foldery.
+- Pliki bez wyniku wybranego przebiegu, z błędem, brakujące albo już znajdujące się
+  we właściwym folderze są pomijane. Dowiązania do plików i folderów kategorii
+  nie są obsługiwane. Można uporządkować także częściowe wyniki anulowanej analizy.
+- **Anuluj** zatrzymuje dalsze operacje. Zakończone kopie/przeniesienia pozostają;
+  nieukończona kopia jest usuwana, a jej źródło pozostaje na miejscu.
+- Błędy pojedynczego pliku nie zatrzymują reszty kolekcji. Wynik widać w kolumnie
+  **Stan**; pełny komunikat pojawia się po najechaniu. **Otwórz folder** otwiera wynik
+  w Eksploratorze. Jeśli plik zmienił się po klasyfikacji, powtórz jego analizę przed porządkowaniem.
 
 **Ustawienia AI…** oferują:
 - **Ollama** — adres serwera, dowolny model wpisany ręcznie lub wybrany
@@ -82,8 +127,7 @@ Wymagany jest Windows 10 22H2 lub nowszy (w tym Windows 11); instalator odrzuca 
    Instalator zawiera własny runtime Pythona i biblioteki — użytkownik nie musi
    osobno instalować Pythona dla samej aplikacji. Na ekranie składników możesz
    wybrać Ollamę i modele do lokalnej analizy albo pozostawić sam Signum.
-   Przed uruchomieniem instalatora pobranego spoza oficjalnego źródła sprawdź
-   jego podpis Authenticode lub sumę SHA-256 podaną przez wydawcę.
+   Suma SHA-256 instalatora znajduje się w pliku obok pakietu w repozytorium.
 2. Dla lokalnego AI wybierz składniki. Instalator odczytuje dedykowaną pamięć
    GPU na tym samym ekranie i oznacza zalecany model: Gemma 4 E2B
    dla 8 GB albo Gemma 4 12B dla 16 GB. Jev (podpisy) i JevK5 (kategoryzacja) wymagają w tym pakiecie NVIDIA 16 GB.
@@ -229,7 +273,7 @@ oznacza odejście od przetestowanego wariantu i może zmienić jakość oraz kal
 ## Praca z programem
 
 1. **Dodaj dokumenty**: przeciągnij pliki lub całe foldery do okna, albo użyj
-   przycisków **Dodaj pliki…** / **Pracuj na folderze…**.
+   przycisków **Dodaj pliki…** / **Dodaj folder…**.
 2. Kliknij **Przetwórz**. Program pokaże jedno ostrzeżenie dla całej kolejki —
    nie wyświetla go przy każdym dodawanym pliku. Aby rozpocząć, potwierdź prawo
    do przetwarzania dokumentów, sposób przekazania danych do modelu oraz
@@ -287,3 +331,32 @@ Bez flagi `--acknowledge-risks` CLI wyświetla ostrzeżenie i kończy działanie
 | PDF ze statusem „Błąd: … zaszyfrowany" | zdejmij hasło z pliku przed analizą |
 | Brak wycinka przy wykrytym podpisie | Włącz „Dodatkową analizę” w ustawieniach Ollamy lub Jev. Także w tym trybie lokalizacja może się nie udać mimo wykrycia podpisu. Zweryfikuj w pliku |
 | Wycinek pokazuje fragment bez podpisu | lokalizacja z modelu bywa przybliżona — spójrz na miniaturę strony z czerwoną ramką w raporcie HTML |
+
+
+### Instalacja 1.1.4 — stan AI i tryb cichy
+
+Ekran końcowy rozróżnia zainstalowanie programu i gotowość AI. Przy błędzie użyj
+**Składniki AI → Instaluj / napraw**. W otwartym oknie **Spróbuj ponownie** pomija
+składniki już sprawdzone w tym podejściu. Log i licencje są pod **Szczegóły**.
+Przerwane pobieranie jest wznawiane, jeśli serwer obsługuje zakresy; gotowy plik
+z przypiętą sumą SHA-256 jest sprawdzany przed użyciem.
+
+Przy istniejącej Ollamie program korzysta z jej magazynu modeli. Jeżeli usługa używa
+niestandardowej lokalizacji, wskaż ją w **Składniki AI → Szczegóły instalacji**.
+API Ollamy nie ujawnia tej ścieżki. Dla usługi uruchomionej poza bieżącą sesją Signum
+pobranie brakującego modelu wymaga potwierdzonego folderu; program sprawdza na nim wolne
+miejsce. Instalator interaktywny proponuje OLLAMA_MODELS lub domyślną lokalizację do
+potwierdzenia. W trybie cichym podaj `/OLLAMAMODELDIR`, jeśli ścieżka nie była zapisana.
+
+Przykład instalacji bez okien (PowerShell):
+
+```powershell
+.\Signum-Setup-1.1.4.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ACKNOWLEDGERISKS=1 /COMPONENTS=app,gemma_small /AIDIR="H:\Tools\SignumAI"
+```
+
+Parametr `/OLLAMAMODELDIR="pełna ścieżka"` wskazuje magazyn istniejącej usługi.
+Kod 0 oznacza sukces, 10 — program zainstalowany, ale przygotowanie AI nieudane.
+Raport przygotowania instalatora znajduje się w `%APPDATA%/Signum/setup-result.json`.
+Aktualizacja zachowuje wcześniej wybrany katalog; odinstalowanie pozostawia modele.
+
+Instalator demo buduje się poleceniem `scripts/build_installer.ps1`; certyfikat nie jest potrzebny.
