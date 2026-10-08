@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSplitter,
     QStackedLayout,
+    QStyle,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -100,7 +101,7 @@ class MainWindow(QMainWindow):
     def _build_actions(self) -> None:
         self.act_add_files = QAction("Dodaj pliki…", self)
         self.act_add_files.triggered.connect(self._on_add_files)
-        self.act_add_folder = QAction("Pracuj na folderze…", self)
+        self.act_add_folder = QAction("Dodaj folder…", self)
         self.act_add_folder.triggered.connect(self._on_add_folder)
         self.act_process = QAction("Przetwórz", self)
         self.act_process.triggered.connect(self._on_process)
@@ -116,6 +117,12 @@ class MainWindow(QMainWindow):
         self.act_components.triggered.connect(self._on_components)
         self.act_about = QAction("O programie", self)
         self.act_about.triggered.connect(self._on_about)
+        for action, icon in (
+            (self.act_add_files, QStyle.StandardPixmap.SP_FileIcon),
+            (self.act_add_folder, QStyle.StandardPixmap.SP_DirOpenIcon),
+            (self.act_export, QStyle.StandardPixmap.SP_DialogSaveButton),
+        ):
+            action.setIcon(self.style().standardIcon(icon))
 
     def _build_toolbar(self) -> None:
         self.signature_toolbar = QToolBar("Główne")
@@ -123,6 +130,7 @@ class MainWindow(QMainWindow):
 
     def _action_button(self, action: QAction, role: str = "") -> QPushButton:
         button = QPushButton(action.text())
+        button.setIcon(action.icon())
         if role:
             button.setProperty("role", role)
         button.clicked.connect(action.trigger)
@@ -132,20 +140,17 @@ class MainWindow(QMainWindow):
 
     def _build_central(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(12)
+        splitter.setHandleWidth(5)
 
         # Lewa strona: podpowiedź (pusty stan) albo tabela wyników.
         left = QWidget()
         left.setProperty("role", "card")
         self._left_stack = QStackedLayout(left)
-        self._left_stack.setContentsMargins(12, 12, 12, 12)
+        self._left_stack.setContentsMargins(8, 8, 8, 8)
 
-        hint = QLabel(
-            "Przeciągnij tutaj pliki PDF lub skany\n(albo całe foldery)\n\n"
-            "Możesz też użyć przycisków „Dodaj pliki…” i „Pracuj na folderze…”"
-        )
+        hint = QLabel("Przeciągnij tutaj pliki PDF lub skany")
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        hint.setStyleSheet("color: #66768C; font-size: 15px;")
+        hint.setProperty("role", "muted")
         self._left_stack.addWidget(hint)
 
         self.table = QTableWidget(0, 5)
@@ -154,7 +159,7 @@ class MainWindow(QMainWindow):
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.verticalHeader().setVisible(False)
-        self.table.verticalHeader().setDefaultSectionSize(38)
+        self.table.verticalHeader().setDefaultSectionSize(30)
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
         self.table.setColumnWidth(_COL_FILE, 180)
@@ -172,40 +177,32 @@ class MainWindow(QMainWindow):
         splitter.setSizes([740, 440])
         signature_page = QWidget()
         signature_layout = QVBoxLayout(signature_page)
-        signature_layout.setContentsMargins(22, 16, 22, 16)
-        signature_layout.setSpacing(14)
-        title = QLabel("Sprawdzanie podpisów")
-        title.setProperty("role", "title")
-        heading = QHBoxLayout()
-        heading.addWidget(title, 1)
-        heading.addWidget(self._action_button(self.act_about, "quiet"))
-        signature_layout.addLayout(heading)
+        signature_layout.setContentsMargins(8, 0, 8, 6)
+        signature_layout.setSpacing(6)
         file_bar = QWidget()
-        file_bar.setProperty("role", "card")
+        file_bar.setProperty("role", "commandBar")
         files_layout = QHBoxLayout(file_bar)
-        files_layout.setContentsMargins(14, 10, 14, 10)
-        files_heading = QLabel("Dokumenty")
-        files_heading.setProperty("role", "heading")
-        files_layout.addWidget(files_heading)
-        self.signature_file_count = QLabel("0 plików")
-        self.signature_file_count.setProperty("role", "badge")
-        files_layout.addWidget(self.signature_file_count)
-        files_layout.addStretch()
-        for action in (self.act_add_files, self.act_add_folder, self.act_clear):
+        files_layout.setContentsMargins(4, 7, 4, 7)
+        for action in (self.act_add_files, self.act_add_folder, self.act_clear, self.act_export):
             files_layout.addWidget(self._action_button(action))
+        files_layout.addStretch()
+        self.signature_file_count = QLabel("0 plików")
+        self.signature_file_count.setProperty("role", "muted")
+        files_layout.addWidget(self.signature_file_count)
         signature_layout.addWidget(file_bar)
 
         model_bar = QWidget()
-        model_bar.setProperty("role", "card")
+        model_bar.setProperty("role", "commandBar")
         model_layout = QHBoxLayout(model_bar)
-        model_layout.setContentsMargins(14, 10, 14, 10)
+        model_layout.setContentsMargins(0, 0, 0, 6)
         self.signature_model = QLabel()
         self.signature_model.setTextFormat(Qt.TextFormat.PlainText)
         model_layout.addWidget(self.signature_model, 1)
         self.settings_button = self._action_button(self.act_settings)
         model_layout.addWidget(self.settings_button)
         model_layout.addWidget(self._action_button(self.act_components))
-        model_layout.addWidget(self._action_button(self.act_export))
+        model_layout.addWidget(self._action_button(self.act_cancel))
+        model_layout.addWidget(self._action_button(self.act_process, "primary"))
         signature_layout.addWidget(model_bar)
         self.signature_layout = signature_layout
         signature_layout.addWidget(splitter, 1)
@@ -215,8 +212,22 @@ class MainWindow(QMainWindow):
         self.mode_tabs.addTab(self.classification, "Kategoryzowanie dokumentów")
         self.classification.busy_changed.connect(self._classification_busy_changed)
         self.classification.settings_changed.connect(self._reload_config)
+        self.classification.files_moved.connect(self._files_moved)
         self.mode_tabs.currentChanged.connect(self._mode_changed)
+        self.mode_tabs.setCornerWidget(self._action_button(self.act_about, "quiet"))
         self.setCentralWidget(self.mode_tabs)
+
+    def _files_moved(self, moved: dict[Path, Path]) -> None:
+        self._files = [moved.get(path, path) for path in self._files]
+        results = list(self._results.values())
+        if self._last_batch:
+            results += self._last_batch.results
+        for result in {id(result): result for result in results}.values():
+            result.path = moved.get(result.path, result.path)
+        for index, path in enumerate(self._files):
+            self._cell(index, _COL_FILE).setText(path.name)
+            self._cell(index, _COL_FILE).setToolTip(str(path))
+        self._on_selection_changed()
 
     def _reload_config(self) -> None:
         self._config = AppConfig.load()
@@ -235,15 +246,13 @@ class MainWindow(QMainWindow):
 
     def _build_details_panel(self) -> QWidget:
         self.details_scroll = QScrollArea()
-        self.details_scroll.setStyleSheet(
-            "QScrollArea { background: white; border: 1px solid #DEE6F1; border-radius: 12px; }"
-        )
+        self.details_scroll.setObjectName("signatureDetailsScroll")
         self.details_scroll.setWidgetResizable(True)
         self.details_container = QWidget()
         self.details_container.setStyleSheet("QWidget#signatureDetails { background: white; }")
         self.details_container.setObjectName("signatureDetails")
         self.details_layout = QVBoxLayout(self.details_container)
-        self.details_layout.setContentsMargins(16, 16, 16, 16)
+        self.details_layout.setContentsMargins(12, 12, 12, 12)
         self.details_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.details_scroll.setWidget(self.details_container)
         self._show_details_placeholder()
@@ -257,7 +266,7 @@ class MainWindow(QMainWindow):
         self.signature_layout.addWidget(self.progress)
         controls = QHBoxLayout()
         info = QVBoxLayout()
-        self.status_label = QLabel("Gotowy")
+        self.status_label = QLabel("AI: połączenie niesprawdzone")
         self.status_label.setTextFormat(Qt.TextFormat.PlainText)
         self.status_label.setWordWrap(True)
         info.addWidget(self.status_label)
@@ -267,8 +276,6 @@ class MainWindow(QMainWindow):
         controls.addLayout(info, 1)
         self.online_badge = _OnlineBadge()
         controls.addWidget(self.online_badge)
-        controls.addWidget(self._action_button(self.act_cancel))
-        controls.addWidget(self._action_button(self.act_process, "primary"))
         self.signature_layout.addLayout(controls)
         self.statusBar().hide()
         self._signature_timer = QTimer(self)
@@ -492,7 +499,7 @@ class MainWindow(QMainWindow):
         self._show_details_placeholder()
         self.progress.setValue(0)
         self.signature_elapsed.clear()
-        self.status_label.setText("Gotowy")
+        self.status_label.setText("Dodaj dokumenty")
         self._update_action_states()
 
     def _on_components(self) -> None:
@@ -709,7 +716,7 @@ class MainWindow(QMainWindow):
 
     def _show_details_placeholder(self) -> None:
         self._clear_details()
-        label = QLabel("Wybierz przetworzony plik, aby zobaczyć szczegóły i wycinki podpisów.")
+        label = QLabel("Wybierz dokument")
         label.setWordWrap(True)
         label.setStyleSheet("color: #888;")
         self.details_layout.addWidget(label)
@@ -827,6 +834,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # type: ignore[no-untyped-def] # noqa: N802 — API Qt
         self.classification.save_preferences()
+        self.classification._persist_collection()
         if self.classification.is_busy():
             self._close_when_finished = True
             self.classification.cancel()
@@ -918,7 +926,7 @@ class _OnlineBadge(QFrame):
         super().__init__()
         self.setObjectName("onlineBadge")
         self.setStyleSheet(
-            "#onlineBadge { border: 2px solid #c62828; border-radius: 6px;"
+            "#onlineBadge { border: 1px solid #c62828; border-radius: 0;"
             " background: #fff; }"
             "#onlineBadge QLabel { color: #c62828; font-weight: 600; border: none; }"
         )

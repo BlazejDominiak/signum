@@ -149,10 +149,12 @@ def test_connection_test_uses_unsaved_fields_without_saving_keys(qtbot, monkeypa
 
 
 @pytest.mark.parametrize("saved", ["", LEGACY_DEFAULT_INSTRUCTIONS, "My custom instructions"])
-def test_prompt_visible_and_only_old_default_is_migrated(qtbot, isolated_config, saved):
+def test_prompt_can_be_expanded_and_only_old_default_is_migrated(qtbot, isolated_config, saved):
     AppConfig(classification_prompt=saved).save()
     panel = ClassificationPanel()
     qtbot.addWidget(panel)
+    assert panel.prompt.isHidden()
+    panel.prompt_toggle.setChecked(True)
     assert not panel.prompt.isHidden()
     expected = saved if saved == "My custom instructions" else DEFAULT_INSTRUCTIONS
     assert panel.prompt.toPlainText() == expected

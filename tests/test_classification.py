@@ -177,7 +177,7 @@ def test_remote_ollama_is_identified_for_run_confirmation(qtbot, isolated_config
     assert panel.profiles[0].label == config.classification_ollama_model
 
 
-def test_result_colors_keep_run_categories_and_queue_change_resets_metrics(
+def test_result_colors_and_metrics_survive_duplicate_additions(
     qtbot, isolated_config, docs_dir: Path
 ):
     from PySide6.QtCore import Qt
@@ -199,9 +199,9 @@ def test_result_colors_keep_run_categories_and_queue_change_resets_metrics(
     assert panel.table.item(1, 2).data(Qt.ItemDataRole.UserRole) == 0
     assert panel.metric_cards["venice"].value.text() == "1.25 s"
     panel.add_files([docs_dir])
-    assert not panel.rows and panel.batch is None
-    assert panel.metric_cards["venice"].value.text() == "—"
-    assert panel.progress.value() == 0
+    assert len(panel.rows) == 2
+    assert panel.metric_cards["venice"].value.text() == "1.25 s"
+    assert panel.progress.value() == 2
     panel.clear()
     assert panel.result_stack.currentIndex() == 0
 

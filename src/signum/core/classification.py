@@ -17,6 +17,8 @@ from typing import Any, Protocol
 
 from pypdf import PdfReader
 
+from signum.core.file_identity import Fingerprint, fingerprint
+
 LEGACY_DEFAULT_INSTRUCTIONS = (
     "Wybierz dokładnie jedną kategorię najlepiej opisującą główny rodzaj dokumentu. "
     "Kieruj się jego funkcją, a nie samym tematem: np. umowę dotyczącą szkolenia "
@@ -89,6 +91,9 @@ class TextDocument:
     truncated: bool = False
     error: str = ""
 
+    source_sha256: str = ""
+    source_fingerprint: Fingerprint | None = None
+
     @property
     def text_sha256(self) -> str:
         return hashlib.sha256(self.text.encode()).hexdigest()
@@ -108,6 +113,12 @@ class ClassificationRow:
     characters: int = 0
     truncated: bool = False
     loading_s: float = 0.0
+    source_sha256: str = ""
+    source_fingerprint: Fingerprint | None = None
+    category_source: str = "model"
+    model_category: str = ""
+    excluded: bool = False
+
 
 
 @dataclass
@@ -136,7 +147,16 @@ class TextClassifier(Protocol):
 def extract_document(path: Path, cancel: threading.Event) -> TextDocument:
     doc = TextDocument(path=path)
     try:
+        doc.source_fingerprint = fingerprint(path)
+        if path.stat().st_size > 250 * 1024 * 1024:
+            raise ValueError("PDF przekracza limit 250 MB")
         with path.open("rb") as handle:
+            digest = hashlib.sha256()
+            while chunk := handle.read(1024 * 1024):
+                check_cancel(cancel)
+                digest.update(chunk)
+            doc.source_sha256 = digest.hexdigest()
+            handle.seek(0)
             reader = PdfReader(handle)
             doc.pages = len(reader.pages)
             chunks: list[str] = []
@@ -148,6 +168,8 @@ def extract_document(path: Path, cancel: threading.Event) -> TextDocument:
                     doc.truncated = len(text) > 12000 or index + 1 < doc.pages
                     break
             doc.text = re.sub(r"\s+", " ", " ".join(chunks)).strip()[:12000]
+        if fingerprint(path) != doc.source_fingerprint:
+            raise ValueError("PDF zmienił się podczas odczytu. Powtórz analizę.")
         if not doc.text:
             doc.error = "Brak warstwy tekstowej PDF — ten tryb nie wykonuje OCR."
     except ClassificationCancelledError:
@@ -246,6 +268,8 @@ def run_classification(
                             doc.path, model_name, repeat,
                             error=doc.error or setup_error, text_sha256=doc.text_sha256,
                             characters=len(doc.text), truncated=doc.truncated,
+                            source_sha256=doc.source_sha256,
+                            source_fingerprint=doc.source_fingerprint,
                         )
                         if not row.error and client is not None:
                             tick = time.perf_counter()

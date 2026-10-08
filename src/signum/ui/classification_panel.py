@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import random
+import shutil
 import time
+from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, Qt, QTimer, QUrl, Signal
@@ -15,6 +17,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QHeaderView,
+    QInputDialog,
     QLabel,
     QMenu,
     QMessageBox,
@@ -25,6 +28,7 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QSplitter,
     QStackedWidget,
+    QStyle,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -42,11 +46,20 @@ from signum.core.classification import (
     make_question,
     write_classification_report,
 )
+from signum.core.collection_session import (
+    journal_path,
+    load_collection,
+    save_collection,
+    session_path,
+)
 from signum.core.discovery import collect_documents
+from signum.core.file_identity import fingerprint
+from signum.core.filing import FilingMode, FilingResult
 from signum.local_components import repair_instructions
 from signum.ui.batch_risk_dialog import BatchRiskDialog
 from signum.ui.classification_worker import ClassificationWorker
 from signum.ui.components_dialog import ComponentsDialog
+from signum.ui.filing_dialog import FilingDialog
 from signum.ui.models_dialog import ModelsDialog
 from signum.ui.theme import CategoryDelegate
 
@@ -83,6 +96,7 @@ class ModelMetricCard(QWidget):
 class ClassificationPanel(QWidget):
     busy_changed = Signal(bool)
     settings_changed = Signal()
+    files_moved = Signal(object)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -91,6 +105,8 @@ class ClassificationPanel(QWidget):
         self.batch: ClassificationBatch | None = None
         self.worker: ClassificationWorker | None = None
         self.started = 0.0
+        self._filing_busy = False
+        self._filing_dialog: FilingDialog | None = None
         self._run_category_colors: dict[str, int] = {}
         self._expected_rows = 0
         self.profiles: list[ModelProfile] = []
@@ -102,159 +118,202 @@ class ClassificationPanel(QWidget):
         self._save_timer.timeout.connect(self.save_preferences)
         self._elapsed_timer = QTimer(self)
         self._elapsed_timer.timeout.connect(self._refresh_elapsed)
+        self._session_path = session_path()
+        self._checkpoint_timer = QTimer(self)
+        self._checkpoint_timer.setSingleShot(True)
+        self._checkpoint_timer.timeout.connect(self._persist_collection)
+        self._restoring = False
+        self._checkpoint_disabled = False
         self._build_ui()
         self._load_preferences()
+        self._restore_collection()
         self._loading = False
 
     def _build_ui(self) -> None:
         self.setObjectName("classificationPanel")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(22, 16, 22, 16)
-        layout.setSpacing(14)
-        layout.addWidget(_label("Kategoryzowanie dokumentów", "title"))
+        layout.setContentsMargins(8, 0, 8, 6)
+        layout.setSpacing(6)
 
         file_bar = QWidget()
-        file_bar.setProperty("role", "card")
+        file_bar.setProperty("role", "commandBar")
         top = QHBoxLayout(file_bar)
-        top.setContentsMargins(14, 10, 14, 10)
-        top.addWidget(_label("Dokumenty", "heading"))
-        self.file_count = _label("0 PDF", "badge")
-        top.addWidget(self.file_count)
-        top.addStretch(1)
+        top.setContentsMargins(4, 7, 4, 7)
+        top.setSpacing(4)
         self.add_button = QPushButton("Dodaj PDF-y…")
+        self.add_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon))
         self.add_button.clicked.connect(self._add_dialog)
         self.folder_button = QPushButton("Dodaj folder…")
+        self.folder_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
         self.folder_button.clicked.connect(self._folder_dialog)
+        self.copy_button = QPushButton("Skopiuj do folderów…")
+        self.copy_button.clicked.connect(lambda: self._file_collection("copy"))
+        self.move_button = QPushButton("Przenieś do folderów…")
+        self.move_button.clicked.connect(lambda: self._file_collection("move"))
+        self.copy_button.setEnabled(False)
+        self.move_button.setEnabled(False)
         self.sample_button = QPushButton("Losuj 100 z folderu…")
         self.sample_button.clicked.connect(self._sample_dialog)
         self.benchmark_button = QPushButton("Zestaw lokalny…")
-        self.benchmark_button.setToolTip(
-            "Otwórz PDF-y wskazane w lokalnym protokole testu. "
-            "Dokumenty nie są dołączone do programu."
-        )
         self.benchmark_button.clicked.connect(self._benchmark_dialog)
-        self.clear_button = QPushButton("Wyczyść")
+        # Benchmark inputs remain available, without occupying the main command surface.
+        self.sample_button.hide()
+        self.benchmark_button.hide()
+        self.more_button = QPushButton("Więcej")
+        more = QMenu(self.more_button)
+        more.addAction("Losuj 100 z folderu…", self._sample_dialog)
+        more.addAction("Otwórz zestaw lokalny…", self._benchmark_dialog)
+        more.addAction("Dziennik operacji", lambda: QDesktopServices.openUrl(
+            QUrl.fromLocalFile(str(journal_path()))
+        ))
+        self.more_button.setMenu(more)
+        self.clear_button = QPushButton("Wyczyść listę")
         self.clear_button.setProperty("role", "quiet")
         self.clear_button.clicked.connect(self.clear)
-        for button in (
-            self.add_button,
-            self.folder_button,
-            self.sample_button,
-            self.benchmark_button,
-            self.clear_button,
-        ):
+        for button in (self.add_button, self.folder_button, self.copy_button, self.move_button):
             top.addWidget(button)
+        top.addStretch(1)
+        self.file_count = _label("0 PDF")
+        top.addWidget(self.file_count)
+        top.addWidget(self.clear_button)
+        top.addWidget(self.more_button)
         layout.addWidget(file_bar)
 
+        model_row = QHBoxLayout()
+        model_row.addWidget(_label("Model:"))
+        self.model = QComboBox()
+        self.model.setMinimumWidth(180)
+        self.model.currentIndexChanged.connect(self._model_changed)
+        model_row.addWidget(self.model, 1)
+        self.connections_button = QPushButton("Ustawienia AI…")
+        self.connections_button.clicked.connect(self._connections)
+        self.components_button = QPushButton("Składniki AI…")
+        self.components_button.clicked.connect(self._components)
+        model_row.addWidget(self.connections_button)
+        model_row.addWidget(self.components_button)
+        self.repeats = QSpinBox()
+        self.repeats.setRange(1, 10)
+        self.repeats.setValue(1)
+        model_row.addWidget(_label("Przejścia:"))
+        model_row.addWidget(self.repeats)
+        self.cancel_button = QPushButton("Anuluj")
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.clicked.connect(self.cancel)
+        self.start_button = QPushButton("Kategoryzuj")
+        self.start_button.setProperty("role", "primary")
+        self.start_button.clicked.connect(self.start)
+        model_row.addWidget(self.cancel_button)
+        model_row.addWidget(self.start_button)
+        layout.addLayout(model_row)
+
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(12)
+        splitter.setHandleWidth(5)
         editor = QWidget()
         editor.setProperty("role", "card")
-        editor.setMinimumWidth(350)
+        editor.setMinimumWidth(260)
         edit_layout = QVBoxLayout(editor)
-        edit_layout.setContentsMargins(14, 14, 14, 14)
-        edit_layout.setSpacing(8)
+        edit_layout.setContentsMargins(8, 8, 8, 8)
+        edit_layout.setSpacing(6)
+        self.categories = QTableWidget(12, 2)
         heading = QHBoxLayout()
-        heading.addWidget(_label("Kategorie", "heading"), 1)
+        heading.addWidget(_label("Etykiety", "heading"), 1)
+        descriptions = QPushButton("Opisy")
+        descriptions.setProperty("role", "quiet")
+        descriptions.setCheckable(True)
+        descriptions.toggled.connect(lambda shown: self.categories.setColumnHidden(1, not shown))
+        heading.addWidget(descriptions)
         self.examples_button = QPushButton("Przykładowe")
         self.examples_button.setProperty("role", "quiet")
         self.examples_button.clicked.connect(self._restore_examples)
         heading.addWidget(self.examples_button)
         edit_layout.addLayout(heading)
-        edit_layout.addWidget(_label("Wpisz 2–12 kategorii. Kliknij dwukrotnie, by edytować."))
-        self.categories = QTableWidget(12, 2)
-        self.categories.setHorizontalHeaderLabels(["Nazwa kategorii", "Opis / wskazówki"])
-        self.categories.setColumnWidth(0, 240)
+        self.categories.setHorizontalHeaderLabels(["Etykieta", "Opis"])
+        self.categories.setToolTip("Od 2 do 12 etykiet. Dwukrotne kliknięcie lub F2: edycja.")
         self.categories.verticalHeader().hide()
-        self.categories.verticalHeader().setDefaultSectionSize(32)
+        self.categories.verticalHeader().setDefaultSectionSize(30)
         self.categories.setShowGrid(False)
         self.categories.setItemDelegateForColumn(0, CategoryDelegate(self.categories))
-        self.categories.horizontalHeader().setStretchLastSection(True)
+        self.categories.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.categories.setColumnWidth(1, 180)
+        self.categories.setColumnHidden(1, True)
         self.categories.itemChanged.connect(self._category_edited)
         edit_layout.addWidget(self.categories, 1)
-        self.prompt_toggle = QPushButton("Edytuj instrukcję dla modeli (prompt)")
+        self.prompt_toggle = QPushButton("Instrukcja klasyfikacji")
         self.prompt_toggle.setProperty("role", "quiet")
         self.prompt_toggle.setCheckable(True)
         self.prompt_toggle.toggled.connect(self._toggle_prompt)
         edit_layout.addWidget(self.prompt_toggle)
         self.prompt = QPlainTextEdit()
-        self.prompt.setFixedHeight(120)
-        self.prompt_toggle.setChecked(True)
-        self.prompt.setVisible(True)
+        self.prompt.setFixedHeight(140)
+        self.prompt.setVisible(False)
         self.prompt.textChanged.connect(self._schedule_save)
         edit_layout.addWidget(self.prompt)
         splitter.addWidget(editor)
 
         results = QWidget()
         results.setProperty("role", "card")
-        results.setMinimumWidth(600)
+        results.setMinimumWidth(520)
         results_layout = QVBoxLayout(results)
-        results_layout.setContentsMargins(16, 14, 16, 14)
-        results_layout.setSpacing(10)
-        model_row = QHBoxLayout()
-        self.model = QComboBox()
-        self.model.currentIndexChanged.connect(self._model_changed)
-        model_row.addWidget(self.model, 1)
-        self.components_button = QPushButton("Składniki AI…")
-        self.components_button.clicked.connect(self._components)
-        self.connections_button = QPushButton("Ustawienia AI…")
-        self.connections_button.clicked.connect(self._connections)
-        model_row.addWidget(self.connections_button)
-        model_row.addWidget(self.components_button)
-        self.repeats = QSpinBox()
-        self.repeats.setRange(1, 10)
-        self.repeats.setValue(1)
-        model_row.addWidget(QLabel("Przejścia:"))
-        model_row.addWidget(self.repeats)
-        results_layout.addLayout(model_row)
-        self.metrics_scroll = QScrollArea()
-        self.metrics_scroll.setWidgetResizable(True)
-        self.metrics_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        self.metrics_scroll.setFixedHeight(185)
-        self.metrics_host = QWidget()
-        self.metrics_layout = QHBoxLayout(self.metrics_host)
-        self.metrics_layout.setContentsMargins(0, 0, 0, 0)
-        self.metrics_scroll.setWidget(self.metrics_host)
-        self.metric_cards: dict[str, ModelMetricCard] = {}
-        results_layout.addWidget(self.metrics_scroll)
+        results_layout.setContentsMargins(8, 8, 8, 8)
+        results_layout.setSpacing(6)
         result_heading = QHBoxLayout()
-        result_heading.addWidget(_label("Wyniki", "heading"), 1)
+        result_heading.addWidget(_label("Dokumenty", "heading"), 1)
+        self.table: QTableWidget
+        self.correct_button = QPushButton("Zmień etykietę…")
+        self.correct_button.setEnabled(False)
+        self.correct_button.clicked.connect(lambda: self._correct_category(self.table.currentRow()))
+        result_heading.addWidget(self.correct_button)
+        self.measurements_button = QPushButton("Pomiary")
+        self.measurements_button.setProperty("role", "quiet")
+        self.measurements_button.setCheckable(True)
+        self.measurements_button.toggled.connect(self._toggle_measurements)
+        result_heading.addWidget(self.measurements_button)
         self.export_button = QPushButton("Zapisz wyniki…")
         self.export_button.setProperty("role", "quiet")
         self.export_button.setEnabled(False)
         self.export_button.clicked.connect(self._export)
         result_heading.addWidget(self.export_button)
         results_layout.addLayout(result_heading)
+        self.metrics_scroll = QScrollArea()
+        self.metrics_scroll.setWidgetResizable(True)
+        self.metrics_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        self.metrics_scroll.setFixedHeight(157)
+        self.metrics_host = QWidget()
+        self.metrics_layout = QHBoxLayout(self.metrics_host)
+        self.metrics_layout.setContentsMargins(0, 0, 0, 0)
+        self.metrics_scroll.setWidget(self.metrics_host)
+        self.metric_cards: dict[str, ModelMetricCard] = {}
+        self.metrics_scroll.hide()
+        results_layout.addWidget(self.metrics_scroll)
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
-            ["Plik", "Model / próba", "Kategoria", "Działanie", "Limit API", "Pewność", "Status"]
+            ["Plik", "Model / próba", "Etykieta", "Działanie", "Limit API", "Pewność", "Status"]
         )
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.verticalHeader().hide()
-        self.table.verticalHeader().setDefaultSectionSize(38)
+        self.table.verticalHeader().setDefaultSectionSize(30)
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
         self.table.setItemDelegateForColumn(2, CategoryDelegate(self.table))
         self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        for col, width in {0: 110, 1: 103, 3: 75, 4: 75, 5: 72, 6: 68}.items():
+        self.table.horizontalHeader().setMinimumSectionSize(70)
+        for col, width in {0: 175, 1: 135, 3: 80, 4: 80, 5: 75, 6: 85}.items():
             self.table.setColumnWidth(col, width)
+        self.table.setColumnHidden(3, True)
         self.table.setColumnHidden(4, True)
         self.table.cellDoubleClicked.connect(self._open_document)
+        self.table.itemChanged.connect(self._inclusion_changed)
+        self.table.itemSelectionChanged.connect(self._update_correction_action)
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._file_menu)
         self.result_stack = QStackedWidget()
         empty = QWidget()
         empty_layout = QVBoxLayout(empty)
         empty_layout.addStretch()
-        for text, role in (
-            ("Zacznij od dokumentów", "heading"),
-            ("Dodaj PDF-y lub przeciągnij je do tego okna.", "muted"),
-            ("Wybierz modele i uruchom klasyfikację.", "muted"),
-        ):
-            empty_label = _label(text, role)
-            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            empty_layout.addWidget(empty_label)
+        empty_label = _label("Przeciągnij tutaj pliki PDF")
+        empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addWidget(empty_label)
         empty_layout.addStretch()
         self.result_stack.addWidget(empty)
         self.result_stack.addWidget(self.table)
@@ -263,7 +322,7 @@ class ClassificationPanel(QWidget):
         self.summary.hide()
         splitter.addWidget(results)
         splitter.setChildrenCollapsible(False)
-        splitter.setSizes([430, 870])
+        splitter.setSizes([320, 1000])
         layout.addWidget(splitter, 1)
 
         self.progress = QProgressBar()
@@ -271,26 +330,20 @@ class ClassificationPanel(QWidget):
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
         layout.addWidget(self.progress)
-        controls = QHBoxLayout()
-        info = QVBoxLayout()
-        info.setSpacing(2)
-        self.status = QLabel("Gotowy. Dodaj dokumenty i wybierz modele.")
+        self.status = QLabel("Gotowy")
         self.status.setTextFormat(Qt.TextFormat.PlainText)
         self.status.setWordWrap(True)
-        self.status.setMaximumHeight(40)
-        info.addWidget(self.status)
+        self.status.setMaximumHeight(36)
+        layout.addWidget(self.status)
         self.elapsed = _label("")
-        info.addWidget(self.elapsed)
-        controls.addLayout(info, 1)
-        self.start_button = QPushButton("Kategoryzuj")
-        self.start_button.setProperty("role", "primary")
-        self.start_button.clicked.connect(self.start)
-        self.cancel_button = QPushButton("Anuluj")
-        self.cancel_button.setEnabled(False)
-        self.cancel_button.clicked.connect(self.cancel)
-        for button in (self.cancel_button, self.start_button):
-            controls.addWidget(button)
-        layout.addLayout(controls)
+        self.elapsed.hide()
+        layout.addWidget(self.elapsed)
+
+    def _toggle_measurements(self, shown: bool) -> None:
+        self.metrics_scroll.setVisible(shown)
+        self.elapsed.setVisible(shown)
+        self.table.setColumnHidden(3, not shown)
+        self.table.setColumnHidden(4, not shown or not any(row.wait_s for row in self.rows))
 
     def reload_models(self) -> None:
         selection = self.model.currentData()
@@ -310,9 +363,7 @@ class ClassificationPanel(QWidget):
 
     def _toggle_prompt(self, expanded: bool) -> None:
         self.prompt.setVisible(expanded)
-        self.prompt_toggle.setText(
-            ("Zwiń" if expanded else "Edytuj") + " instrukcję dla modeli (prompt)"
-        )
+
 
     def _category_edited(self, item: QTableWidgetItem) -> None:
         self.categories.blockSignals(True)
@@ -471,35 +522,24 @@ class ClassificationPanel(QWidget):
             "Otwórz folder",
             lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).parent))),
         )
+        action = menu.addAction("Zmień etykietę…", lambda: self._correct_category(item.row()))
+        action.setEnabled(not self.is_busy())
         menu.exec(self.table.viewport().mapToGlobal(point))
 
     def is_busy(self) -> bool:
-        return self.worker is not None
+        return self.worker is not None or self._filing_busy
 
     def add_files(self, paths: list[Path]) -> None:
         if self.is_busy():
             return
         found = collect_documents(paths, recursive=True)
         existing = set(self.files)
-        self.files.extend(
-            path for path in found if path.suffix.lower() == ".pdf" and path not in existing
-        )
-        self.file_count.setText(f"{len(self.files)} PDF")
-        self.rows.clear()
-        self._run_category_colors.clear()
-        self.batch = None
-        self._reset_progress()
-        self._refresh_summary()
-        self.export_button.setEnabled(False)
-        self.result_stack.setCurrentIndex(1 if self.files else 0)
-        self.table.setRowCount(len(self.files))
-        self.table.clearContents()
-        for i, path in enumerate(self.files):
-            item = QTableWidgetItem(path.name)
-            item.setToolTip(str(path))
-            item.setData(Qt.ItemDataRole.UserRole, str(path))
-            self.table.setItem(i, 0, item)
-            self.table.setItem(i, 6, QTableWidgetItem("Oczekuje"))
+        added = [path for path in found if path.suffix.lower() == ".pdf" and path not in existing]
+        if not added:
+            return
+        self.files.extend(added)
+        self._render_collection()
+        self._persist_collection()
 
     def _add_dialog(self) -> None:
         paths, _ = QFileDialog.getOpenFileNames(self, "Wybierz PDF-y", "", "PDF (*.pdf)")
@@ -546,6 +586,7 @@ class ClassificationPanel(QWidget):
     def clear(self) -> None:
         if self.is_busy():
             return
+        self._checkpoint_timer.stop()
         self.files.clear()
         self.rows.clear()
         self.batch = None
@@ -556,6 +597,9 @@ class ClassificationPanel(QWidget):
         self._reset_progress()
         self._refresh_summary()
         self.export_button.setEnabled(False)
+        self._update_filing_actions()
+
+        self._persist_collection()
 
     def _reset_progress(self) -> None:
         self._expected_rows = 0
@@ -564,7 +608,7 @@ class ClassificationPanel(QWidget):
         self.progress.setValue(0)
         self.table.setColumnHidden(4, True)
         self.elapsed.clear()
-        self.status.setText("Gotowy. Wybierz modele i uruchom klasyfikację.")
+        self.status.setText("Dodaj dokumenty" if not self.files else "Czeka na analizę")
 
     def start(self) -> None:
         if self.is_busy():
@@ -622,9 +666,11 @@ class ClassificationPanel(QWidget):
 
     def _set_busy(self, busy: bool) -> None:
         for control in (
+            self.correct_button,
             self.add_button,
             self.folder_button,
             self.sample_button,
+            self.more_button,
             self.benchmark_button,
             self.clear_button,
             self.model,
@@ -638,11 +684,21 @@ class ClassificationPanel(QWidget):
             self.start_button,
         ):
             control.setEnabled(not busy)
+        for i in range(self.table.rowCount()):
+            item = self.table.item(i, 0)
+            if item is not None:
+                flags = item.flags()
+                item.setFlags(flags & ~Qt.ItemFlag.ItemIsUserCheckable if busy
+                              else flags | Qt.ItemFlag.ItemIsUserCheckable)
+        self._update_correction_action()
         self.cancel_button.setEnabled(busy)
         self.export_button.setEnabled(not busy and self.batch is not None)
+        self._update_filing_actions()
         self.busy_changed.emit(busy)
 
     def cancel(self) -> None:
+        if self._filing_dialog is not None:
+            self._filing_dialog.cancel()
         if self.worker is not None:
             self.worker.cancel()
             self.cancel_button.setEnabled(False)
@@ -659,7 +715,7 @@ class ClassificationPanel(QWidget):
             f"{row.elapsed_s:.3f} s",
             f"{row.wait_s:.1f} s",
             f"{row.confidence:.1%}" if row.confidence is not None else "—",
-            "Błąd" if row.error else "OK",
+            "Błąd" if row.error else ("Ręcznie" if row.category_source == "user" else "OK"),
         ]
         if not self._run_category_colors:
             self._run_category_colors = {
@@ -682,6 +738,11 @@ class ClassificationPanel(QWidget):
             )
             if col == 0:
                 item.setData(Qt.ItemDataRole.UserRole, str(row.path))
+                item.setData(Qt.ItemDataRole.UserRole + 1, row)
+                item.setCheckState(
+                    Qt.CheckState.Unchecked if row.excluded else Qt.CheckState.Checked
+                )
+                item.setToolTip(str(row.path) + "\nZaznaczenie: uwzględnij w porządkowaniu")
             if col == 2:
                 item.setData(Qt.ItemDataRole.UserRole, self._run_category_colors.get(row.category))
             elif col == 6:
@@ -695,6 +756,8 @@ class ClassificationPanel(QWidget):
         self.progress.setRange(0, max(1, self._expected_rows, len(self.rows)))
         self.progress.setValue(len(self.rows))
         self.table.scrollToBottom()
+        if not self._restoring:
+            self._checkpoint_timer.start(300)
         self._refresh_summary()
 
     def _model_label(self, model: str) -> str:
@@ -778,6 +841,7 @@ class ClassificationPanel(QWidget):
         self._elapsed_timer.stop()
         self._refresh_elapsed()
         self._set_busy(False)
+        self._persist_collection()
 
     def _export(self) -> None:
         if self.batch is None:
@@ -806,9 +870,166 @@ class ClassificationPanel(QWidget):
             return
         selection = self.model.currentData()
         self.profiles = dialog.profiles
-        self.rows.clear()
-        self.batch = None
-        self._timing_batch = None
         self._populate_models(selection)
         self.save_preferences()
-        self.add_files([])
+        self._render_collection()
+
+    def _update_filing_actions(self) -> None:
+        enabled = not self.is_busy() and self.batch is not None and any(
+            row.category and not row.error and not row.excluded for row in self.batch.rows
+        )
+        self.copy_button.setEnabled(enabled)
+        self.move_button.setEnabled(enabled)
+
+    def _file_collection(self, mode: FilingMode) -> None:
+        if self.is_busy() or self.batch is None:
+            return
+        dialog = FilingDialog(list(self.files), self.batch, mode, self)
+        self._filing_dialog = dialog
+        dialog.filed.connect(lambda result: self._apply_filing_result(result, mode))
+        dialog.busy_changed.connect(self._filing_state_changed)
+        dialog.exec()
+        self._filing_dialog = None
+        dialog.deleteLater()
+
+    def _filing_state_changed(self, busy: bool) -> None:
+        self._filing_busy = busy
+        self._set_busy(busy)
+
+    def _apply_filing_result(self, result: FilingResult, mode: FilingMode) -> None:
+        if mode == "move":
+            moved = {entry.source: entry.target for entry in result.completed if entry.target}
+            self.files = [moved.get(path, path) for path in self.files]
+            # Rows can be shared by the batch; rewrite each object only once.
+            all_rows = list(self.rows) + (self.batch.rows if self.batch else [])
+            for row in {id(row): row for row in all_rows}.values():
+                if row.path in moved:
+                    row.path = moved[row.path]
+                    row.source_fingerprint = fingerprint(row.path)
+            if self.batch:
+                for doc in self.batch.documents:
+                    doc.path = moved.get(doc.path, doc.path)
+            for i in range(self.table.rowCount()):
+                item = self.table.item(i, 0)
+                if item is None or not item.data(Qt.ItemDataRole.UserRole):
+                    continue
+                old = Path(item.data(Qt.ItemDataRole.UserRole))
+                if old in moved:
+                    target = moved[old]
+                    item.setText(target.name)
+                    item.setData(Qt.ItemDataRole.UserRole, str(target))
+                    for col in range(self.table.columnCount()):
+                        cell = self.table.item(i, col)
+                        if cell:
+                            cell.setToolTip(cell.toolTip().replace(str(old), str(target)))
+            self.files_moved.emit(moved)
+        verb = "Przeniesiono" if mode == "move" else "Skopiowano"
+        self.status.setText(f"{verb}: {len(result.completed)} · Błędy: {len(result.errors)}")
+        self._persist_collection()
+
+
+    def _render_collection(self) -> None:
+        self._restoring = True
+        rows = list(self.rows)
+        self.rows.clear()
+        self.table.setRowCount(0)
+        for row in rows:
+            self._row_done(row)
+        classified = {row.path for row in rows}
+        for path in self.files:
+            if path in classified:
+                continue
+            index = self.table.rowCount()
+            self.table.insertRow(index)
+            item = QTableWidgetItem(path.name)
+            item.setToolTip(str(path))
+            item.setData(Qt.ItemDataRole.UserRole, str(path))
+            self.table.setItem(index, 0, item)
+            self.table.setItem(index, 6, QTableWidgetItem("Oczekuje"))
+        self._restoring = False
+        self.file_count.setText(f"{len(self.files)} PDF")
+        self.result_stack.setCurrentIndex(1 if self.files else 0)
+        self.export_button.setEnabled(self.batch is not None and not self.is_busy())
+        self._update_filing_actions()
+        self._refresh_summary()
+
+    def _update_correction_action(self) -> None:
+        item = self.table.item(self.table.currentRow(), 0)
+        row = item.data(Qt.ItemDataRole.UserRole + 1) if item else None
+        self.correct_button.setEnabled(
+            not self.is_busy() and self.batch is not None and isinstance(row, ClassificationRow)
+        )
+
+    def _correct_category(self, index: int) -> None:
+        if self.is_busy() or index < 0:
+            return
+        item = self.table.item(index, 0)
+        row = item.data(Qt.ItemDataRole.UserRole + 1) if item else None
+        if not isinstance(row, ClassificationRow) or not self.batch:
+            return
+        labels = [name for name, _ in self.batch.categories]
+        label, accepted = QInputDialog.getItem(
+            self, "Etykieta dokumentu", row.path.name, labels,
+            labels.index(row.category) if row.category in labels else 0, False,
+        )
+        if not accepted:
+            return
+        if row.category_source != "user":
+            row.model_category = row.category
+        row.category = label
+        row.category_source = "user"
+        row.confidence = None
+        row.error = ""
+        self._render_collection()
+        self._persist_collection()
+
+    def _inclusion_changed(self, item: QTableWidgetItem) -> None:
+        if self._restoring or self.is_busy() or item.column() != 0:
+            return
+        row = item.data(Qt.ItemDataRole.UserRole + 1)
+        if isinstance(row, ClassificationRow):
+            row.excluded = item.checkState() != Qt.CheckState.Checked
+            self._update_filing_actions()
+            self._checkpoint_timer.start(300)
+
+    def _persist_collection(self) -> None:
+        if self._restoring or self._checkpoint_disabled:
+            return
+        self._checkpoint_timer.stop()
+        batch = self.batch or self._timing_batch or ClassificationBatch(
+            categories=self.category_values(), instructions=self.prompt.toPlainText(),
+        )
+        snapshot = replace(batch, rows=list(self.rows), documents=[],
+                           cancelled=batch.cancelled or (self.is_busy() and self.batch is None))
+        try:
+            save_collection(self.files, snapshot, self._session_path)
+        except (OSError, ValueError) as exc:
+            self.status.setText(f"Nie zapisano kolekcji: {exc}")
+
+    def _restore_collection(self) -> None:
+        try:
+            saved = load_collection(self._session_path)
+        except (OSError, ValueError) as exc:
+            try:
+                backup = self._session_path.with_suffix(f".unreadable-{time.time_ns()}.json")
+                shutil.copy2(self._session_path, backup)
+            except OSError:
+                self._checkpoint_disabled = True
+            self.status.setText(f"Nie odczytano kolekcji: {exc}")
+            return
+        if saved is None:
+            return
+        self.files, self.batch = saved
+        self.rows = list(self.batch.rows)
+        self._run_labels = self.batch.model_labels
+        self._run_category_colors = {name: i for i, (name, _) in enumerate(self.batch.categories)}
+        if self.batch.categories:
+            self.categories.setRowCount(len(self.batch.categories))
+            for index, (name, detail) in enumerate(self.batch.categories):
+                self.categories.setItem(index, 0, QTableWidgetItem(name))
+                self.categories.setItem(index, 1, QTableWidgetItem(detail))
+        if self.batch.instructions:
+            self.prompt.setPlainText(self.batch.instructions)
+        self._render_collection()
+        if self.files:
+            self.status.setText("Przywrócono kolekcję")
