@@ -1,6 +1,6 @@
 """Signum — detekcja podpisów w dokumentach PDF i skanach z użyciem modeli wizyjnych AI."""
 
-__version__ = "1.1.3"
+__version__ = "1.1.4"
 
 APP_NAME = "Signum"
 APP_DISPLAY_NAME = "Signum — kategoryzowanie i podpisy"
