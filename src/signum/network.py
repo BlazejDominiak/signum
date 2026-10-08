@@ -65,8 +65,10 @@ def is_loopback_endpoint(value: str) -> bool:
     return bool(host and _is_loopback_host(host))
 
 
-def processing_is_local(provider: str, api_url: str) -> bool:
+def processing_is_local(provider: str, api_url: str, model: str = "") -> bool:
     """Przetwarzanie na tym komputerze rozpoznajemy po rzeczywistym adresie API."""
+    if provider == "ollama" and model.lower().endswith("cloud"):
+        return False
     return provider in {"ollama", "openai", "anthropic", "vjev"} and (
         is_loopback_endpoint(api_url)
     )

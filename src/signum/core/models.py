@@ -77,6 +77,37 @@ class DocumentResult:
         return any(f.kind != SignatureKind.STAMP for f in self.findings)
 
     @property
+    def analysis_complete(self) -> bool:
+        return (
+            self.status == DocumentStatus.OK
+            and self.page_count > 0 and self.pages_analyzed >= self.page_count
+        )
+
+    @property
+    def signature_verdict(self) -> str:
+        if self.is_signed:
+            return "TAK"
+        if self.analysis_complete:
+            return "NIE"
+        return "NIEPEŁNY" if self.status == DocumentStatus.OK else ""
+
+    @property
+    def signature_label(self) -> str:
+        if self.status != DocumentStatus.OK:
+            return {
+                DocumentStatus.ERROR: "BŁĄD", DocumentStatus.CANCELLED: "ANULOWANO",
+                DocumentStatus.PENDING: "OCZEKUJE",
+            }[self.status]
+        if self.is_signed:
+            return (
+                "WIDOCZNY PODPIS" if self.page_signature_probabilities
+                else f"PODPISANY ({len(self.findings)})"
+            )
+        if not self.analysis_complete:
+            return "BRAK W BADANEJ CZĘŚCI"
+        return "TYLKO PIECZĄTKA" if self.findings else "BRAK PODPISU"
+
+    @property
     def kinds_summary(self) -> str:
         """Np. ``2× podpis odręczny, 1× pieczątka``."""
         counts: dict[SignatureKind, int] = {}

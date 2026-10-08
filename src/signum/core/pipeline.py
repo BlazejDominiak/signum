@@ -289,9 +289,11 @@ def run_batch(
                 DocumentResult(path=p, status=DocumentStatus.CANCELLED) for p in files[index + 1:]
             )
             break
-        except AIConnectionError as exc:
+        except Exception as exc:
             batch.abort_error = str(exc)
-            partial = analyzer.last_result or DocumentResult(path=path)
+            partial = analyzer.last_result
+            if not isinstance(partial, DocumentResult):
+                partial = DocumentResult(path=path)
             partial.status = DocumentStatus.ERROR
             partial.error = str(exc)
             batch.results.append(partial)

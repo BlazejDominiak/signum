@@ -63,9 +63,9 @@ class BatchRiskDialog(QDialog):
         limitations.setWordWrap(True)
         layout.addWidget(limitations)
 
-        is_local = processing_is_local(config.provider, config.api_base_url)
-        if config.provider == "ollama" and config.ollama_model.lower().endswith("cloud"):
-            is_local = False
+        is_local = processing_is_local(
+            config.provider, config.api_base_url, config.ollama_model,
+        )
         if remote_targets is not None:
             is_local = not remote_targets
         if is_local:

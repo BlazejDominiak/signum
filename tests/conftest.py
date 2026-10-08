@@ -56,7 +56,7 @@ def docs_dir(
     return tmp_path
 
 
-@pytest.fixture()
+@pytest.fixture(autouse=True)
 def isolated_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Przekierowuje plik konfiguracji do katalogu tymczasowego."""
     import signum.config as config_module

@@ -86,7 +86,7 @@ def build_html(batch: BatchResult) -> str:
 def _summary_html(batch: BatchResult) -> str:
     total = len(batch.results)
     ok = sum(1 for r in batch.results if r.status == DocumentStatus.OK)
-    unsigned = sum(1 for r in batch.results if r.status == DocumentStatus.OK and not r.is_signed)
+    unsigned = sum(1 for r in batch.results if r.signature_verdict == "NIE")
     return (
         "<div class='summary'>"
         f"<div><b>{total}</b>plików</div>"
@@ -151,22 +151,16 @@ def _document_html(result: DocumentResult) -> str:
                 "</div>"
             )
         if not result.findings:
-            parts.append("<div class='meta'>Nie wykryto podpisów.</div>")
+            parts.append(f"<div class='meta'>{result.signature_label}.</div>")
     parts.append("</div>")
     return "".join(parts)
 
 
 def _badge(result: DocumentResult) -> str:
-    if result.status == DocumentStatus.ERROR:
-        return "<span class='badge error'>BŁĄD</span>"
-    if result.status == DocumentStatus.CANCELLED:
-        return "<span class='badge cancelled'>ANULOWANO</span>"
-    if result.is_signed:
-        if result.page_signature_probabilities:
-            return "<span class='badge signed'>WIDOCZNY PODPIS</span>"
-        count = len(result.findings)
-        return f"<span class='badge signed'>PODPISANY ({count})</span>"
-    return "<span class='badge unsigned'>BRAK PODPISU</span>"
+    style = "signed" if result.is_signed else "unsigned"
+    if result.status != DocumentStatus.OK:
+        style = "error" if result.status == DocumentStatus.ERROR else "cancelled"
+    return f"<span class='badge {style}'>{html.escape(result.signature_label)}</span>"
 
 
 def write_html(path: Path, batch: BatchResult) -> None:
@@ -205,7 +199,7 @@ def build_csv(batch: BatchResult) -> str:
                 _safe_csv_cell(r.path.name),
                 _safe_csv_cell(r.title),
                 _STATUS_LABELS[r.status],
-                "TAK" if r.is_signed else ("NIE" if r.status == DocumentStatus.OK else ""),
+                r.signature_verdict,
                 "" if r.page_signature_probabilities else len(r.findings),
                 r.kinds_summary,
                 r.max_confidence if r.max_confidence is not None else "",

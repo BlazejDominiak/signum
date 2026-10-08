@@ -629,23 +629,8 @@ class MainWindow(QMainWindow):
             return
         self._cell(row, _COL_TITLE).setText(result.title)
         if result.status == DocumentStatus.OK:
-            if result.is_signed:
-                text = (
-                    "WIDOCZNY PODPIS"
-                    if result.page_signature_probabilities
-                    else f"PODPISANY ({len(result.findings)})"
-                )
-                color = _GREEN
-            elif result.findings:
-                text = "TYLKO PIECZĄTKA"
-                color = _GRAY
-            else:
-                text = (
-                    "BRAK W BADANEJ CZĘŚCI"
-                    if result.pages_analyzed < result.page_count
-                    else "BRAK PODPISU"
-                )
-                color = _GRAY
+            text = result.signature_label
+            color = _GREEN if result.is_signed else _GRAY
             signatures_item = self._cell(row, _COL_SIGNATURES)
             signatures_item.setText(text)
             signatures_item.setForeground(color)

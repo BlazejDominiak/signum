@@ -124,7 +124,7 @@ def _summarize(result: DocumentResult) -> str:
     if result.status == DocumentStatus.ERROR:
         return f"BŁĄD: {result.error}"
     if not result.is_signed:
-        return f"„{result.title}” — brak podpisów"
+        return f"„{result.title}” — {result.signature_label}"
     return (
         f"„{result.title}” — PODPISANY: {result.kinds_summary} "
         f"(max pewność {result.max_confidence}%)"
@@ -142,7 +142,7 @@ def _print_summary(batch: BatchResult) -> None:
 
 
 def _print_risk_notice(config: AppConfig, file_count: int) -> None:
-    local = processing_is_local(config.provider, config.api_base_url)
+    local = processing_is_local(config.provider, config.api_base_url, config.ollama_model)
     transport = (
         "lokalny model AI pod adresem loopback"
         if local

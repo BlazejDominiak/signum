@@ -148,9 +148,12 @@ class OllamaVisionModel(VisionModel):
         except (ValueError, KeyError, TypeError) as exc:
             raise AIResponseError(f"Niepoprawna odpowiedź Ollamy: {exc}") from exc
         if is_loopback_endpoint(self._base_url) and not self._model.lower().endswith("cloud"):
-            self.loading_seconds += min(
-                time.perf_counter() - started, max(0, float(data.get("load_duration", 0)) / 1e9)
-            )
+            try:
+                self.loading_seconds += min(
+                    time.perf_counter() - started, max(0, float(data.get("load_duration", 0)) / 1e9)
+                )
+            except (ValueError, TypeError, OverflowError) as exc:
+                raise AIResponseError("Niepoprawny czas ładowania w odpowiedzi Ollamy") from exc
         if data.get("done_reason") == "length":
             raise AIResponseError("Model osiągnął limit odpowiedzi przed zakończeniem analizy")
         if not isinstance(content, str) or not content.strip():

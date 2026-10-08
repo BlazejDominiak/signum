@@ -37,16 +37,24 @@ class BatchWorker(QThread):
 
     def run(self) -> None:
         started = time.time()
+        completed: list[DocumentResult] = []
+
+        def record(index: int, result: DocumentResult) -> None:
+            completed.append(result)
+            self.file_done.emit(index, result)
+
         try:
             batch = run_batch(
                 self._files,
                 self._analyzer,
                 self._cancel,
                 on_file_start=lambda i, n, p: self.file_started.emit(i, n, p.name),
-                on_file_done=self.file_done.emit,
+                on_file_done=record,
             )
         except Exception as exc:  # obrona: wyjątek nie może zabić wątku po cichu
-            batch = BatchResult(started_at=started, abort_error=f"Nieoczekiwany błąd: {exc}")
+            batch = BatchResult(
+                results=completed, started_at=started, abort_error=f"Nieoczekiwany błąd: {exc}"
+            )
         try:
             self._analyzer.release_resources()
         except Exception as exc:

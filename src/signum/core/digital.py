@@ -173,7 +173,7 @@ def _walk_field(
         return
 
     value = _resolve(field_obj.get("/V"))
-    if not isinstance(value, DictionaryObject):
+    if not isinstance(value, DictionaryObject) or not _has_signature_data(value):
         result.empty_signature_fields.append(full_name or "(bez nazwy)")
         return
 
@@ -187,6 +187,23 @@ def _walk_field(
     )
     sig.page, sig.rect_pt = _find_widget(field_obj, field_ref, reader)
     result.signatures.append(sig)
+
+
+def _has_signature_data(value: DictionaryObject) -> bool:
+    contents = _resolve(value.get("/Contents"))
+    if isinstance(contents, str):
+        try:
+            contents = getattr(contents, "original_bytes", b"")
+        except (AttributeError, UnicodeError):
+            return False
+    ranges = _resolve(value.get("/ByteRange"))
+    return (
+        isinstance(contents, bytes) and bool(contents) and any(contents)
+        and isinstance(ranges, ArrayObject) and len(ranges) == 4
+        and all(isinstance(n, int) and n >= 0 for n in ranges)
+        and ranges[0] == 0 and ranges[1] > 0
+        and ranges[2] > ranges[1] and ranges[3] > 0
+    )
 
 
 def _classify_subfilter(value: DictionaryObject) -> str:
