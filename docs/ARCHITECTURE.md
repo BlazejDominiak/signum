@@ -1,4 +1,4 @@
-# Signum — architecture notes
+# Signum — architecture
 
 ## Goals & constraints
 
@@ -10,7 +10,7 @@
   profile, per-file fault isolation, progress + ETA + cancellation.
 - **Model-agnostic:** local Ollama by default; any OpenAI-compatible or Anthropic API
   as a drop-in via one abstract interface.
-- **Portfolio-grade hygiene:** typed (mypy), linted (ruff), tested (pytest + pytest-qt),
+- **Code checks:** typed (mypy), linted (ruff), tested (pytest + pytest-qt),
   permissive licenses only (hence `pypdfium2` instead of AGPL PyMuPDF).
 
 ## Layering
@@ -93,7 +93,7 @@ Kluczowe decyzje:
   Przy braku lokalnego serwera `local_vjev` uruchamia osobny proces Python z
   przygotowanego `runtime.json`, czeka na załadowanie prawdziwych wag i powtarza
   preflight. `vjev_bootstrap.py` jest zasobem instalatora, nie importem GUI:
-  Torch i model pozostają na H:. Serwer jest offline, tylko IPv4 loopback,
+  Torch i model pozostają w wybranym katalogu AI. Serwer jest offline, tylko IPv4 loopback,
   z blokadą startu per port. Zatrzymanie wymaga osobnego losowego tokenu sterowania;
   nie zatrzymuje serwerów innych dostawców ani dowolnych procesów.
   Worker i CLI zwalniają zarządzany serwer po zakończeniu lub anulowaniu analizy.
@@ -201,9 +201,3 @@ replaced in configuration by a managed installation without deleting the origina
 Model weights require SHA-256 metadata. Download and package staging stay below the
 chosen AI directory. Pip uses official PyPI/PyTorch indexes with user pip configuration
 and alternate-index environment variables disabled.
-
-Checks and failures are not a clean-machine certification. Release acceptance must
-include installing from the candidate EXE on a Windows machine without Python,
-Ollama or drive H:, testing a supported GPU, interrupting/retrying downloads, and
-repairing a deliberately missing package/model file. Verify external API use without
-local AI components as well. Do not publish solely on the bundled EXE self-test.

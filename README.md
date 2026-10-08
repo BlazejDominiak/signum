@@ -266,7 +266,7 @@ powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1
 The build script runs a self-test of the packaged executable before invoking
 Inno Setup. This verifies the bundled Python runtime, required libraries and UI
 resources rather than merely checking that an `.exe` file exists. It also prints
-and saves the SHA-256 digest next to the installer. No signing certificate is required.
+and saves the SHA-256 digest next to the installer.
 The current demo installer and its checksum are tracked in Git; other build outputs are ignored.
 
 ### Project structure

@@ -359,4 +359,4 @@ Kod 0 oznacza sukces, 10 — program zainstalowany, ale przygotowanie AI nieudan
 Raport przygotowania instalatora znajduje się w `%APPDATA%/Signum/setup-result.json`.
 Aktualizacja zachowuje wcześniej wybrany katalog; odinstalowanie pozostawia modele.
 
-Instalator demo buduje się poleceniem `scripts/build_installer.ps1`; certyfikat nie jest potrzebny.
+Instalator demo buduje się poleceniem `scripts/build_installer.ps1`.

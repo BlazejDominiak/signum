@@ -85,12 +85,8 @@ Wynik dotyczy działającej lokalnej konfiguracji. Nie odtwarza zoptymalizowaneg
 
 ## Model i pliki
 
-Pobrane wagi przeniesiono do:
-`H:/Ollama/models/JevK5/model.safetensors` (8 411 558 400 bajtów).
-Plik nie pozostał na C:. SHA-256 przed i po przeniesieniu oraz w metadanych
-repozytorium: `13824e47f2e40fe052f06943976cf742cb366ba305741a111e75a8ebae907a9c`.
-Obok znajdują się tokenizer, konfiguracje i karta modelu. Katalog służy
-do przechowywania wag; nie rejestrowano ich jako modelu czatu Ollamy.
+Wagi `model.safetensors`: 8 411 558 400 bajtów.
+SHA-256: `13824e47f2e40fe052f06943976cf742cb366ba305741a111e75a8ebae907a9c`.
 
 JevK5 jest niezależną alternatywą zbudowaną na Qwen3.5-4B, z dostrojeniem
 i odczytem decyzji bez generowania odpowiedzi. To inny model niż Jev TypeSafe.
@@ -98,34 +94,30 @@ i odczytem decyzji bez generowania odpowiedzi. To inny model niż Jev TypeSafe.
 [oficjalny runtime autora](https://github.com/allebee/jevk5).
 
 - Rewizja wag: `c4f7fdb3aeab5582336406e78d3bef11bf98833d`.
-- Runtime 0.3.3: `H:/Tools/JevK5`, rewizja
+- Runtime 0.3.3, rewizja
   `f26426d16f59e8bbe1470e5b162cc89329e29b29`.
 - Skrypt: `scripts/benchmark_jevk5_classification.py`.
 - Protokół, teksty, metryki i CSV: `scratch/jevk5-classification/`.
 - Surowe wyniki: `gemma-results.jsonl`, `jevk5-results.jsonl`, `venice-results.jsonl`.
 - Tryb `jevk5-graphs` w skrypcie jest diagnostyczny; nie użyto go w wyniku końcowym.
 
-Nie instalowano nowych bibliotek ani nie pobierano drugiej kopii wag.
-Użyto istniejących środowisk Python 3.13 do PDF/Ollamy oraz Python 3.11 do CUDA.
+Benchmark używał Pythona 3.13 do PDF/Ollamy oraz Pythona 3.11 do CUDA.
 
 ## Oficjalny Jev przez Venice — dostęp i koszt
 
 [Venice](https://venice.ai/lp/jev) udostępnia Jev wyłącznie przez API decyzji,
-poza zwykłą listą czatów. Potwierdzono to na koncie użytkownika:
+poza zwykłą listą czatów. W benchmarku:
 `GET /models?type=decision` zwróciło `jev-latest`, a
 `POST https://api.venice.ai/api/v1/decisions` wykonał wszystkie 31 żądań
 benchmarku (30 pomiarów i rozgrzewkę). Odpowiedzi podają alias `jev-latest`,
 bez numeru wersji modelu TypeSafe.
 
-Pierwsza próba przed doładowaniem konta zwróciła HTTP 402 mimo informacji
-o promocji na stronie Venice. Po doładowaniu przez użytkownika zapytania
-działają. Modelowy katalog API podaje $0.042 za milion tokenów wejściowych
-i zero za wyjście. Zużycie benchmarku z rozgrzewką:
+Katalog API odczytany podczas benchmarku podawał $0.042 za milion tokenów
+wejściowych i zero za wyjście. Zużycie benchmarku z rozgrzewką:
 **90542 tokenów wejściowych**;
 szacowany koszt według tego cennika to
 **$0.003803** (poniżej jednego centa).
 To kalkulacja z tokenów i cennika, nie odczyt obciążenia rachunku.
-Podany klucz inferencyjny nie ma uprawnień administracyjnych do salda.
 Osobne krótkie próby połączenia i uruchomienie pokazu nie wchodzą do tych 31 żądań.
 
 Integracja: `scripts/venice_api.py`. Klucz jest wyłącznie w lokalnym,

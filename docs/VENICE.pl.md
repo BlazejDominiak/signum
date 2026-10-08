@@ -7,7 +7,6 @@ Jev działa jako model decyzyjny, dostępny poza interfejsem czatu Venice:
 - Lista modeli decyzyjnych: `GET /models?type=decision`.
 - Klasyfikacja: `POST /decisions` z polami `model`, `state` i `questions`.
 
-Potwierdzono rzeczywiste odpowiedzi API na koncie użytkownika 2026-10-07.
 [Dokumentacja Venice](https://venice.ai/lp/jev) opisuje ten osobny endpoint.
 GLM 5.2 z gotowej instrukcji Venice jest modelem czatu; jego wybranie nie jest
 potrzebne do używania Jev. Samo podmienienie nazwy modelu w kliencie czatu
@@ -26,9 +25,9 @@ Nie wymaga nowej biblioteki — korzysta z istniejącego `requests`.
 Nie zmienia ustawień dostawcy w aplikacji Signum; oficjalny Jev w tym pokazie
 klasyfikuje tekst. Dotychczasowy `vjev-vision` jest osobnym modelem obrazowym.
 
-## Pokaz na tym komputerze
+## Uruchomienie pokazu
 
-PowerShell, w katalogu `H:\podpisy`:
+PowerShell, w katalogu projektu:
 
 ```powershell
 # Lista 100 dokumentów użytych w aktualnym porównaniu, bez wywołania API:

@@ -1,9 +1,7 @@
 # Lokalny vjev-vision — sprawdzenie integracji 2026-10-05
 
-Usunięto dostawcę Featherless. Lokalny Jev został uruchomiony ze spakowanego
-Signum 1.0.6, z rzeczywistymi wagami bf16 na RTX 5060 Ti 16 GB. Test obrazu
-zakończył się kodem 0. Wagi i dodatkowe biblioteki są w H:/Tools/SignumJev;
-nie zainstalowano skilla Codex ani abonamentu. Pierwsze ładowanie wag: około 15 s.
+Test integracji wykonano w Signum 1.0.6 z lokalnym modelem Jev bf16
+na RTX 5060 Ti 16 GB. Pierwsze ładowanie wag trwało około 15 s.
 
 Poniżej jest kontrola obecności podpisów i pieczątek na pięciu syntetycznych
 przykładach repozytorium, przy progu noul 0,5. Gemma4:12b działała lokalnie przez
@@ -29,18 +27,11 @@ Pełny pipeline: 7 przykładów (PDF i obrazy), 4 dokumenty z podpisami,
 0 błędów; podpisy cyfrowe były wykrywane niezależnie ze struktury PDF.
 Przetwarzanie partii trwało około 2 s po preflight.
 
-Kontrola kodu: ruff i mypy bez błędów, 192 testy pytest zaliczone.
-Sprawdzono autostart, ochronę zatrzymania tokenem, ponowne użycie serwera,
-API obrazu, raport HTML/CSV i zwolnienie GPU po zamknięciu serwera.
-
 Przypięte wersje:
 - Model yah01/vjev-vision: 2fa8b58e40e5bc351a7d6dd39b953469a8f3ded2.
 - BubbleCal/vjev-serve: 37e2ffb2695b9bf278374fdefec24611c3b710c1.
 - Transformers 5.18.0; istniejący Torch 2.12.0.dev20260217+cu128.
 - Serwer tylko 127.0.0.1:8800, tryb offline, model API: vjev-vision.
-
-Surowe decyzje i użycie tokenów: H:/Tools/SignumJev/validation.json.
-Diagnostyka gotowego exe: H:/Tools/SignumJev/packaged-self-test.json.
 
 ## Większa próba publicznych dokumentów
 

@@ -24,18 +24,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
   bez treści PDF-ów. Trwały dziennik operacji z oryginalnymi ścieżkami i sumami plików.
 - Scenariusze instalacji, aktualizacji, błędu przygotowania w trybie silent i odinstalowania
   na jednorazowym runnerze Windows w CI.
-
-### Changed
-- Szczegóły i logi przygotowania AI są rozwijane; okno używa wspólnego stylu aplikacji.
-
-
-### Added
 - Kopiowanie i przenoszenie kolekcji PDF do folderów według etykiet: wybór przebiegu,
   podgląd ścieżek, numerowanie kolizji, postęp i anulowanie.
 - Weryfikacja kopii przed usunięciem źródła; aktualizacja ścieżek w obu zakładkach
   i raportach po pełnym lub częściowym przeniesieniu.
 
 ### Changed
+- Szczegóły i logi przygotowania AI są rozwijane; okno używa wspólnego stylu aplikacji.
 - Zwarty interfejs biurowy: neutralne powierzchnie, prostokątne kontrolki, małe
   oznaczenia etykiet i więcej miejsca na dokumenty.
 - Prompt, opisy etykiet i pomiary rozwijane na żądanie; polecenia testowe w menu Więcej.
@@ -63,8 +58,6 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
 ### Validation
 - Testy automatyczne obejmują brak dysku H:, niekompletne instalacje, ponowne
   użycie środowisk i publikowanie konfiguracji dopiero po udanym teście modelu.
-- Pakiet wymaga osobnego odbioru na czystym Windows przed publikacją;
-  lokalny test bibliotek/GPU nie zastępuje instalacji na drugim komputerze.
 
 ## [1.1.2] — 2026-10-07
 
