@@ -9,7 +9,7 @@ certifi==2026.6.17
 cffi==2.1.0
 charset-normalizer==3.4.9
 colorama==0.4.6
-cryptography==49.0.0
+cryptography==50.0.0
 cyclonedx-python-lib==11.11.0
 defusedxml==0.7.1
 filelock==3.32.0
@@ -48,7 +48,7 @@ pyhanko-certvalidator==0.31.1
 pyinstaller==6.21.0
 pyinstaller-hooks-contrib==2026.6
 pyparsing==3.3.2
-pypdf==6.14.2
+pypdf==6.19.0
 pypdfium2==5.11.0
 PySide6==6.11.1
 PySide6_Addons==6.11.1
@@ -72,4 +72,4 @@ typing_extensions==4.16.0
 tzdata==2026.3
 tzlocal==5.4.4
 uritools==6.1.2
-urllib3==2.7.0
+urllib3==2.8.0
