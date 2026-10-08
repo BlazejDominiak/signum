@@ -48,6 +48,7 @@ def test_archive_cannot_escape_selected_storage(tmp_path) -> None:
 
 def test_download_checks_hash_and_reuses_verified_file(tmp_path) -> None:
     preparer = LocalAIPreparer(tmp_path, Mock(), threading.Event())
+    preparer.ollama_model_directory = str(tmp_path)
     data = b"verified weights"
     target = tmp_path / "weights"
     checksum = hashlib.sha256(data).hexdigest()
@@ -63,6 +64,7 @@ def test_download_checks_hash_and_reuses_verified_file(tmp_path) -> None:
     assert preparer.download("https://example.test/model", target, checksum) == target
     preparer.session.get.assert_not_called()
     response.iter_content.return_value = [b"wrong"]
+    response.headers = {"Content-Length": "5"}
     with pytest.raises(ValueError, match="suma kontrolna"):
         preparer.download("https://example.test/model", tmp_path / "other", checksum)
     assert not (tmp_path / "other").exists()
@@ -110,6 +112,7 @@ def test_failed_ollama_pull_never_saves_ready_configuration(tmp_path, monkeypatc
         "signum.ai.ollama_client.OllamaVisionModel.list_models", Mock(return_value=[])
     )
     preparer = LocalAIPreparer(tmp_path, Mock(), threading.Event())
+    preparer.ollama_model_directory = str(tmp_path)
     with pytest.raises(RuntimeError, match="disk full"):
         preparer.prepare_ollama({"ollama", "ollama\\small"}, config)
     saved.assert_not_called()
@@ -196,6 +199,7 @@ def test_fresh_jev_prepares_isolated_cuda_runtime_and_frozen_model(tmp_path, mon
         ]
     }
     preparer = LocalAIPreparer(tmp_path, Mock(), threading.Event())
+    preparer.ollama_model_directory = str(tmp_path)
     preparer.session.get = Mock(return_value=metadata)
 
     def download(url, target, expected_hash=""):

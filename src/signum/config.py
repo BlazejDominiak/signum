@@ -65,6 +65,7 @@ class AppConfig:
     anthropic_model: str = "claude-sonnet-5"
     vjev_base_url: str = "http://localhost:8800/v1"
     vjev_model: str = "vjev-vision"
+    ollama_models_directory: str = ""
     ai_directory: str = dataclass_field(default_factory=lambda: str(default_ai_directory()))
     vjev_runtime_dir: str = ""
     vjev_additional_analysis: bool = False  # eksperymentalne kategorie i lokalizacja
@@ -159,7 +160,7 @@ class AppConfig:
             "classification_jev_runtime",
             "classification_jev_packages",
             "classification_cache_dir",
-            "ai_directory",
+            "ai_directory", "ollama_models_directory",
         ):
             value = getattr(config, name)
             if (value and not Path(value).anchor) or (

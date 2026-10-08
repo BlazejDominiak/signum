@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -95,6 +97,10 @@ class LocalAIPreparer:
         self.repair = repair
         self.custom_model = custom_model.strip()
         self.check_only = check_only
+        self.completed_components: set[str] = set()
+        self.verified_models: set[str] = set()
+        self.component_results: dict[str, str] = {}
+        self.ollama_model_directory = ""
         self.root = root
         self.progress = progress
         self.cancelled = cancelled
@@ -126,14 +132,63 @@ class LocalAIPreparer:
             if valid:
                 return target
         partial = target.with_name(target.name + ".part")
+        metadata = partial.with_suffix(partial.suffix + ".json")
         target.parent.mkdir(parents=True, exist_ok=True)
+        previous = {}
+        with contextlib.suppress(OSError, ValueError):
+            stored = json.loads(metadata.read_text(encoding="utf-8"))
+            if isinstance(stored, dict):
+                previous = stored
+        validator = previous.get("validator", "") if previous.get("url") == url else ""
+        offset = partial.stat().st_size if partial.exists() and (expected_hash or validator) else 0
+        headers = {"Accept-Encoding": "identity"}
+        if offset:
+            headers["Range"] = f"bytes={offset}-"
+            if validator:
+                headers["If-Range"] = validator
         digest = hashlib.sha256()
-        with self.session.get(url, stream=True, timeout=(20, 60)) as response:
+        with self.session.get(url, headers=headers, stream=True, timeout=(20, 60)) as response:
+            # A complete partial can remain after interruption just before renaming.
+            if response.status_code == 416 and expected_hash and offset:
+                with partial.open("rb") as cached:
+                    complete = hashlib.file_digest(cached, "sha256").hexdigest() == expected_hash
+                if complete:
+                    partial.replace(target)
+                    metadata.unlink(missing_ok=True)
+                    return target
+                partial.unlink(missing_ok=True)
+                metadata.unlink(missing_ok=True)
+                raise ValueError("Nieaktualna część pliku — ponów pobieranie")
             response.raise_for_status()
-            total = int(response.headers.get("Content-Length", 0))
-            downloaded = 0
+            if response.status_code == 206:
+                match = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+)",
+                                     response.headers.get("Content-Range", ""))
+                if not match or int(match[1]) != offset or int(match[2]) < offset:
+                    raise ValueError("Serwer zwrócił niepoprawny zakres pobierania")
+                total = int(match[3])
+                if int(match[2]) + 1 != total:
+                    raise ValueError("Niepełny zakres odpowiedzi serwera")
+            else:
+                offset = 0  # Server ignored Range or If-Range no longer matches.
+                total = int(response.headers.get("Content-Length", 0))
+            current_validator = (
+                response.headers.get("ETag") or response.headers.get("Last-Modified")
+            )
+            if (response.status_code == 206 and validator and current_validator
+                    and current_validator != validator and not expected_hash):
+                raise ValueError("Źródło pliku zmieniło się; ponów pobieranie od początku")
+            if current_validator and current_validator.startswith("W/"):
+                current_validator = response.headers.get("Last-Modified", "")
+            metadata.write_text(json.dumps({"url": url, "validator": current_validator or ""}),
+                                encoding="utf-8")
+            if offset:
+                with partial.open("rb") as cached:
+                    while chunk := cached.read(1024 * 1024):
+                        self.check_cancelled()
+                        digest.update(chunk)
+            downloaded = offset
             last_update = 0.0
-            with partial.open("wb") as file:
+            with partial.open("ab" if offset else "wb") as file:
                 for chunk in response.iter_content(1024 * 1024):
                     self.check_cancelled()
                     file.write(chunk)
@@ -146,9 +201,16 @@ class LocalAIPreparer:
                             min(100, downloaded * 100 // total) if total else -1,
                         )
                         last_update = time.monotonic()
+                file.flush()
+                os.fsync(file.fileno())
+        if total and downloaded != total:
+            raise ValueError(f"Niepełne pobranie pliku {target.name}; ponów pobieranie")
         if expected_hash and digest.hexdigest() != expected_hash:
+            partial.unlink(missing_ok=True)
+            metadata.unlink(missing_ok=True)
             raise ValueError(f"Niepoprawna suma kontrolna pliku {target.name}")
         partial.replace(target)
+        metadata.unlink(missing_ok=True)
         return target
 
     def run_process(self, arguments: list[str], timeout: int = 3600) -> None:
@@ -217,7 +279,10 @@ class LocalAIPreparer:
                 )
 
     def prepare_ollama(self, components: set[str], config: AppConfig) -> None:
-        from signum.ai.local_ollama import start_local_ollama  # noqa: PLC0415
+        from signum.ai.local_ollama import (  # noqa: PLC0415
+            managed_model_directory,
+            start_local_ollama,
+        )
         from signum.ai.ollama_client import OllamaVisionModel  # noqa: PLC0415
 
         local = requests.Session()
@@ -261,7 +326,29 @@ class LocalAIPreparer:
         selected = [model for key, model in MODELS.items() if key in components]
         if self.custom_model and self.custom_model not in selected:
             selected.append(self.custom_model)
+        missing = [m for m in selected if m not in self.verified_models
+                   and (m not in installed or self.repair)]
+        if missing and not self.check_only:
+            model_root = managed_model_directory(url)
+            if model_root is None:
+                if not self.ollama_model_directory:
+                    raise ValueError(
+                        "Ollama nie udostępnia ścieżki swojego magazynu. Wskaż folder modeli "
+                        "w Składniki AI → Szczegóły instalacji lub przez --ollama-model-directory."
+                    )
+                model_root = Path(self.ollama_model_directory)
+            if not model_root.is_absolute():
+                raise ValueError("Folder modeli Ollamy musi mieć pełną ścieżkę")
+            self.status(f"Folder modeli Ollamy: {model_root}")
+            check_root = model_root
+            while not check_root.exists() and check_root.parent != check_root:
+                check_root = check_root.parent
+            needed = sum(8 if m == "gemma4:e2b" else 20 for m in missing) * 1024**3
+            if shutil.disk_usage(check_root).free < needed:
+                raise ValueError(f"Za mało miejsca w {model_root}: potrzeba {needed // 1024**3} GB")
         for model in selected:
+            if model in self.verified_models:
+                continue
             if model not in installed and self.check_only:
                 raise ValueError(f"Brak modelu {model}. Użyj Instaluj / napraw.")
             if (model not in installed or self.repair) and not self.check_only:
@@ -320,10 +407,14 @@ class LocalAIPreparer:
                     raise ValueError("Model nie zwrócił poprawnej kategorii.")
             finally:
                 text_client.close()
+            self.verified_models.add(model)
             if not self.check_only:
                 self.register_ollama(config, url, model)
                 if model in MODELS.values():
                     config.ollama_model = model
+                config.ollama_url = url
+                config.ollama_runtime_dir = runtime
+                config.save()
         if not self.check_only:
             config.ollama_url = url
             config.ollama_runtime_dir = runtime
@@ -692,6 +783,8 @@ class LocalAIPreparer:
 
     def prepare(self, components: set[str]) -> None:
         config = AppConfig.load()
+        if self.ollama_model_directory and not self.check_only:
+            config.ollama_models_directory = self.ollama_model_directory
         if not self.check_only:
             config.ai_directory = str(self.root)
             config.classification_cache_dir = str(self.root / "cache/classification")
@@ -699,7 +792,7 @@ class LocalAIPreparer:
             self.existing_ollama = find_ollama(config)
         failures = []
         for kind in ("ollama", "jev", "jevk5"):
-            if kind not in components:
+            if kind not in components or kind in self.completed_components:
                 continue
             try:
                 if kind == "ollama":
@@ -709,11 +802,14 @@ class LocalAIPreparer:
                 else:
                     self.prepare_jevk5(config)
                 self.status(f"{kind}: test zakończony poprawnie.")
+                self.completed_components.add(kind)
+                self.component_results[kind] = "ready"
             except SetupCancelledError:
                 raise
             except Exception as exc:
                 self.check_cancelled()
                 message = repair_instructions(str(exc), kind)
+                self.component_results[kind] = message
                 failures.append(f"{kind}: {message}")
                 self.status(failures[-1])
         if failures:
@@ -725,12 +821,37 @@ class LocalAIPreparer:
         self.status("Wybrane składniki przeszły test działania.", 100)
 
 
+def perform_setup(
+    preparer: LocalAIPreparer, components: set[str], result_file: Path | None = None,
+) -> tuple[bool, str]:
+    try:
+        preparer.prepare(components)
+    except Exception as exc:
+        ok, message = False, repair_instructions(str(exc))
+    else:
+        ok, message = True, "Wybrane składniki działają."
+    target = result_file or preparer.root / "setup-result.json"
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_suffix(".tmp")
+        temporary.write_text(json.dumps({
+            "success": ok, "message": message, "components": preparer.component_results,
+            "models": sorted(preparer.verified_models),
+            "directory": str(preparer.root), "time": time.time(),
+        }, ensure_ascii=False), encoding="utf-8")
+        temporary.replace(target)
+    except OSError as exc:
+        return False, f"Nie zapisano wyniku przygotowania: {exc}"
+    return ok, message
+
+
 def run_setup_dialog(arguments: list[str]) -> int:
     # GUI stays lightweight: preparation happens in a separate worker thread.
     from PySide6.QtCore import QThread, QTimer, QUrl, Signal  # noqa: PLC0415
     from PySide6.QtGui import QDesktopServices  # noqa: PLC0415
     from PySide6.QtWidgets import (  # noqa: PLC0415
         QDialog,
+        QHBoxLayout,
         QLabel,
         QPlainTextEdit,
         QProgressBar,
@@ -744,34 +865,68 @@ def run_setup_dialog(arguments: list[str]) -> int:
     parser.add_argument("--ai-directory", required=True)
     parser.add_argument("--existing-ollama", default="")
     parser.add_argument("--existing-ollama-url", default="")
+    parser.add_argument("--headless", action="store_true")
+    parser.add_argument("--result-file", default="")
+    parser.add_argument("--language", choices=("pl", "en"), default="pl")
+    parser.add_argument("--ollama-model-directory", default="")
     parser.add_argument("--repair", action="store_true")
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--ollama-model", default="")
     options = parser.parse_args(arguments)
     components = parse_components(options.ai_components)
     cancelled = threading.Event()
+    def tr(pl: str, en: str) -> str:
+        return en if options.language == "en" else pl
+
+    result_file = Path(options.result_file) if options.result_file else None
+
+    def create_preparer(progress: Progress) -> LocalAIPreparer:
+        root = validate_storage(options.ai_directory, set())
+        preparer = LocalAIPreparer(
+            root, progress, cancelled, options.existing_ollama, options.existing_ollama_url,
+            repair=options.repair, custom_model=options.ollama_model, check_only=options.check_only,
+        )
+        preparer.ollama_model_directory = (
+            options.ollama_model_directory or AppConfig.load().ollama_models_directory
+        )
+        return preparer
+
+    def creation_failed(exc: Exception) -> str:
+        message = repair_instructions(str(exc))
+        if result_file:
+            try:
+                result_file.parent.mkdir(parents=True, exist_ok=True)
+                result_file.write_text(json.dumps({
+                    "success": False, "message": message, "components": {},
+                    "directory": options.ai_directory, "time": time.time(),
+                }, ensure_ascii=False), encoding="utf-8")
+            except OSError:
+                pass
+        return message
+
+    if options.headless:
+        try:
+            preparer = create_preparer(lambda text, percent: None)
+            ok, _ = perform_setup(preparer, components, result_file)
+            return 0 if ok else 1
+        except Exception as exc:
+            creation_failed(exc)
+            return 1
 
     class Worker(QThread):
         progress = Signal(str, int)
         outcome = Signal(bool, str)
 
+        preparer: LocalAIPreparer | None = None
+
         def run(self) -> None:
             try:
-                root = validate_storage(options.ai_directory, set())
-                LocalAIPreparer(
-                    root,
-                    self.progress.emit,
-                    cancelled,
-                    options.existing_ollama,
-                    options.existing_ollama_url,
-                    repair=options.repair,
-                    custom_model=options.ollama_model,
-                    check_only=options.check_only,
-                ).prepare(components)
+                if self.preparer is None:
+                    self.preparer = create_preparer(self.progress.emit)
+                ok, message = perform_setup(self.preparer, components, result_file)
+                self.outcome.emit(ok, message)
             except Exception as exc:
-                self.outcome.emit(False, repair_instructions(str(exc)))
-            else:
-                self.outcome.emit(True, "Testy zakończone. Wybrane składniki działają.")
+                self.outcome.emit(False, creation_failed(exc))
 
     class Dialog(QDialog):
         def reject(self) -> None:
@@ -782,21 +937,19 @@ def run_setup_dialog(arguments: list[str]) -> int:
             else:
                 super().reject()
 
+    from signum.ui.theme import SIGNUM_STYLE  # noqa: PLC0415
+
     dialog = Dialog()
-    dialog.setWindowTitle("Signum — przygotowanie lokalnego AI")
-    dialog.resize(700, 470)
+    dialog.setStyleSheet(SIGNUM_STYLE)
+    dialog.setWindowTitle(tr("Signum — przygotowanie lokalnego AI", "Signum — local AI setup"))
+    dialog.resize(720, 300)
     layout = QVBoxLayout(dialog)
-    intro = QLabel(
-        (
-            "Sprawdzam wybrane składniki.\n"
-            if options.check_only
-            else "Przygotowuję wybrane programy, biblioteki i modele.\n"
-        )
-        + f"Katalog: {options.ai_directory}\n"
-        "Składniki: " + ", ".join(MODELS.get(c, c) for c in sorted(components)) + "\n"
-        "Już działająca Ollama zachowuje swój katalog modeli.\n"
-        "Duże pliki mogą pobierać się kilkanaście minut."
-    )
+    layout.setContentsMargins(18, 18, 18, 18)
+    layout.setSpacing(10)
+    heading = QLabel(tr("Przygotowanie AI", "AI setup"))
+    heading.setProperty("role", "title")
+    layout.addWidget(heading)
+    intro = QLabel(f"Folder: {options.ai_directory}")
     intro.setWordWrap(True)
     layout.addWidget(intro)
     sources = QLabel(
@@ -810,10 +963,12 @@ def run_setup_dialog(arguments: list[str]) -> int:
     )
     sources.setOpenExternalLinks(True)
     layout.addWidget(sources)
+    sources.hide()
     notice = QLabel(THIRD_PARTY_NOTICE)
     notice.setWordWrap(True)
     layout.addWidget(notice)
-    status = QLabel("Rozpoczynam przygotowanie…")
+    notice.hide()
+    status = QLabel(tr("Rozpoczynam przygotowanie…", "Preparing…"))
     status.setWordWrap(True)
     layout.addWidget(status)
     bar = QProgressBar()
@@ -823,19 +978,34 @@ def run_setup_dialog(arguments: list[str]) -> int:
     messages.setReadOnly(True)
     messages.setMaximumBlockCount(300)
     layout.addWidget(messages)
-    log_button = QPushButton("Otwórz szczegółowy log")
+    messages.hide()
+    details = QPushButton(tr("Szczegóły", "Details"))
+    details.setCheckable(True)
+    def show_details(visible: bool) -> None:
+        for widget in (messages, sources, notice):
+            widget.setVisible(visible)
+    details.toggled.connect(show_details)
+    layout.addStretch(1)
+    actions = QHBoxLayout()
+    actions.addWidget(details)
+    details.setProperty("role", "quiet")
+    log_button = QPushButton(tr("Otwórz szczegółowy log", "Open log"))
     log_button.clicked.connect(
         lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(Path(options.ai_directory) / "setup.log")),
         )
     )
-    layout.addWidget(log_button)
-    button = QPushButton("Anuluj przygotowanie")
+    actions.addWidget(log_button)
+    log_button.setProperty("role", "quiet")
+    actions.addStretch()
+    button = QPushButton(tr("Anuluj przygotowanie", "Cancel setup"))
     button.clicked.connect(dialog.reject)
-    layout.addWidget(button)
-    retry_button = QPushButton("Spróbuj ponownie")
+    actions.addWidget(button)
+    retry_button = QPushButton(tr("Spróbuj ponownie", "Retry failed components"))
     retry_button.hide()
-    layout.addWidget(retry_button)
+    actions.insertWidget(3, retry_button)
+    retry_button.setProperty("role", "primary")
+    layout.addLayout(actions)
     worker = Worker(dialog)
     last_message = [""]
     success = [False]
@@ -852,12 +1022,15 @@ def run_setup_dialog(arguments: list[str]) -> int:
     def outcome(ok: bool, message: str) -> None:
         success[0] = ok
         status.setText(
-            "Wybrane składniki działają." if ok else "Nie udało się zakończyć. Instrukcje poniżej."
+            tr("Wybrane składniki działają.", "Selected components are ready.") if ok
+            else tr("Nie udało się zakończyć. Zobacz szczegóły.", "Setup incomplete. See details.")
         )
         messages.appendPlainText(message)
+        if not ok:
+            details.setChecked(True)
         bar.setRange(0, 100)
         bar.setValue(100 if ok else 0)
-        button.setText("Zamknij")
+        button.setText(tr("Zamknij", "Close"))
         button.setEnabled(True)
         retry_button.setVisible(not ok)
         retry_button.setEnabled(False)
@@ -865,8 +1038,8 @@ def run_setup_dialog(arguments: list[str]) -> int:
     def retry() -> None:
         cancelled.clear()
         retry_button.hide()
-        button.setText("Anuluj przygotowanie")
-        status.setText("Ponawiam przygotowanie…")
+        button.setText(tr("Anuluj przygotowanie", "Cancel setup"))
+        status.setText(tr("Ponawiam przygotowanie…", "Retrying…"))
         bar.setRange(0, 0)
         worker.start()
 

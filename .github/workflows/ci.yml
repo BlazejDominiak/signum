@@ -38,3 +38,15 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: pytest -q
+      - name: Build test installer
+        if: matrix.python-version == '3.13'
+        shell: pwsh
+        run: |
+          # Reuse the configured interpreter; no extra environment is needed on the runner.
+          ./scripts/build_installer.ps1 -Python (Get-Command python).Source
+      - name: Install, upgrade, headless failure, uninstall
+        if: matrix.python-version == '3.13'
+        shell: pwsh
+        run: |
+          $version = python -c "import signum; print(signum.__version__)"
+          ./scripts/test_installer.ps1 -Installer "$pwd/installer/output/Signum-Setup-$version.exe"

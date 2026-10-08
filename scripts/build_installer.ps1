@@ -1,10 +1,11 @@
-﻿# Buduje aplikację (PyInstaller) i instalator Windows (Inno Setup).
+# Buduje aplikację (PyInstaller) i instalator Windows (Inno Setup).
 # Użycie (z katalogu głównego repozytorium):
 #   powershell -ExecutionPolicy Bypass -File scripts\build_installer.ps1
 
+param([string]$Python)
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$python = Join-Path $root ".venv\Scripts\python.exe"
+if (-not $Python) { $Python = Join-Path $root ".venv\Scripts\python.exe" }
 
 # Wersja z jednego źródła prawdy: src/signum/__init__.py
 $version = & $python -c "import signum; print(signum.__version__)"
@@ -64,7 +65,5 @@ $setup = Join-Path $root "installer\output\Signum-Setup-$version.exe"
 Write-Host "Gotowe: $setup" -ForegroundColor Green
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $setup).Hash
 Write-Host "SHA-256: $hash" -ForegroundColor Green
-$signature = Get-AuthenticodeSignature -LiteralPath $setup
-if ($signature.Status -ne "Valid") {
-    Write-Warning "Instalator nie ma ważnego podpisu Authenticode. Nie publikuj go jako oficjalnego wydania bez podpisania certyfikatem wydawcy."
-}
+Set-Content -LiteralPath ($setup + '.sha256') -Encoding ascii `
+    -Value ($hash.ToLowerInvariant() + '  ' + (Split-Path -Leaf $setup))

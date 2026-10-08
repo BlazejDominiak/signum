@@ -1,4 +1,4 @@
-﻿; Skrypt Inno Setup 6 dla Signum.
+; Skrypt Inno Setup 6 dla Signum.
 ; Wersja jest przekazywana z scripts/build_installer.ps1: /DMyAppVersion=x.y.z
 ; Budowanie ręczne: ISCC.exe installer\signum.iss /DMyAppVersion=1.0.0
 
@@ -47,6 +47,14 @@ Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [CustomMessages]
+english.ExistingModelStorage=Model folder of the running Ollama (confirm its location):
+polish.ExistingModelStorage=Folder modeli działającej Ollamy (potwierdź lokalizację):
+english.AIReady=Application installed. Selected AI components are ready.
+english.AIFailed=Application installed. AI preparation did not finish. Open AI components in Signum to retry. Details:
+english.AINotSelected=Application installed. Configure an existing AI service or install a local model in AI components.
+polish.AIReady=Program zainstalowany. Wybrane składniki AI są gotowe.
+polish.AIFailed=Program zainstalowany. Przygotowanie AI nie zostało zakończone. Ponów w oknie Składniki AI. Szczegóły:
+polish.AINotSelected=Program zainstalowany. Skonfiguruj istniejące AI lub zainstaluj model w oknie Składniki AI.
 english.RiskPageTitle=Document and AI risk awareness
 english.RiskPageDescription=Read the notice and confirm each point before continuing.
 english.RiskCheckPurpose=I understand that the program is educational and is not suitable for commercial use.
@@ -156,8 +164,7 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Parameters: "--setup-local-ai --ai-components ""{code:SelectedAIComponents}"" --ai-directory ""{code:AIStorageDirectory}"" --existing-ollama ""{code:ExistingOllama}"" --existing-ollama-url ""{code:ExistingOllamaURL}"""; WorkingDir: "{app}"; Check: LocalAISelected; Flags: runasoriginaluser
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; WorkingDir: "{app}"; Check: AIReadyOrNotSelected; Flags: nowait postinstall skipifsilent
 
 [Code]
 var
@@ -170,6 +177,11 @@ var
   HardwareSummary: TNewStaticText;
   ComponentsNote: TNewStaticText;
   StoragePage: TInputDirWizardPage;
+  PreviousAIPath: String;
+  PreviousModelPath: String;
+  ModelStorageIndex: Integer;
+  AISetupFailed: Boolean;
+  AISetupRan: Boolean;
   RecommendButton: TNewButton;
   GpuMemoryMB: Integer;
   GpuVendor: Integer;
@@ -213,6 +225,15 @@ function AIStorageDirectory(Param: String): String;
 begin
   { Avoid a trailing backslash immediately before the command-line closing quote. }
   Result := AddBackslash(StoragePage.Values[0]) + '.';
+end;
+
+function ModelStorageDirectory(Param: String): String;
+begin
+  Result := ExpandConstant('{param:OLLAMAMODELDIR|}');
+  if Result = '' then Result := PreviousModelPath;
+  if (Result = '') and not WizardSilent and (ModelStorageIndex >= 0) then
+    Result := StoragePage.Values[ModelStorageIndex];
+  if Result <> '' then Result := AddBackslash(Result) + '.';
 end;
 
 procedure DetectGPU;
@@ -268,6 +289,8 @@ begin
         JevInstalled := Info[4] = '1';
         ModelsKnown := Info[5] = '1';
         if GetArrayLength(Info) >= 7 then JevK5Installed := Info[6] = '1';
+        if GetArrayLength(Info) >= 8 then PreviousAIPath := Info[7];
+        if GetArrayLength(Info) >= 9 then PreviousModelPath := Info[8];
       end;
 end;
 
@@ -471,10 +494,25 @@ begin
   StoragePage := CreateInputDirPage(wpSelectComponents, CustomMessage('StorageTitle'),
     CustomMessage('StorageDescription'), CustomMessage('StoragePrompt'), False, '');
   StoragePage.Add(CustomMessage('StorageLabel'));
-  if DirExists('H:\') then
+  ModelStorageIndex := -1;
+  if OllamaURL <> '' then
+  begin
+    ModelStorageIndex := StoragePage.Add(CustomMessage('ExistingModelStorage'));
+    StoragePage.Values[ModelStorageIndex] := PreviousModelPath;
+    if StoragePage.Values[ModelStorageIndex] = '' then
+      StoragePage.Values[ModelStorageIndex] := GetEnv('OLLAMA_MODELS');
+    if StoragePage.Values[ModelStorageIndex] = '' then
+      StoragePage.Values[ModelStorageIndex] := ExpandConstant('{%USERPROFILE}\.ollama\models');
+  end;
+  if PreviousAIPath = '' then PreviousAIPath := GetPreviousData('AIStorage', '');
+  if PreviousAIPath <> '' then
+    StoragePage.Values[0] := PreviousAIPath
+  else if DirExists('H:\') then
     StoragePage.Values[0] := 'H:\Tools\SignumAI'
   else
     StoragePage.Values[0] := ExpandConstant('{userdocs}\SignumAI');
+  StoragePage.Values[0] := ExpandConstant('{param:AIDIR|' + StoragePage.Values[0] + '}');
+  Log('AI storage: ' + StoragePage.Values[0]);
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
@@ -482,8 +520,58 @@ begin
   Result := (PageID = StoragePage.ID) and not LocalAISelected;
 end;
 
+function AIReadyOrNotSelected: Boolean;
+begin
+  Result := not AISetupFailed;
+end;
+
+procedure RegisterPreviousData(PreviousDataKey: Integer);
+begin
+  SetPreviousData(PreviousDataKey, 'AIStorage', StoragePage.Values[0]);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  Arguments, LanguageCode: String;
+  ExitCode: Integer;
+begin
+  if (CurStep <> ssPostInstall) or not LocalAISelected then Exit;
+  AISetupRan := True;
+  LanguageCode := 'pl';
+  if ActiveLanguage = 'english' then LanguageCode := 'en';
+  Arguments := '--setup-local-ai --ai-components "' + SelectedAIComponents('') +
+    '" --ai-directory "' + AIStorageDirectory('') +
+    '" --existing-ollama "' + ExistingOllama('') +
+    '" --existing-ollama-url "' + ExistingOllamaURL('') +
+    '" --language ' + LanguageCode +
+    ' --result-file "' + ExpandConstant('{userappdata}\Signum\setup-result.json') + '"' +
+    ' --ollama-model-directory "' + ModelStorageDirectory('') + '"';
+  if WizardSilent then Arguments := Arguments + ' --headless';
+  ExitCode := 1;
+  AISetupFailed := not ExecAsOriginalUser(ExpandConstant('{app}\{#MyAppExeName}'),
+    Arguments, ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode);
+  AISetupFailed := AISetupFailed or (ExitCode <> 0);
+  Log('AI preparation exit code: ' + IntToStr(ExitCode));
+end;
+
+function GetCustomSetupExitCode: Integer;
+begin
+  Result := 0;
+  if AISetupFailed then Result := 10;
+end;
+
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  if CurPageID = wpFinished then
+  begin
+    if AISetupFailed then
+      WizardForm.FinishedLabel.Caption := CustomMessage('AIFailed') + #13#10 +
+        ExpandConstant('{userappdata}\Signum\setup-result.json')
+    else if AISetupRan then
+      WizardForm.FinishedLabel.Caption := CustomMessage('AIReady')
+    else
+      WizardForm.FinishedLabel.Caption := CustomMessage('AINotSelected');
+  end;
   if CurPageID = RiskPage.ID then
     WizardForm.NextButton.Enabled := RisksConfirmed
   else if CurPageID = wpSelectComponents then

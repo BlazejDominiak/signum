@@ -16,6 +16,16 @@ from signum.ai.base import AIConnectionError
 
 _LOCK = threading.Lock()
 _PROCESSES: dict[str, subprocess.Popen[bytes]] = {}
+_MODEL_DIRECTORIES: dict[str, Path] = {}
+
+
+def managed_model_directory(base_url: str) -> Path | None:
+    url = urlsplit(base_url)
+    origin = f"http://127.0.0.1:{url.port or 11434}"
+    process = _PROCESSES.get(origin)
+    if process is not None and process.poll() is None:
+        return _MODEL_DIRECTORIES.get(origin)
+    return None
 
 
 def start_local_ollama(base_url: str, runtime_dir: str) -> None:
@@ -66,6 +76,10 @@ def start_local_ollama(base_url: str, runtime_dir: str) -> None:
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
             _PROCESSES[origin] = process
+            if not external:
+                _MODEL_DIRECTORIES[origin] = root.parent / "models" / "ollama"
+            else:
+                _MODEL_DIRECTORIES.pop(origin, None)
         for _ in range(120):
             try:
                 if session.get(f"{origin}/api/version", timeout=2).status_code == 200:

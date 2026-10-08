@@ -34,6 +34,10 @@ def main() -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
+    if "--setup-local-ai" in sys.argv and "--headless" in sys.argv:
+        from signum.setup_local_ai import run_setup_dialog  # noqa: PLC0415
+
+        return run_setup_dialog(sys.argv[1:])
     app = QApplication(sys.argv)
     app.setApplicationName(APP_NAME)
     app.setApplicationVersion(__version__)

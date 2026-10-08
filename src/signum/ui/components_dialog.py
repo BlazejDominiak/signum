@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import fields
 from pathlib import Path
 
@@ -32,10 +33,7 @@ class ComponentsDialog(QDialog):
         self.setWindowTitle("Składniki AI — instalacja i naprawa")
         self.resize(830, 620)
         layout = QVBoxLayout(self)
-        intro = QLabel(
-            "Do lokalnych modeli wybierz Ollamę i model; Jev oraz JevK5 instalują własny Python "
-            "i biblioteki. Dla AI od dostawcy wystarczą adres, model i klucz w Ustawieniach AI."
-        )
+        intro = QLabel("Wybierz lokalne składniki do instalacji lub sprawdzenia.")
         intro.setWordWrap(True)
         layout.addWidget(intro)
         self.choices: dict[str, QCheckBox] = {}
@@ -71,7 +69,17 @@ class ComponentsDialog(QDialog):
         note = QLabel(THIRD_PARTY_NOTICE)
         note.setWordWrap(True)
         layout.addWidget(note)
-        self.result_label = QLabel("Wykrycie plików wymaga potwierdzenia testem działania.")
+        self.ollama_directory = QLineEdit(config.ollama_models_directory)
+        self.ollama_directory.setPlaceholderText("Niestandardowy folder modeli istniejącej Ollamy")
+        layout.addWidget(self.ollama_directory)
+        details = QPushButton("Szczegóły instalacji")
+        details.setCheckable(True)
+        optional = (space, note, library, self.custom, self.ollama_directory)
+        for widget in optional:
+            widget.hide()
+        details.toggled.connect(lambda shown: [widget.setVisible(shown) for widget in optional])
+        layout.addWidget(details)
+        self.result_label = QLabel("")
         self.result_label.setWordWrap(True)
         layout.addWidget(self.result_label)
         actions = QHBoxLayout()
@@ -132,6 +140,8 @@ class ComponentsDialog(QDialog):
             self.directory.text().strip(),
             "--check-only" if check_only else "--repair",
         ]
+        if self.ollama_directory.text().strip():
+            args += ["--ollama-model-directory", self.ollama_directory.text().strip()]
         if custom:
             args += ["--ollama-model", custom]
         # Only a configured local endpoint is handed to preparation; never a cloud URL.
@@ -148,9 +158,18 @@ class ComponentsDialog(QDialog):
         for field in fields(AppConfig):
             setattr(self.config, field.name, getattr(loaded, field.name))
         self._refresh()
+        outcomes = {}
+        try:
+            report = Path(self.directory.text()) / "setup-result.json"
+            data = json.loads(report.read_text(encoding="utf-8"))
+            outcomes = data.get("components", {})
+        except (OSError, ValueError, AttributeError):
+            pass
         for key in selected:
+            state = outcomes.get("ollama" if key.startswith("ollama") else key)
             self.states[key].setText(
-                "Test działania: OK" if ok else "Sprawdź wynik i instrukcje w logu"
+                "Test działania: OK" if state == "ready" or (state is None and ok)
+                else "Niegotowy — szczegóły w logu"
             )
         self.result_label.setText(
             "Testy zakończone poprawnie."

@@ -1,4 +1,4 @@
-﻿param([Parameter(Mandatory=$true)][string]$OutputPath)
+param([Parameter(Mandatory=$true)][string]$OutputPath)
 $ErrorActionPreference = 'Stop'
 # Read-only discovery: no fixed version, no starts, downloads or drive scans.
 $candidates = [System.Collections.Generic.List[string]]::new()
@@ -127,5 +127,5 @@ if ($config.classification_jev_python -and $config.classification_jev_model_dir 
         (Test-Path -LiteralPath (Join-Path $config.classification_jev_model_dir 'tokenizer.json') -PathType Leaf)
 }
 $result = @($executable, $serviceUrl, [string][int]($models -contains 'gemma4:e2b'),
-    [string][int]($models -contains 'gemma4:12b'), [string][int]$jevReady, [string][int]$modelsKnown, [string][int]$jevK5Ready)
+    [string][int]($models -contains 'gemma4:12b'), [string][int]$jevReady, [string][int]$modelsKnown, [string][int]$jevK5Ready, [string]$config.ai_directory, [string]$config.ollama_models_directory)
 [IO.File]::WriteAllLines($OutputPath, $result, [Text.UTF8Encoding]::new($true))

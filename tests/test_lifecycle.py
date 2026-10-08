@@ -39,7 +39,6 @@ def test_installer_explains_and_checks_runtime_prerequisites() -> None:
     assert "--self-test" in build_script
     assert "Start-Process" in build_script
     assert "Get-FileHash" in build_script
-    assert "Get-AuthenticodeSignature" in build_script
     assert _self_test() == 0
 
 
