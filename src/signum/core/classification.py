@@ -139,6 +139,7 @@ class ClassificationRow:
     model_review_reasons: list[str] = field(default_factory=list)
     calibration_id: str = ""
     calibration_warning: str = ""
+    score_source: str = ""
     review_labels: list[str] = field(default_factory=list)
 
     @property
@@ -365,6 +366,10 @@ def apply_classification(
         if not isinstance(scores, dict) or set(scores) != set(labels):
             raise ValueError("Model nie zwrócił ocen wszystkich etykiet z podanej listy.")
         scores = {key: probability(value) for key, value in scores.items()}
+        score_source = result.get("score_source", "decision")
+        if score_source not in {"decision", "declared"}:
+            raise ValueError("Niepoprawne źródło ocen etykiet.")
+        row.score_source = score_source
         selected = []
         reasons = []
         if row.threshold is None:
@@ -394,6 +399,7 @@ def apply_classification(
             raise ValueError("Model nie zwrócił poprawnej listy etykiet.")
         selected = choices[:MAX_CLASSIFICATION_LABELS]
         row.label_scores = {}
+        row.score_source = ""
         reasons = ["HITL — sprawdź etykiety: model nie udostępnia liczbowych ocen decyzji."]
     if row.calibration_warning:
         reasons.append(row.calibration_warning)

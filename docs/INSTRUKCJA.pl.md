@@ -33,6 +33,16 @@ oraz **Sprawdzanie podpisów**. Każda ma własną kolejkę i wyniki.
    Raport zawiera ścieżki PDF-ów, kategorie, czasy i skróty wejść; nie zawiera
    tekstów dokumentów ani kluczy API.
 
+Wynik może zawierać do trzech etykiet. Szczegóły pokazują oceny wszystkich kategorii
+oraz powód HITL. Gemma podaje deklarowaną pewność, a JEV — oceny z wyjścia
+modelu decyzyjnego. Dla lokalnej `gemma4:12b`, standardowego promptu i etykiet
+próg wynosi 0,65, z HITL w paśmie ±0,05. Deklaracja modelu nie jest gwarancją
+poprawności. Zapisane wcześniej wyniki Gemmy nie zawierają tych ocen — aby je
+uzyskać, uruchom nowe porównanie.
+
+Lokalny JevK5 współdzieli obliczenie tekstu między pytaniami o etykiety.
+Oceny pozostają niezależne; przy ograniczonej pamięci GPU partie są zmniejszane.
+
 ### Porządkowanie kolekcji w folderach
 
 Po zakończeniu klasyfikacji wybierz **Skopiuj do folderów…** lub

@@ -95,6 +95,8 @@ def load_collection(path: Path | None = None) -> tuple[list[Path], Classificatio
             if row.threshold is not None:
                 row.threshold = probability(row.threshold)
             row.hitl_margin = probability(row.hitl_margin)
+            if row.score_source not in {"", "decision", "declared"}:
+                raise ValueError("Niepoprawne źródło ocen etykiet")
             if (type(row.hitl) is not bool or not isinstance(row.calibration_id, str)
                     or not isinstance(row.calibration_warning, str)):
                 raise ValueError("Niepoprawne oznaczenie HITL")

@@ -107,7 +107,10 @@ class LabelReviewDialog(QDialog):
         self.resize(560, 520)
         layout = QVBoxLayout(self)
         layout.addWidget(_label(row.path.name, "heading"))
-        hint = _label("\n".join(row.review_reasons) or "Wybierz wszystkie pasujące etykiety.")
+        detail = "\n".join(row.review_reasons) or "Wybierz wszystkie pasujące etykiety."
+        if row.score_source == "declared":
+            detail += "\nOceny oznaczają deklarowaną pewność modelu."
+        hint = _label(detail)
         hint.setWordWrap(True)
         layout.addWidget(hint)
         self.labels = QListWidget()
@@ -802,8 +805,10 @@ class ClassificationPanel(QWidget):
                 )
                 calibration = (f"Próg: {row.threshold:.3f}; HITL ±{row.hitl_margin:.3f}"
                                if row.threshold is not None else "Brak kalibracji")
-                item.setToolTip(item.toolTip() + "\n" + calibration + "\n" + scores
-                                + "\n" + detail)
+                source = ("Oceny: deklarowana pewność modelu"
+                          if row.score_source == "declared" else "Oceny decyzyjne modelu")
+                item.setToolTip(item.toolTip() + "\n" + source + "\n" + calibration
+                                + "\n" + scores + "\n" + detail)
             if col == 0:
                 item.setData(Qt.ItemDataRole.UserRole, str(row.path))
                 item.setData(Qt.ItemDataRole.UserRole + 1, row)

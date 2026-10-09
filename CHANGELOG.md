@@ -4,6 +4,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
 
 ## [Unreleased]
 
+## [1.1.7] — 2026-10-09
+
+### Fixed
+- Lokalny JevK5 otrzymuje całą listę etykiet w jednym zleceniu. Wspólny tekst
+  i instrukcje są przetwarzane raz; niezależne pytania korzystają z osobnych kopii
+  tego stanu i są oceniane w partiach mieszczących się w pamięci GPU.
+- Gemma zwraca deklarowaną pewność dla każdej etykiety. Profil `gemma4:12b` dla
+  standardowego katalogu ma osobno dobrany próg 0,65 i pasmo HITL ±0,05;
+  usunięto bezwarunkowy HITL spowodowany brakiem ocen liczbowych.
+- Źródło ocen jest widoczne w szczegółach i eksportach oraz zachowane w kolekcjach.
+
 ## [1.1.6] — 2026-10-09
 
 ### Fixed

@@ -23,7 +23,7 @@ from signum.ai.ollama_client import OllamaVisionModel
 from signum.ai.parsing import extract_first_json_object
 from signum.config import AppConfig, get_api_key
 from signum.core.classification import check_cancel
-from signum.core.decision import MAX_CLASSIFICATION_LABELS, label_questions, probability
+from signum.core.decision import label_questions, probability
 from signum.local_components import jevk5_files
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
@@ -215,8 +215,11 @@ class GemmaTextClassifier:
                 "keep_alive": "10m",
                 "messages": [
                     {"role": "system", "content": question["instructions"]
-                     + '\nReturn JSON {"categories": ["category IDs"]}; '
-                     'up to 3 matching IDs, highest relevance first, or [].'},
+                     + '\nReturn only JSON {"label_scores": {"category ID": number}}. '
+                     'For EVERY category, estimate your confidence from 0 to 1 that it applies '
+                     'to the document. Assess each category independently; scores need not sum '
+                     'to 1. Use scores near 0.5 when uncertain, near 1 when clearly supported, '
+                     'and near 0 when clearly unsupported. Include every category ID once.'},
                     {
                         "role": "user",
                         "content": json.dumps(
@@ -228,18 +231,21 @@ class GemmaTextClassifier:
                 "format": {
                     "type": "object",
                     "properties": {
-                        "categories": {
-                            "type": "array",
-                            "items": {"type": "string", "enum": list(question["criteria"])},
-                            "uniqueItems": True,
-                            "maxItems": min(MAX_CLASSIFICATION_LABELS, len(question["criteria"])),
+                        "label_scores": {
+                            "type": "object",
+                            "properties": {
+                                key: {"type": "number", "minimum": 0, "maximum": 1}
+                                for key in question["criteria"]
+                            },
+                            "required": list(question["criteria"]),
+                            "additionalProperties": False,
                         }
                     },
-                    "required": ["categories"],
+                    "required": ["label_scores"],
                     "additionalProperties": False,
                 },
                 "options": {
-                    "temperature": 0, "seed": 20261007, "num_ctx": 8192, "num_predict": 256,
+                    "temperature": 0, "seed": 20261007, "num_ctx": 8192, "num_predict": 512,
                 },
             },
         )
@@ -255,7 +261,11 @@ class GemmaTextClassifier:
                 "Tekst zbliża się do granicy kontekstu modelu; skróć dokument lub prompt."
             )
         parsed = json.loads(result.get("message", {}).get("content", ""))
-        return {"choices": parsed.get("categories")}
+        scores = parsed.get("label_scores")
+        if not isinstance(scores, dict) or set(scores) != set(question["criteria"]):
+            raise ValueError("Model nie zwrócił ocen wszystkich etykiet z podanej listy.")
+        return {"label_scores": {key: probability(value) for key, value in scores.items()},
+                "score_source": "declared"}
 
     def close(self) -> None:
         self.manager.release_resources()
@@ -389,20 +399,22 @@ class JevK5TextClassifier:
         self._request("load", "", {})
 
     def prepare(self, text: str, question: dict[str, Any]) -> str:
-        questions = (label_questions(question).values()
-                     if question["type"] == "multilabel" else [question])
-        for item in questions:
-            text = str(self._request("prepare", text, item)["text"])
-        return text
+        if question["type"] == "multilabel":
+            return str(self._request("prepare_many", text, label_questions(question))["text"])
+        return str(self._request("prepare", text, question)["text"])
 
     def classify(self, text: str, question: dict[str, Any]) -> dict[str, Any]:
         if question["type"] != "multilabel":
             return self._request("classify", text, question)
+        questions = label_questions(question)
+        response = self._request("classify_many", text, questions)
+        check_cancel(self.cancel)
+        answers = response.get("answers")
+        if not isinstance(answers, dict) or set(answers) != set(questions):
+            raise ValueError("Brak kompletu ocen etykiet JevK5.")
         scores = {}
-        for key, item in label_questions(question).items():
-            check_cancel(self.cancel)
-            answer = self._request("classify", text, item)
-            if answer.get("type") != "noul":
+        for key, answer in answers.items():
+            if not isinstance(answer, dict) or answer.get("type") != "noul":
                 raise ValueError("Niepoprawna ocena etykiety JevK5.")
             scores[key] = probability(answer.get("noul"))
         return {"label_scores": scores}
@@ -465,6 +477,7 @@ class APITextClassifier:
         if response.status_code != 200:
             raise ValueError(f"API zwróciło HTTP {response.status_code}.")
         data = response.json()
+        content: Any
         if self.profile.api_format == "anthropic":
             content = "\n".join(
                 block["text"] for block in data.get("content", []) if block.get("type") == "text"

@@ -33,5 +33,20 @@
       "multilabel120-jevk5-20261009-top3-v2"
     ],
     "review_policy_source": "Human feedback on excessive HITL; operational margin, not refitted decision threshold."
+  },
+  {
+    "id": "multilabel120-gemma4-12b-20261009-declared-v1",
+    "model": "gemma",
+    "model_name": "gemma4:12b",
+    "score_source": "declared",
+    "question_sha256": "57bd9eea34a587975e57eeb7d33a03d15a8d47cc1e80f49943d38730a12cd2ca",
+    "threshold": 0.65,
+    "max_labels": 3,
+    "selection": "highest_scores_above_threshold_then_top3; ties_by_category_id",
+    "hitl_margin": 0.05,
+    "review_labels": [],
+    "status": "threshold_review",
+    "review_reason": "",
+    "review_policy_source": "Declared Gemma scores; threshold fitted on dev micro-F1 with midpoint candidates; HITL includes the adjacent observed confidence values because scores are quantized."
   }
 ]

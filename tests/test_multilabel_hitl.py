@@ -133,7 +133,7 @@ def test_venice_requests_independent_noul_scores(monkeypatch):
     client.close()
 
 
-def test_local_model_collects_each_label_and_can_cancel_between_them(monkeypatch):
+def test_local_model_discards_batch_if_cancelled(monkeypatch):
     from signum.core.classification import ClassificationCancelledError
 
     cancel = threading.Event()
@@ -149,6 +149,32 @@ def test_local_model_collects_each_label_and_can_cancel_between_them(monkeypatch
     with pytest.raises(ClassificationCancelledError):
         client.classify("evidence", make_question([("A", ""), ("B", "")], "Select all"))
     assert len(calls) == 1
+
+
+def test_local_model_submits_all_labels_in_one_request(monkeypatch):
+    client = JevK5TextClassifier(AppConfig(), threading.Event())
+    question = make_question(list(DEFAULT_CATEGORIES), DEFAULT_INSTRUCTIONS)
+    response = {"answers": {key: {"type": "noul", "noul": .95}
+                            for key in question["criteria"]}}
+    request = Mock(return_value=response)
+    monkeypatch.setattr(client, "_request", request)
+    result = client.classify("evidence", question)
+    assert len(result["label_scores"]) == 12
+    request.assert_called_once()
+    assert request.call_args.args[0] == "classify_many"
+    assert set(request.call_args.args[2]) == set(question["criteria"])
+    assert all(q["type"] == "noul" for q in request.call_args.args[2].values())
+
+
+def test_local_model_prepares_the_complete_list_in_one_request(monkeypatch):
+    client = JevK5TextClassifier(AppConfig(), threading.Event())
+    request = Mock(return_value={"text": "shorter"})
+    monkeypatch.setattr(client, "_request", request)
+    question = make_question(list(DEFAULT_CATEGORIES), DEFAULT_INSTRUCTIONS)
+    assert client.prepare("evidence", question) == "shorter"
+    request.assert_called_once()
+    assert request.call_args.args[0] == "prepare_many"
+    assert len(request.call_args.args[2]) == 12
 
 
 def test_copy_routes_each_label_but_move_waits_for_one_destination(tmp_path):

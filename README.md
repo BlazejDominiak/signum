@@ -163,8 +163,8 @@ which verifies that the selected service and model are actually available.
 
 ### Installer (recommended)
 
-Signum is a demo project. Download [Signum-Setup-1.1.6.exe](installer/output/Signum-Setup-1.1.6.exe)
-and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.6.exe.sha256).
+Signum is a demo project. Download [Signum-Setup-1.1.7.exe](installer/output/Signum-Setup-1.1.7.exe)
+and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.7.exe.sha256).
 Run the installer to begin setup. Per-user install,
 no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate

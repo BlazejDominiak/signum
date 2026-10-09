@@ -78,6 +78,11 @@ def policy_for(profile: ModelProfile, question: dict[str, Any]) -> dict[str, Any
             and profile.url.rstrip("/") == "https://api.venice.ai/api/v1"
             and profile.model == "jev-latest"
             and policy["model"] == "venice"
+        ) or (
+            profile.provider == "ollama" and profile.local
+            and policy["model"] == "gemma"
+            and profile.model == policy.get("model_name")
+            and policy.get("score_source") == "declared"
         ):
             return dict(policy)
     return {}
@@ -127,7 +132,8 @@ def refresh_review_policy(batch: ClassificationBatch, profiles: list[ModelProfil
         try:
             apply_classification(
                 refreshed, {"label_scores": {key: row.label_scores[name]
-                                             for key, name in labels.items()}}, labels,
+                                             for key, name in labels.items()},
+                            "score_source": row.score_source or "decision"}, labels,
             )
         except ValueError:
             continue
