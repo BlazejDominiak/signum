@@ -384,7 +384,6 @@ class LocalAIPreparer:
                 finally:
                     client.release_resources()
             from signum.ai.text_classifiers import GemmaTextClassifier  # noqa: PLC0415
-            from signum.core.classification import make_question  # noqa: PLC0415
 
             text_client = GemmaTextClassifier(
                 replace(
@@ -396,15 +395,7 @@ class LocalAIPreparer:
                 api_key="",
             )
             try:
-                answer = text_client.classify(
-                    "Agreement for delivery of goods.",
-                    make_question(
-                        [("Agreement", "A contract."), ("Other", "Other documents.")],
-                        "Choose the document type.",
-                    ),
-                )
-                if answer.get("choice") not in {"c01", "c02"}:
-                    raise ValueError("Model nie zwrócił poprawnej kategorii.")
+                text_client.check_connection()
             finally:
                 text_client.close()
             self.verified_models.add(model)
@@ -660,7 +651,6 @@ class LocalAIPreparer:
 
     def check_jevk5(self, config: AppConfig) -> None:
         from signum.ai.text_classifiers import JevK5TextClassifier  # noqa: PLC0415
-        from signum.core.classification import make_question  # noqa: PLC0415
 
         jevk5_files(config)
         self.status(
@@ -674,18 +664,10 @@ class LocalAIPreparer:
                 self.cancelled,
             )
         )
-        self.status("Ładuję JevK5 i sprawdzam kategoryzację.")
+        self.status("Ładuję JevK5 i sprawdzam odpowiedź modelu.")
         client = JevK5TextClassifier(config, self.cancelled)
         try:
-            answer = client.classify(
-                "Agreement for delivery of goods.",
-                make_question(
-                    [("Agreement", "A contract."), ("Other", "Other documents.")],
-                    "Choose the document type.",
-                ),
-            )
-            if answer.get("choice") not in {"c01", "c02"}:
-                raise ValueError("JevK5 nie zwrócił poprawnej kategorii.")
+            client.check_connection()
         finally:
             client.close()
 

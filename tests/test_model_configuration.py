@@ -126,7 +126,7 @@ def test_models_dialog_edits_refreshes_and_saves_independent_secrets(qtbot, monk
 
 def test_connection_test_uses_unsaved_fields_without_saving_keys(qtbot, monkeypatch):
     captured = []
-    client = Mock(classify=Mock(return_value={"choice": "c01"}))
+    client = Mock(check_connection=Mock())
     monkeypatch.setattr("signum.ui.models_dialog.get_api_key", lambda _: "")
     monkeypatch.setattr(
         "signum.ui.models_dialog.set_api_key", lambda *a: pytest.fail("Test must not save keys")
@@ -148,6 +148,8 @@ def test_connection_test_uses_unsaved_fields_without_saving_keys(qtbot, monkeypa
     assert captured[0][0].url == "https://draft.example.test/v1"
     assert captured[0][0].model == "draft-model"
     assert captured[0][1] == "draft-key"
+    client.check_connection.assert_called_once_with()
+    client.classify.assert_not_called()
     assert client.close.call_count == 1
     assert "Połączenie działa" in dialog.message.text()
 

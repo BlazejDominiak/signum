@@ -4,6 +4,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
 
 ## [Unreleased]
 
+## [1.1.6] — 2026-10-09
+
+### Fixed
+- Test połączenia sprawdza dostęp do wybranego modelu i jego odpowiedź, bez
+  klasyfikowania dokumentu ani oceniania etykiet. Usunięto fałszywy błąd JEV
+  po zmianie formatu klasyfikacji na wiele etykiet.
+- Sprawdzanie lokalnych składników Ollama i JevK5 korzysta z tego samego testu
+  odpowiedzi modelu zamiast wymagania pojedynczej kategorii.
+
 ## [1.1.5] — 2026-10-09
 
 ### Added

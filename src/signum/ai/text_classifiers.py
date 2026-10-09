@@ -27,6 +27,21 @@ from signum.core.decision import MAX_CLASSIFICATION_LABELS, label_questions, pro
 from signum.local_components import jevk5_files
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
+_CONNECTION_TEXT = "Connection test."
+_CONNECTION_QUESTION = {"type": "noul", "instructions": "The input is a connection test."}
+
+
+def _check_connection_decision(answer: dict[str, Any]) -> None:
+    # Verify the protocol, not whether the model agreed with the probe statement.
+    if answer.get("type") != "noul":
+        raise ValueError("Model nie zwrócił odpowiedzi w formacie Decisions.")
+    probability(answer.get("noul"))
+
+
+def _check_connection_text(content: Any) -> None:
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("Model nie zwrócił treści odpowiedzi na test połączenia.")
+
 
 def venice_key(config: AppConfig) -> str:
     key = os.environ.get("VENICE_API_KEY") or get_api_key("venice")
@@ -112,6 +127,10 @@ class VeniceTextClassifier:
             return {**result, "wait_s": waiting}
         raise ValueError("API: przekroczono limit żądań.")
 
+    def check_connection(self) -> None:
+        answer = self.classify(_CONNECTION_TEXT, _CONNECTION_QUESTION)
+        _check_connection_decision(answer)
+
     def _wait(self, seconds: float) -> float:
         self.progress(f"Limit API: oczekiwanie {seconds:.0f} s.")
         started = time.perf_counter()
@@ -160,6 +179,24 @@ class GemmaTextClassifier:
         except Exception:
             self.close()
             raise
+
+    def check_connection(self) -> None:
+        response = self.session.post(
+            self.url + "/api/chat",
+            json={
+                "model": self.model,
+                "stream": False,
+                "think": False,
+                "keep_alive": "10m",
+                "messages": [{"role": "user", "content": "Reply briefly: connection test."}],
+                "options": {"num_predict": 32},
+            },
+            timeout=(15, self.timeout),
+            allow_redirects=False,
+        )
+        if response.status_code != 200:
+            raise ValueError(f"Ollama zwróciła HTTP {response.status_code}.")
+        _check_connection_text(response.json().get("message", {}).get("content"))
 
     def prepare_model(self) -> None:
         if self.can_load:
@@ -344,6 +381,10 @@ class JevK5TextClassifier:
         self.close()
         raise TimeoutError("JevK5: przekroczono czas oczekiwania na odpowiedź.")
 
+    def check_connection(self) -> None:
+        answer = self._request("classify", _CONNECTION_TEXT, _CONNECTION_QUESTION)
+        _check_connection_decision(answer)
+
     def prepare_model(self) -> None:
         self._request("load", "", {})
 
@@ -407,6 +448,31 @@ class APITextClassifier:
                 self.session.headers["x-api-key"] = api_key
         elif api_key:
             self.session.headers["Authorization"] = "Bearer " + api_key
+
+    def check_connection(self) -> None:
+        payload: dict[str, Any] = {
+            "model": self.profile.model,
+            "messages": [{"role": "user", "content": "Reply briefly: connection test."}],
+        }
+        if self.profile.api_format == "anthropic":
+            route = "/messages"
+            payload["max_tokens"] = 32
+        else:
+            route = "/chat/completions"
+        response = self.session.post(
+            self.url + route, json=payload, timeout=(15, self.timeout), allow_redirects=False
+        )
+        if response.status_code != 200:
+            raise ValueError(f"API zwróciło HTTP {response.status_code}.")
+        data = response.json()
+        if self.profile.api_format == "anthropic":
+            content = "\n".join(
+                block["text"] for block in data.get("content", []) if block.get("type") == "text"
+            )
+        else:
+            choices = data.get("choices", [])
+            content = choices[0].get("message", {}).get("content") if choices else None
+        _check_connection_text(content)
 
     def classify(self, text: str, question: dict[str, Any]) -> dict[str, Any]:
         instructions = (

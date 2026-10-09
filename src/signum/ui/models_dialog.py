@@ -29,7 +29,6 @@ from PySide6.QtWidgets import (
 from signum.ai.model_profiles import API_FORMATS, ModelProfile, load_profiles
 from signum.ai.text_classifiers import create_text_classifier, venice_key
 from signum.config import AppConfig, get_api_key, set_api_key
-from signum.core.classification import make_question
 from signum.local_components import repair_instructions
 from signum.network import normalize_ai_endpoint
 from signum.ui.components_dialog import ComponentsDialog
@@ -52,16 +51,8 @@ class TextConnectionTestWorker(QThread):
                 threading.Event(),
                 api_key=self.key if self.key or self.profile.key_slot != "venice" else None,
             )
-            result = client.classify(
-                "Agreement for delivery of goods.",
-                make_question(
-                    [("Agreement", "A contract."), ("Other", "Other document types.")],
-                    "Choose the document type.",
-                ),
-            )
-            if result.get("choice") not in {"c01", "c02"}:
-                raise ValueError("Model nie zwrócił poprawnej kategorii.")
-            ok, message = True, "Połączenie działa. Model zwrócił kategorię."
+            client.check_connection()
+            ok, message = True, "Połączenie działa. Model odpowiada."
         except Exception as exc:
             ok, message = False, repair_instructions(str(exc), self.profile.provider)
         finally:
