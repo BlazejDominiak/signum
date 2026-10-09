@@ -163,6 +163,12 @@ class DocumentAnalyzer:
             result.inference_s += max(0.0, min(duration, request_time) - loading)
         if analysis.signature_probability is not None:
             result.page_signature_probabilities[page.number] = analysis.signature_probability
+        if analysis.signature_score is not None:
+            result.page_decision_scores[page.number] = analysis.signature_score
+        if analysis.signature_threshold is not None:
+            result.page_decision_thresholds[page.number] = analysis.signature_threshold
+        if analysis.review_reasons:
+            result.page_review_reasons[page.number] = list(analysis.review_reasons)
         if analysis.description and not result.title:
             result.title = analysis.description
         for sig in analysis.signatures:

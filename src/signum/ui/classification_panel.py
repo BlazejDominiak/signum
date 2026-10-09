@@ -14,11 +14,13 @@ from PySide6.QtGui import QColor, QDesktopServices
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QHBoxLayout,
     QHeaderView,
-    QInputDialog,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QMenu,
     QMessageBox,
     QPlainTextEdit,
@@ -41,17 +43,21 @@ from signum.core.classification import (
     DEFAULT_CATEGORIES,
     DEFAULT_INSTRUCTIONS,
     LEGACY_DEFAULT_INSTRUCTIONS,
+    LEGACY_ENGLISH_INSTRUCTIONS,
     ClassificationBatch,
     ClassificationRow,
+    confirm_categories,
     make_question,
     write_classification_report,
 )
+from signum.core.classification_calibration import refresh_review_policy
 from signum.core.collection_session import (
     journal_path,
     load_collection,
     save_collection,
     session_path,
 )
+from signum.core.decision import MAX_CLASSIFICATION_LABELS
 from signum.core.discovery import collect_documents
 from signum.core.file_identity import fingerprint
 from signum.core.filing import FilingMode, FilingResult
@@ -92,6 +98,54 @@ class ModelMetricCard(QWidget):
         self.style().unpolish(self)
         self.style().polish(self)
 
+
+
+class LabelReviewDialog(QDialog):
+    def __init__(self, row: ClassificationRow, labels: list[str], parent: QWidget) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Sprawdź etykiety dokumentu")
+        self.resize(560, 520)
+        layout = QVBoxLayout(self)
+        layout.addWidget(_label(row.path.name, "heading"))
+        hint = _label("\n".join(row.review_reasons) or "Wybierz wszystkie pasujące etykiety.")
+        hint.setWordWrap(True)
+        layout.addWidget(hint)
+        self.labels = QListWidget()
+        for name in sorted(labels, key=lambda name: -row.label_scores.get(name, -1)):
+            score = row.label_scores.get(name)
+            item = QListWidgetItem(name + (f" — {score:.3f}" if score is not None else ""))
+            item.setData(Qt.ItemDataRole.UserRole, name)
+            item.setCheckState(Qt.CheckState.Checked if name in row.selected_categories
+                               else Qt.CheckState.Unchecked)
+            self.labels.addItem(item)
+        layout.addWidget(self.labels)
+        self.selection_hint = _label("")
+        layout.addWidget(self.selection_hint)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save
+                                   | QDialogButtonBox.StandardButton.Cancel)
+        self.save_button = buttons.button(QDialogButtonBox.StandardButton.Save)
+        self.save_button.setText("Zapisz sprawdzone etykiety")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Anuluj")
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+        self.labels.itemChanged.connect(self._update_selection_limit)
+        self._update_selection_limit()
+
+    def _update_selection_limit(self) -> None:
+        count = len(self.selected_labels())
+        allowed = count <= MAX_CLASSIFICATION_LABELS
+        self.save_button.setEnabled(allowed)
+        self.selection_hint.setText(
+            f"Wybrano {count}/{MAX_CLASSIFICATION_LABELS}. "
+            + ("Możesz też pozostawić listę pustą." if allowed
+               else "Odznacz nadmiarowe etykiety, aby zapisać wynik.")
+        )
+
+    def selected_labels(self) -> list[str]:
+        return [self.labels.item(i).data(Qt.ItemDataRole.UserRole)
+                for i in range(self.labels.count())
+                if self.labels.item(i).checkState() == Qt.CheckState.Checked]
 
 class ClassificationPanel(QWidget):
     busy_changed = Signal(bool)
@@ -216,7 +270,7 @@ class ClassificationPanel(QWidget):
         edit_layout.setSpacing(6)
         self.categories = QTableWidget(12, 2)
         heading = QHBoxLayout()
-        heading.addWidget(_label("Etykiety", "heading"), 1)
+        heading.addWidget(_label("Etykiety · maks. 3", "heading"), 1)
         descriptions = QPushButton("Opisy")
         descriptions.setProperty("role", "quiet")
         descriptions.setCheckable(True)
@@ -259,7 +313,7 @@ class ClassificationPanel(QWidget):
         result_heading = QHBoxLayout()
         result_heading.addWidget(_label("Dokumenty", "heading"), 1)
         self.table: QTableWidget
-        self.correct_button = QPushButton("Zmień etykietę…")
+        self.correct_button = QPushButton("Sprawdź etykiety…")
         self.correct_button.setEnabled(False)
         self.correct_button.clicked.connect(lambda: self._correct_category(self.table.currentRow()))
         result_heading.addWidget(self.correct_button)
@@ -287,7 +341,7 @@ class ClassificationPanel(QWidget):
         results_layout.addWidget(self.metrics_scroll)
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
-            ["Plik", "Model / próba", "Etykieta", "Działanie", "Limit API", "Pewność", "Status"]
+            ["Plik", "Model / próba", "Etykiety", "Działanie", "Limit API", "Oceny", "Status"]
         )
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -392,7 +446,9 @@ class ClassificationPanel(QWidget):
         self._fill_categories(categories)
         prompt = config.classification_prompt
         self.prompt.setPlainText(
-            DEFAULT_INSTRUCTIONS if prompt in ("", LEGACY_DEFAULT_INSTRUCTIONS) else prompt
+            DEFAULT_INSTRUCTIONS if prompt in (
+                "", LEGACY_DEFAULT_INSTRUCTIONS, LEGACY_ENGLISH_INSTRUCTIONS
+            ) else prompt
         )
         self.profiles = load_profiles(config)
         self._populate_models(config.classification_selection)
@@ -492,7 +548,7 @@ class ClassificationPanel(QWidget):
     def _open_document(self, row: int, column: int = 0) -> None:
         if column == 6:
             status = self.table.item(row, column)
-            if status is not None and status.text() == "Błąd":
+            if status is not None and status.text().startswith("Błąd"):
                 QMessageBox.warning(self, "Błąd modelu — jak naprawić", status.toolTip())
                 return
         item = self.table.item(row, 0)
@@ -711,11 +767,14 @@ class ClassificationPanel(QWidget):
         values = [
             row.path.name,
             f"{self._model_label(row.model)} · {row.repeat + 1}",
-            row.category,
+            row.category or ("Brak etykiet" if not row.error else ""),
             f"{row.elapsed_s:.3f} s",
             f"{row.wait_s:.1f} s",
-            f"{row.confidence:.1%}" if row.confidence is not None else "—",
-            "Błąd" if row.error else ("Ręcznie" if row.category_source == "user" else "OK"),
+            (f"{len(row.label_scores)} ocen" if row.label_scores else
+             f"{row.confidence:.1%}" if row.confidence is not None else "—"),
+            "Błąd · HITL" if row.error and row.hitl else
+            "Błąd" if row.error else ("HITL" if row.hitl else
+                                   "Sprawdzone" if row.category_source == "user" else "OK"),
         ]
         if not self._run_category_colors:
             self._run_category_colors = {
@@ -736,6 +795,15 @@ class ClassificationPanel(QWidget):
                     else ""
                 )
             )
+            detail = "\n".join(row.review_reasons)
+            if col in (2, 5, 6):
+                scores = "\n".join(
+                    f"{name}: {score:.3f}" for name, score in row.label_scores.items()
+                )
+                calibration = (f"Próg: {row.threshold:.3f}; HITL ±{row.hitl_margin:.3f}"
+                               if row.threshold is not None else "Brak kalibracji")
+                item.setToolTip(item.toolTip() + "\n" + calibration + "\n" + scores
+                                + "\n" + detail)
             if col == 0:
                 item.setData(Qt.ItemDataRole.UserRole, str(row.path))
                 item.setData(Qt.ItemDataRole.UserRole + 1, row)
@@ -746,7 +814,9 @@ class ClassificationPanel(QWidget):
             if col == 2:
                 item.setData(Qt.ItemDataRole.UserRole, self._run_category_colors.get(row.category))
             elif col == 6:
-                item.setForeground(QColor("#B33B4A" if row.error else "#14755C"))
+                item.setForeground(QColor(
+                    "#B33B4A" if row.error else "#A86500" if row.hitl else "#14755C"
+                ))
             elif col in (3, 4, 5):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(index, col, item)
@@ -823,7 +893,10 @@ class ClassificationPanel(QWidget):
         self._refresh_summary()
         errors = sum(bool(row.error) for row in batch.rows)
         self.status.setText(
-            batch.error or ("Anulowano." if batch.cancelled else f"Gotowe. Błędy: {errors}.")
+            batch.error or (
+                "Anulowano." if batch.cancelled
+                else f"Gotowe. Błędy: {errors}. HITL: {sum(r.hitl for r in batch.rows)}."
+            )
         )
         self.status.setToolTip(self.status.text())
         if batch.error:
@@ -876,7 +949,8 @@ class ClassificationPanel(QWidget):
 
     def _update_filing_actions(self) -> None:
         enabled = not self.is_busy() and self.batch is not None and any(
-            row.category and not row.error and not row.excluded for row in self.batch.rows
+            row.selected_categories and not row.error and not row.excluded and not row.hitl
+            for row in self.batch.rows
         )
         self.copy_button.setEnabled(enabled)
         self.move_button.setEnabled(enabled)
@@ -967,19 +1041,11 @@ class ClassificationPanel(QWidget):
         row = item.data(Qt.ItemDataRole.UserRole + 1) if item else None
         if not isinstance(row, ClassificationRow) or not self.batch:
             return
-        labels = [name for name, _ in self.batch.categories]
-        label, accepted = QInputDialog.getItem(
-            self, "Etykieta dokumentu", row.path.name, labels,
-            labels.index(row.category) if row.category in labels else 0, False,
-        )
-        if not accepted:
+        labels = [name for name, _ in self.batch.categories if name]
+        dialog = LabelReviewDialog(row, labels, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
-        if row.category_source != "user":
-            row.model_category = row.category
-        row.category = label
-        row.category_source = "user"
-        row.confidence = None
-        row.error = ""
+        confirm_categories(row, dialog.selected_labels())
         self._render_collection()
         self._persist_collection()
 
@@ -1020,6 +1086,7 @@ class ClassificationPanel(QWidget):
         if saved is None:
             return
         self.files, self.batch = saved
+        refreshed = refresh_review_policy(self.batch, self.profiles)
         self.rows = list(self.batch.rows)
         self._run_labels = self.batch.model_labels
         self._run_category_colors = {name: i for i, (name, _) in enumerate(self.batch.categories)}
@@ -1029,7 +1096,14 @@ class ClassificationPanel(QWidget):
                 self.categories.setItem(index, 0, QTableWidgetItem(name))
                 self.categories.setItem(index, 1, QTableWidgetItem(detail))
         if self.batch.instructions:
-            self.prompt.setPlainText(self.batch.instructions)
+            self.prompt.setPlainText(
+                DEFAULT_INSTRUCTIONS if self.batch.instructions in (
+                    LEGACY_DEFAULT_INSTRUCTIONS, LEGACY_ENGLISH_INSTRUCTIONS
+                ) else self.batch.instructions
+            )
         self._render_collection()
         if self.files:
-            self.status.setText("Przywrócono kolekcję")
+            self.status.setText("Przywrócono kolekcję" + (" · odświeżono oznaczenia HITL"
+                                                       if refreshed else ""))
+        if refreshed:
+            self._persist_collection()

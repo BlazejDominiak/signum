@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFormLayout,
     QFrame,
     QGroupBox,
@@ -259,6 +260,15 @@ class SettingsDialog(QDialog):
             "Wydłuża analizę; podstawowa ocena obecności podpisu pozostaje bez zmian."
         )
         form.addRow("", self.vjev_additional_analysis)
+        self.vjev_hitl_margin = QDoubleSpinBox()
+        self.vjev_hitl_margin.setRange(0, 1)
+        self.vjev_hitl_margin.setDecimals(3)
+        self.vjev_hitl_margin.setSingleStep(0.01)
+        self.vjev_hitl_margin.setToolTip(
+            "HITL po obu stronach zoptymalizowanego progu 0,535. "
+            "Margines ostrzeżenia nie zmienia decyzji ani kalibracji."
+        )
+        form.addRow("Margines HITL (±):", self.vjev_hitl_margin)
         self.stop_jev_button = QPushButton("Zatrzymaj lokalny Jev / zwolnij GPU")
         self.stop_jev_button.clicked.connect(lambda: self._on_test_clicked(stop_local=True))
         form.addRow("", self.stop_jev_button)
@@ -363,6 +373,7 @@ class SettingsDialog(QDialog):
         self.ollama_num_ctx.setValue(cfg.ollama_num_ctx)
         self.ollama_additional_analysis.setChecked(cfg.ollama_additional_analysis)
         self.vjev_additional_analysis.setChecked(cfg.vjev_additional_analysis)
+        self.vjev_hitl_margin.setValue(cfg.vjev_hitl_margin)
         self.vjev_runtime_dir.setText(cfg.vjev_runtime_dir)
         self._on_provider_changed(self.provider_combo.currentIndex())
 
@@ -394,6 +405,7 @@ class SettingsDialog(QDialog):
         cfg.ollama_num_ctx = self.ollama_num_ctx.value()
         cfg.ollama_additional_analysis = self.ollama_additional_analysis.isChecked()
         cfg.vjev_additional_analysis = self.vjev_additional_analysis.isChecked()
+        cfg.vjev_hitl_margin = self.vjev_hitl_margin.value()
         cfg.vjev_runtime_dir = self.vjev_runtime_dir.text().strip() or defaults.vjev_runtime_dir
         if self._prompt_family is not None:
             self._prompt_drafts[self._prompt_family] = self.prompt_edit.toPlainText().strip()

@@ -66,5 +66,6 @@ def create_vision_model(config: AppConfig, api_key: str | None = None) -> Vision
             timeout_s=config.timeout_s,
             runtime_dir=config.vjev_runtime_dir,
             additional_analysis=config.vjev_additional_analysis,
+            hitl_margin=config.vjev_hitl_margin,
         )
     raise ValueError(f"Nieznany dostawca AI: {config.provider!r}")

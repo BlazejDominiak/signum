@@ -39,6 +39,7 @@ h1 { font-size: 1.5rem; } h2 { font-size: 1.1rem; margin: 0 0 .3rem; }
 .badge { display: inline-block; border-radius: 999px; padding: .15rem .7rem;
          font-size: .8rem; font-weight: 600; color: #fff; vertical-align: middle; }
 .signed { background: #2e7d32; } .unsigned { background: #757575; }
+.review { background: #946000; }
 .error { background: #c62828; } .cancelled { background: #9e9e9e; }
 .path { color: #666; font-size: .8rem; word-break: break-all; }
 .finding { display: flex; gap: 1rem; align-items: center; border-top: 1px solid #eee;
@@ -111,6 +112,9 @@ def _document_html(result: DocumentResult) -> str:
     ]
     if result.status == DocumentStatus.ERROR and result.error:
         parts.append(f"<p class='meta' style='color:#c62828'>{html.escape(result.error)}</p>")
+    if result.hitl:
+        parts.append("<p class='meta'><b>Wymaga sprawdzenia przez człowieka (HITL)</b><br>"
+                     + html.escape(result.review_summary).replace("\n", "<br>") + "</p>")
     if result.status == DocumentStatus.OK:
         pages_info = f"{result.pages_analyzed}/{result.page_count} stron"
         parts.append(
@@ -158,6 +162,8 @@ def _document_html(result: DocumentResult) -> str:
 
 def _badge(result: DocumentResult) -> str:
     style = "signed" if result.is_signed else "unsigned"
+    if result.hitl:
+        style = "review"
     if result.status != DocumentStatus.OK:
         style = "error" if result.status == DocumentStatus.ERROR else "cancelled"
     return f"<span class='badge {style}'>{html.escape(result.signature_label)}</span>"
@@ -191,6 +197,7 @@ def build_csv(batch: BatchResult) -> str:
             "przeanalizowane_strony",
             "wszystkie_strony",
             "przygotowanie_s", "ladowanie_s", "dzialanie_s", "lacznie_s",
+            "hitl", "powody_hitl", "wyniki_decyzyjne", "progi_decyzyjne",
         ]
     )
     for r in batch.results:
@@ -209,6 +216,8 @@ def build_csv(batch: BatchResult) -> str:
                 r.pages_analyzed,
                 r.page_count,
                 r.preparation_s, r.loading_s, r.inference_s, r.duration_s,
+                "HITL" if r.hitl else "", _safe_csv_cell(r.review_summary),
+                json.dumps(r.page_decision_scores), json.dumps(r.page_decision_thresholds),
             ]
         )
     return buf.getvalue()

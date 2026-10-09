@@ -71,6 +71,20 @@ class DocumentResult:
     loading_s: float = 0.0
     inference_s: float = 0.0
     page_signature_probabilities: dict[int, float] = field(default_factory=dict)
+    page_decision_scores: dict[int, float] = field(default_factory=dict)
+    page_decision_thresholds: dict[int, float] = field(default_factory=dict)
+    page_review_reasons: dict[int, list[str]] = field(default_factory=dict)
+
+    @property
+    def hitl(self) -> bool:
+        return any(self.page_review_reasons.values())
+
+    @property
+    def review_summary(self) -> str:
+        return "\n".join(
+            f"Strona {page}: {reason}"
+            for page, reasons in self.page_review_reasons.items() for reason in reasons
+        )
 
     @property
     def is_signed(self) -> bool:
@@ -93,6 +107,11 @@ class DocumentResult:
 
     @property
     def signature_label(self) -> str:
+        label = self._signature_label
+        return f"{label} · HITL" if self.hitl else label
+
+    @property
+    def _signature_label(self) -> str:
         if self.status != DocumentStatus.OK:
             return {
                 DocumentStatus.ERROR: "BŁĄD", DocumentStatus.CANCELLED: "ANULOWANO",

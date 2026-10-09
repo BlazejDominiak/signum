@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import math
 from dataclasses import asdict, dataclass, fields
 from dataclasses import field as dataclass_field
 from pathlib import Path
@@ -80,6 +81,7 @@ class AppConfig:
     classification_selection: str = "selected"
     classification_models: str = ""  # JSON profiles; API keys stay in keyring
     classification_categories: str = ""  # JSON names + descriptions; empty uses examples
+    vjev_hitl_margin: float = 0.10
     classification_prompt: str = ""
     classification_ollama_url: str = "http://localhost:11434"
     classification_ollama_model: str = "gemma4:12b"
@@ -131,6 +133,12 @@ class AppConfig:
             if type(value) is type(default):
                 kwargs[field.name] = value
         config = cls(**kwargs)
+        for name in ("vjev_hitl_margin",):
+            value = raw.get(name, getattr(defaults, name))
+            if (isinstance(value, bool) or not isinstance(value, (int, float))
+                    or not math.isfinite(value) or not 0 <= value <= 1):
+                value = getattr(defaults, name)
+            setattr(config, name, float(value))
         if config.vjev_model == "yah01/vjev-vision":
             config.vjev_model = defaults.vjev_model
         if config.provider not in PROVIDERS:

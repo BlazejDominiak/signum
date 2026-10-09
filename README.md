@@ -19,11 +19,22 @@ documents and file commands first; expand **Instrukcja klasyfikacji** to edit th
 English default prompt, and **Pomiary** to inspect model timings. Both tabs show preparation, local loading, model processing and total
 times. Test connections in **Ustawienia AI** and double-click a PDF to open it.
 Results and timings can be exported to CSV or JSON.
+A document can receive up to three labels: the highest scores above the threshold.
+All scores remain available, including the fourth score omitted by this accepted limit.
+Independent Jev scores use measured, model-specific thresholds. **HITL** marks
+scores within ±0.03 of the threshold, including rejected labels when fewer than
+three labels are selected. High scores and sparse calibration support alone do
+not force review. Use **Sprawdź etykiety…** to review up to three labels together.
+Existing collections refresh obsolete HITL flags while preserving assigned labels
+and human corrections. Bundled thresholds are **0.74 for Jev / Venice** and
+**0.83 for JevK5**, for the matching default categories, prompt and model.
+A changed model or category definition without a matching profile requires review.
 Use **Skopiuj do folderów…** or **Przenieś do folderów…** to organize the selected
 collection into label-named folders. Choose a destination, select a model/pass
 when comparing runs, and review every target path before applying the operation.
 Existing files are never overwritten; duplicate names receive numbered suffixes.
-Files without a successful classification are skipped. Moves verify the copied
+Files with errors, unresolved HITL, or no assigned labels are skipped. Copies go to every
+selected category; moving requires one destination category. Moves verify the copied
 bytes before deleting the source and update paths in both workspaces and reports.
 Cancellation keeps completed files and leaves the remaining sources in place.
 **Test PDFs are local only and are not included in the repository or installer.**
@@ -123,14 +134,10 @@ The managed local Jev server releases GPU memory after an analysis batch.
 
 *Testuj połączenie* for Jev checks the selected model and sends a small synthetic
 image, which may incur API charges. A successful test validates transport and response
-shape; it does not measure detection quality. The five-view method achieved 120/120
-on the closed research sample, including tuning pages; both Jev and binary Gemma
-achieved 20/20 on the fresh confirmation subset. API cost has not been measured.
+shape; it does not measure detection quality. Signature scores within ±0.10
+of the 0.535 threshold are marked HITL, including negative decisions.
 The transport follows the
 [vjev API contract](https://github.com/BubbleCal/vjev-serve#the-api).
-The integration checks and research limitations are recorded in
-[the local Jev validation report](docs/JEV_VALIDATION.pl.md), including latency,
-the Gemma4 comparison, and limitations.
 
 API keys are stored in the **Windows Credential Manager** (via `keyring`) — never in
 config files. Settings live in `%APPDATA%\Signum\settings.json`.
@@ -156,8 +163,8 @@ which verifies that the selected service and model are actually available.
 
 ### Installer (recommended)
 
-Signum is a demo project. Download [Signum-Setup-1.1.4.exe](installer/output/Signum-Setup-1.1.4.exe)
-and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.4.exe.sha256).
+Signum is a demo project. Download [Signum-Setup-1.1.5.exe](installer/output/Signum-Setup-1.1.5.exe)
+and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.5.exe.sha256).
 Run the installer to begin setup. Per-user install,
 no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate
@@ -248,7 +255,6 @@ incomplete PDF structure scan is reported as an error, not as absence of signatu
 .venv\Scripts\python -m ruff check src tests scripts
 .venv\Scripts\python -m mypy
 .venv\Scripts\pip-audit
-.venv\Scripts\python scripts\generate_fixtures.py   # example documents in examples/
 ```
 
 Test documents (including **genuinely digitally-signed PDFs** — pyhanko with a self-signed
@@ -267,7 +273,8 @@ The build script runs a self-test of the packaged executable before invoking
 Inno Setup. This verifies the bundled Python runtime, required libraries and UI
 resources rather than merely checking that an `.exe` file exists. It also prints
 and saves the SHA-256 digest next to the installer.
-The current demo installer and its checksum are tracked in Git; other build outputs are ignored.
+The current installer and its checksum are tracked in Git. Research reports,
+corpora, example documents, local notes and other build outputs are excluded.
 
 ### Project structure
 

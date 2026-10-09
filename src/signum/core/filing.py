@@ -106,17 +106,22 @@ def build_filing_plan(
             continue
         seen.add(_key(source))
         candidates = rows.get(_key(source), [])
-        category = candidates[0].category if len(candidates) == 1 else ""
+        categories = candidates[0].selected_categories if len(candidates) == 1 else []
+        category = "; ".join(categories)
         target = None
         fingerprint = None
         skip = ""
         if len(candidates) != 1 or not category or candidates[0].error:
             skip = "Brak jednoznacznego wyniku"
+        elif candidates[0].hitl:
+            skip = "HITL — sprawdź etykiety przed porządkowaniem"
+        elif mode == "move" and len(categories) > 1:
+            skip = "Wiele etykiet — użyj kopiowania do wszystkich kategorii albo wybierz jedną"
         elif candidates[0].excluded:
             skip = "Wyłączony z porządkowania"
         elif not candidates[0].source_sha256 or not candidates[0].source_fingerprint:
             skip = "Brak tożsamości pliku — powtórz analizę"
-        elif category not in folders:
+        elif any(label not in folders for label in categories):
             skip = "Nieznana etykieta"
         elif source.suffix.lower() != ".pdf" or source.is_symlink() or not source.is_file():
             skip = "Plik niedostępny lub dowiązanie"
@@ -124,24 +129,31 @@ def build_filing_plan(
             try:
                 if _fingerprint(source) != candidates[0].source_fingerprint:
                     raise ValueError("PDF zmienił się od klasyfikacji — powtórz analizę")
-                folder = root / folders[category]
-                _check_folder(root, folder)
-                target = folder / source.name
-                if _key(source.resolve()) == _key(target.resolve()):
-                    skip = "Już w folderze docelowym"
-                else:
-                    if folder not in folder_contents:
-                        folder_contents[folder] = (
-                            {p.name.casefold() for p in folder.iterdir()}
-                            if folder.exists() else set()
-                        )
-                    occupied = folder_contents[folder]
-                    number = 2
-                    while target.name.casefold() in occupied or _key(target) in reserved:
-                        target = folder / f"{source.stem} ({number}){source.suffix}"
-                        number += 1
-                    reserved.add(_key(target))
-                    fingerprint = _fingerprint(source)
+                for label in categories:
+                    skip = ""
+                    fingerprint = None
+                    folder = root / folders[label]
+                    _check_folder(root, folder)
+                    target = folder / source.name
+                    if _key(source.resolve()) == _key(target.resolve()):
+                        skip = "Już w folderze docelowym"
+                    else:
+                        if folder not in folder_contents:
+                            folder_contents[folder] = (
+                                {p.name.casefold() for p in folder.iterdir()}
+                                if folder.exists() else set()
+                            )
+                        occupied = folder_contents[folder]
+                        number = 2
+                        while target.name.casefold() in occupied or _key(target) in reserved:
+                            target = folder / f"{source.stem} ({number}){source.suffix}"
+                            number += 1
+                        reserved.add(_key(target))
+                        fingerprint = _fingerprint(source)
+                    entries.append(FilingEntry(
+                        source, target, label, skip, fingerprint, candidates[0].source_sha256,
+                    ))
+                continue
             except (OSError, ValueError) as exc:
                 skip = str(exc)
         entries.append(FilingEntry(

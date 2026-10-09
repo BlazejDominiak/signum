@@ -1,0 +1,37 @@
+[
+  {
+    "id": "multilabel120-venice-20261009-top3-review-v3",
+    "model": "venice",
+    "question_sha256": "57bd9eea34a587975e57eeb7d33a03d15a8d47cc1e80f49943d38730a12cd2ca",
+    "threshold": 0.74,
+    "max_labels": 3,
+    "selection": "highest_scores_above_threshold_then_top3; ties_by_category_id",
+    "hitl_margin": 0.03,
+    "review_labels": [],
+    "status": "threshold_review",
+    "review_reason": "",
+    "replaces_review_profiles": [
+      "multilabel120-venice-20261008-v1",
+      "multilabel120-venice-20261009-top3-v2"
+    ],
+    "review_policy_source": "Human feedback on excessive HITL; operational margin, not refitted decision threshold."
+  },
+  {
+    "id": "multilabel120-jevk5-20261009-top3-review-v3",
+    "model": "jevk5",
+    "question_sha256": "57bd9eea34a587975e57eeb7d33a03d15a8d47cc1e80f49943d38730a12cd2ca",
+    "threshold": 0.83,
+    "max_labels": 3,
+    "selection": "highest_scores_above_threshold_then_top3; ties_by_category_id",
+    "hitl_margin": 0.03,
+    "review_labels": [],
+    "local_identity": "25d7434b184eec909dbe86c57a3622a8f8b4674af7bd1f5535f01b0e1201cfb7",
+    "status": "threshold_review",
+    "review_reason": "",
+    "replaces_review_profiles": [
+      "multilabel120-jevk5-20261008-v1",
+      "multilabel120-jevk5-20261009-top3-v2"
+    ],
+    "review_policy_source": "Human feedback on excessive HITL; operational margin, not refitted decision threshold."
+  }
+]

@@ -4,6 +4,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
 
 ## [Unreleased]
 
+## [1.1.5] — 2026-10-09
+
+### Added
+- Do trzech etykiet dokumentu wybieranych według niezależnych ocen przekraczających
+  próg modelu: Venice 0,74, JevK5 0,83; pełna lista ocen pozostaje dostępna.
+- HITL przy wynikach klasyfikacji w paśmie ±0,03 oraz podpisów w paśmie ±0,10.
+  Próg wykrywania podpisu pozostaje 0,535; ostrzeżenie obejmuje również wyniki negatywne.
+- Ręczny przegląd wielu etykiet i kopiowanie dokumentu do wszystkich wybranych kategorii.
+
+### Fixed
+- Przywracane kolekcje aktualizują stare oznaczenia HITL bez zmiany etykiet
+  i decyzji sprawdzonych przez użytkownika.
+- Wyniki z wysokimi ocenami nie otrzymują już bezwarunkowego oznaczenia HITL.
+
+### Changed
+- Raporty eksperymentów, korpusy i materiały demonstracyjne pozostają lokalnie,
+  poza wersjonowanym repozytorium i instalatorem.
+
 ## [1.1.4] — 2026-10-08
 
 ### Fixed

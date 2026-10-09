@@ -46,8 +46,9 @@ def test_correction_and_exclusion_survive_window_restart(qtbot, tmp_path, monkey
     qtbot.addWidget(panel)
     panel.files, panel.rows, panel.batch = files, list(batch.rows), batch
     panel._render_collection()
-    monkeypatch.setattr('signum.ui.classification_panel.QInputDialog.getItem',
-                        lambda *args: ('Finanse', True))
+    monkeypatch.setattr('signum.ui.classification_panel.LabelReviewDialog.exec', lambda _: 1)
+    monkeypatch.setattr('signum.ui.classification_panel.LabelReviewDialog.selected_labels',
+                        lambda _: ['Finanse'])
     panel._correct_category(0)
     panel.table.item(1, 0).setCheckState(Qt.CheckState.Unchecked)
     panel._persist_collection()

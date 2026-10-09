@@ -16,7 +16,13 @@ from signum.ai.text_classifiers import (
     create_text_classifier,
 )
 from signum.config import AppConfig
-from signum.core.classification import ClassificationBatch, TextClassifier, run_classification
+from signum.core.classification import (
+    ClassificationBatch,
+    TextClassifier,
+    make_question,
+    run_classification,
+)
+from signum.core.classification_calibration import policy_for
 
 
 class ClassificationWorker(QThread):
@@ -82,6 +88,8 @@ class ClassificationWorker(QThread):
                 self.row_done.emit,
                 {p.id: p.label for p in selected},
                 lambda value: self.timing.emit(copy.deepcopy(value)),
+                policies={p.id: policy_for(p, make_question(self.categories, self.instructions))
+                          for p in selected},
             )
         except Exception as exc:
             batch = ClassificationBatch(error=str(exc))

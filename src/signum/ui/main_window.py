@@ -651,7 +651,13 @@ class MainWindow(QMainWindow):
                 item.setToolTip(
                     "Najwyższe prawdopodobieństwo obecności podpisu na analizowanych stronach."
                 )
-            self._set_status_cell(row, "OK", _GREEN)
+            self._set_status_cell(
+                row, "HITL" if result.hitl else "OK", QColor("#946000") if result.hitl else _GREEN
+            )
+            self._cell(row, _COL_STATUS).setToolTip(result.review_summary)
+            signatures_item.setToolTip(result.review_summary)
+            if result.hitl:
+                signatures_item.setForeground(QColor("#946000"))
         elif result.status == DocumentStatus.ERROR:
             self._set_status_cell(row, "Błąd", _RED)
             self._cell(row, _COL_STATUS).setToolTip(
@@ -768,6 +774,12 @@ class MainWindow(QMainWindow):
             )
             partial.setWordWrap(True)
             self.details_layout.addWidget(partial)
+        if result.hitl:
+            review = QLabel("Sprawdź dokument — " + result.review_summary)
+            review.setTextFormat(Qt.TextFormat.PlainText)
+            review.setWordWrap(True)
+            review.setStyleSheet("color: #946000;")
+            self.details_layout.addWidget(review)
         if result.page_signature_probabilities and not result.is_signed:
             values = "; ".join(
                 f"strona {page}: {probability * 100:.1f}%"

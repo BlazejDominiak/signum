@@ -137,7 +137,8 @@ def _self_test_classification() -> int:
         text = bridge.prepare("This is a contract for delivery of goods.", question)
         decision = bridge.classify(text, question)
         result = {
-            "ok": decision.get("choice") == "c01",
+            "ok": (set(decision.get("label_scores", {})) == {"c01", "c02"}
+                   and decision["label_scores"]["c01"] > decision["label_scores"]["c02"]),
             "version": __version__,
             "decision": decision,
         }

@@ -40,6 +40,9 @@ class PageAnalysis:
     description: str  # kilkuwyrazowy opis dokumentu (może być pusty)
     signatures: tuple[VisualSignature, ...]
     signature_probability: float | None = None  # P(widocznego podpisu/parafki) tej strony
+    signature_score: float | None = None
+    signature_threshold: float | None = None
+    review_reasons: tuple[str, ...] = ()
 
 
 class VisionModel(ABC):

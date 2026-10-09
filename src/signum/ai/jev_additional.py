@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from dataclasses import replace
 from typing import Any
 
 from PIL import Image
@@ -219,11 +220,11 @@ def enrich_analysis(
     ]
     description = "; ".join(CATEGORIES[key][1] for key in selected) or "Rodzaj nierozpoznany"
     if not basic.signatures:
-        return PageAnalysis(description, basic.signatures, basic.signature_probability)
+        return replace(basic, description=description)
 
     width, height = image.size
     if width < GRID_COLUMNS or height < GRID_ROWS:
-        return PageAnalysis(description, basic.signatures, basic.signature_probability)
+        return replace(basic, description=description)
     boxes = grid_boxes(width, height)
     tiles = []
     for box in boxes:
@@ -276,4 +277,4 @@ def enrich_analysis(
                 )
             )
         signatures.extend(localized or [original])
-    return PageAnalysis(description, tuple(signatures), basic.signature_probability)
+    return replace(basic, description=description, signatures=tuple(signatures))

@@ -23,6 +23,7 @@ from signum.ai.ollama_client import OllamaVisionModel
 from signum.ai.parsing import extract_first_json_object
 from signum.config import AppConfig, get_api_key
 from signum.core.classification import check_cancel
+from signum.core.decision import MAX_CLASSIFICATION_LABELS, label_questions, probability
 from signum.local_components import jevk5_files
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
@@ -64,6 +65,9 @@ class VeniceTextClassifier:
         self.timeout = config.timeout_s
 
     def classify(self, text: str, question: dict[str, Any]) -> dict[str, Any]:
+        questions = label_questions(question) if question["type"] == "multilabel" else {
+            "document_type": question
+        }
         waiting = 0.0
         for attempt in range(3):
             check_cancel(self.cancel)
@@ -79,7 +83,7 @@ class VeniceTextClassifier:
                 json={
                     "model": self.model,
                     "state": text,
-                    "questions": {"document_type": question},
+                    "questions": questions,
                 },
                 timeout=(15, self.timeout),
                 allow_redirects=False,
@@ -93,7 +97,18 @@ class VeniceTextClassifier:
                 continue
             if response.status_code != 200:
                 raise ValueError(f"API zwróciło HTTP {response.status_code}.")
-            result = response.json().get("answers", {}).get("document_type", {})
+            answers = response.json().get("answers", {})
+            if question["type"] == "multilabel":
+                if not isinstance(answers, dict) or set(answers) != set(questions):
+                    raise ValueError("Brak kompletu ocen etykiet JEV.")
+                scores = {}
+                for key in questions:
+                    answer = answers[key]
+                    if not isinstance(answer, dict) or answer.get("type") != "noul":
+                        raise ValueError("Niepoprawna ocena etykiety JEV.")
+                    scores[key] = probability(answer.get("noul"))
+                return {"label_scores": scores, "wait_s": waiting}
+            result = answers.get("document_type", {})
             return {**result, "wait_s": waiting}
         raise ValueError("API: przekroczono limit żądań.")
 
@@ -162,7 +177,9 @@ class GemmaTextClassifier:
                 "think": False,
                 "keep_alive": "10m",
                 "messages": [
-                    {"role": "system", "content": question["instructions"]},
+                    {"role": "system", "content": question["instructions"]
+                     + '\nReturn JSON {"categories": ["category IDs"]}; '
+                     'up to 3 matching IDs, highest relevance first, or [].'},
                     {
                         "role": "user",
                         "content": json.dumps(
@@ -174,15 +191,19 @@ class GemmaTextClassifier:
                 "format": {
                     "type": "object",
                     "properties": {
-                        "category": {
-                            "type": "string",
-                            "enum": list(question["criteria"]),
+                        "categories": {
+                            "type": "array",
+                            "items": {"type": "string", "enum": list(question["criteria"])},
+                            "uniqueItems": True,
+                            "maxItems": min(MAX_CLASSIFICATION_LABELS, len(question["criteria"])),
                         }
                     },
-                    "required": ["category"],
+                    "required": ["categories"],
                     "additionalProperties": False,
                 },
-                "options": {"temperature": 0, "seed": 20261007, "num_ctx": 8192, "num_predict": 64},
+                "options": {
+                    "temperature": 0, "seed": 20261007, "num_ctx": 8192, "num_predict": 256,
+                },
             },
         )
         if response.status_code != 200:
@@ -197,7 +218,7 @@ class GemmaTextClassifier:
                 "Tekst zbliża się do granicy kontekstu modelu; skróć dokument lub prompt."
             )
         parsed = json.loads(result.get("message", {}).get("content", ""))
-        return {"choice": parsed.get("category")}
+        return {"choices": parsed.get("categories")}
 
     def close(self) -> None:
         self.manager.release_resources()
@@ -327,10 +348,23 @@ class JevK5TextClassifier:
         self._request("load", "", {})
 
     def prepare(self, text: str, question: dict[str, Any]) -> str:
-        return str(self._request("prepare", text, question)["text"])
+        questions = (label_questions(question).values()
+                     if question["type"] == "multilabel" else [question])
+        for item in questions:
+            text = str(self._request("prepare", text, item)["text"])
+        return text
 
     def classify(self, text: str, question: dict[str, Any]) -> dict[str, Any]:
-        return self._request("classify", text, question)
+        if question["type"] != "multilabel":
+            return self._request("classify", text, question)
+        scores = {}
+        for key, item in label_questions(question).items():
+            check_cancel(self.cancel)
+            answer = self._request("classify", text, item)
+            if answer.get("type") != "noul":
+                raise ValueError("Niepoprawna ocena etykiety JevK5.")
+            scores[key] = probability(answer.get("noul"))
+        return {"label_scores": scores}
 
     def close(self) -> None:
         if self.process is not None:
@@ -377,7 +411,8 @@ class APITextClassifier:
     def classify(self, text: str, question: dict[str, Any]) -> dict[str, Any]:
         instructions = (
             question["instructions"]
-            + '\nReturn only JSON: {"category": "<one category ID from the list>"}.'
+            + '\nReturn only JSON: {"categories": ["category IDs"]}; '
+            'up to 3 matching IDs, highest relevance first, or [].'
         )
         evidence = json.dumps(
             {"evidence": text, "categories": question["criteria"]}, ensure_ascii=False
@@ -414,7 +449,7 @@ class APITextClassifier:
                 raise ValueError("Model nie dokończył odpowiedzi.")
             content = choice["message"]["content"]
         parsed = extract_first_json_object(content)
-        return {"choice": parsed.get("category")}
+        return {"choices": parsed.get("categories")}
 
     def close(self) -> None:
         self.session.close()

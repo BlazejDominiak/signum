@@ -25,6 +25,7 @@ from signum.ai.jev_additional import enrich_analysis
 from signum.ai.jev_prompts import DOCUMENT_TYPES, JEV_PROMPT_INSTRUCTIONS, decision_questions
 from signum.ai.jev_signature import QUALITY_QUESTIONS, parse_signature_views, signature_views
 from signum.ai.local_vjev import start_local_vjev, stop_local_vjev
+from signum.core.decision import near_threshold, probability, review_reason
 from signum.core.models import SignatureKind
 from signum.core.rendering import to_model_jpeg
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
@@ -44,6 +45,7 @@ class JevVisionModel(VisionModel):
         timeout_s: int = 300,
         runtime_dir: str = "",
         additional_analysis: bool = False,
+        hitl_margin: float = 0.10,
     ) -> None:
         self.loading_seconds = 0.0
         self.request_seconds: float = 0.0
@@ -53,6 +55,7 @@ class JevVisionModel(VisionModel):
         self._api_key = api_key
         self._runtime_dir = runtime_dir
         self._additional_analysis = additional_analysis
+        self._hitl_margin = probability(hitl_margin)
         self._session = requests.Session()
         self._session.trust_env = not is_loopback_endpoint(self._base_url)
         if api_key:
@@ -128,7 +131,7 @@ class JevVisionModel(VisionModel):
     def analyze_page(self, image_jpeg: bytes, prompt: str | None = None) -> PageAnalysis:
         """Protokół pojedynczego JPEG-u, zachowany dla testu usługi i starego benchmarku."""
         data = self._decide(image_jpeg, prompt or JEV_PROMPT_INSTRUCTIONS)
-        return _parse_decisions(data)
+        return _parse_decisions(data, self._hitl_margin)
 
     def analyze_image(
         self,
@@ -148,7 +151,7 @@ class JevVisionModel(VisionModel):
                     QUALITY_QUESTIONS,
                 )
             )
-        basic = parse_signature_views(responses)
+        basic = parse_signature_views(responses, self._hitl_margin)
         if self._additional_analysis:
             return enrich_analysis(image, basic, self._decide, check_cancelled)
         return basic
@@ -190,11 +193,12 @@ class JevVisionModel(VisionModel):
                 logging.getLogger(__name__).debug("Jev nie wymaga zatrzymania przez Signum.")
 
 
-def _parse_decisions(data: dict[str, Any]) -> PageAnalysis:
+def _parse_decisions(data: dict[str, Any], hitl_margin: float = 0.10) -> PageAnalysis:
     answers = data.get("answers")
     if not isinstance(answers, dict):
         raise AIResponseError("Brak obiektu answers w odpowiedzi Jev")
     signatures = []
+    reasons = []
     for kind in (SignatureKind.HANDWRITTEN, SignatureKind.INITIALS, SignatureKind.STAMP):
         answer = answers.get(kind.value)
         if not isinstance(answer, dict) or answer.get("type") != "noul":
@@ -204,6 +208,8 @@ def _parse_decisions(data: dict[str, Any]) -> PageAnalysis:
             raise AIResponseError(f"Niepoprawna ocena {kind.value} w odpowiedzi Jev")
         if not math.isfinite(score) or not 0 <= score <= 1:
             raise AIResponseError(f"Niepoprawna ocena {kind.value} w odpowiedzi Jev")
+        if kind != SignatureKind.STAMP and near_threshold(score, DETECTION_THRESHOLD, hitl_margin):
+            reasons.append(review_reason(kind.label_pl, score, DETECTION_THRESHOLD, hitl_margin))
         if score >= DETECTION_THRESHOLD:
             signatures.append(VisualSignature(kind, round(score * 100), None))
     document = answers.get("document_type")
@@ -212,4 +218,4 @@ def _parse_decisions(data: dict[str, Any]) -> PageAnalysis:
     choice = document.get("choice")
     if not isinstance(choice, str) or choice not in DOCUMENT_TYPES:
         raise AIResponseError("Nieznany rodzaj dokumentu w odpowiedzi Jev")
-    return PageAnalysis(DOCUMENT_TYPES[choice][1], tuple(signatures))
+    return PageAnalysis(DOCUMENT_TYPES[choice][1], tuple(signatures), review_reasons=tuple(reasons))

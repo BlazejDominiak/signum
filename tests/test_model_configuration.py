@@ -63,14 +63,15 @@ def test_custom_api_endpoint_model_and_credentials(monkeypatch, protocol):
         client = VeniceTextClassifier(
             AppConfig(), threading.Event(), lambda _: None, profile, "private-test-key"
         )
-        payload = {"answers": {"document_type": {"choice": "c01"}}}
+        payload = {"answers": {"c01": {"type": "noul", "noul": .95},
+                               "c02": {"type": "noul", "noul": .9}}}
         route = "/decisions"
     else:
         client = APITextClassifier(profile, AppConfig(), "private-test-key")
         payload = (
-            {"content": [{"type": "text", "text": '{"category":"c01"}'}]}
+            {"content": [{"type": "text", "text": '{"categories":["c01","c02"]}'}]}
             if protocol == "anthropic"
-            else {"choices": [{"message": {"content": '{"category":"c01"}'}}]}
+            else {"choices": [{"message": {"content": '{"categories":["c01","c02"]}'}}]}
         )
         route = "/messages" if protocol == "anthropic" else "/chat/completions"
     post = Mock(return_value=Mock(status_code=200, json=Mock(return_value=payload)))
@@ -79,7 +80,10 @@ def test_custom_api_endpoint_model_and_credentials(monkeypatch, protocol):
         result = client.classify(
             "Source document", make_question([("One", ""), ("Two", "")], DEFAULT_INSTRUCTIONS)
         )
-        assert result["choice"] == "c01"
+        if protocol == "decisions":
+            assert result["label_scores"] == {"c01": .95, "c02": .9}
+        else:
+            assert result["choices"] == ["c01", "c02"]
         assert post.call_args.args[0] == profile.url + route
         assert post.call_args.kwargs["json"]["model"] == "user-model"
         assert post.call_args.kwargs["allow_redirects"] is False

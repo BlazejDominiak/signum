@@ -1,2 +1,0 @@
-# Preserve frozen byte-level fingerprints, including existing CRLF parameters.
-*.json -text

@@ -10,20 +10,31 @@ from pathlib import Path, PurePosixPath
 def is_local_data(name: str) -> bool:
     path = PurePosixPath(name.replace("\\", "/"))
     return (
-        path.suffix.lower() == ".pdf"
-        or any(part.lower() in {"scratch", "examples"} for part in path.parts)
+        path.suffix.lower()
+        in {
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".odt",
+            ".rtf",
+            ".xls",
+            ".xlsx",
+            ".ods",
+            ".ppt",
+            ".pptx",
+            ".odp",
+        }
+        or any(
+            part.lower() in {"scratch", "examples", "experiments", "notes"} for part in path.parts
+        )
         or (path.name.startswith(".env") and path.name != ".env.example")
     )
 
 
 def check_repository(root: Path) -> list[str]:
-    result = subprocess.run(
-        ["git", "ls-files", "-z"], cwd=root, check=True, capture_output=True
-    )
+    result = subprocess.run(["git", "ls-files", "-z"], cwd=root, check=True, capture_output=True)
     return [
-        name
-        for name in result.stdout.decode("utf-8").split("\0")
-        if name and is_local_data(name)
+        name for name in result.stdout.decode("utf-8").split("\0") if name and is_local_data(name)
     ]
 
 
@@ -49,7 +60,7 @@ def main() -> int:
         print("Local documents/credentials must not be distributed:")
         print("\n".join(violations))
         return 1
-    print("OK: no PDFs, local document directories or .env credentials in delivery inputs.")
+    print("OK: no input documents, local research/notes or .env credentials in delivery inputs.")
     return 0
 
 

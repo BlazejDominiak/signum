@@ -128,6 +128,7 @@ def _summarize(result: DocumentResult) -> str:
     return (
         f"„{result.title}” — PODPISANY: {result.kinds_summary} "
         f"(max pewność {result.max_confidence}%)"
+        + (f" · {result.review_summary}" if result.hitl else "")
     )
 
 

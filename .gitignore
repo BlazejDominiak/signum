@@ -58,11 +58,34 @@ scratch/
 # Input documents are local data, never source assets.
 *.[pP][dD][fF]
 
-# Example documents remain local; regenerate with scripts/generate_fixtures.py.
+# Example documents remain local.
 /examples/
 
 # Keep only the current installer and its checksum in the repository.
 !installer/output/
 installer/output/*
-!installer/output/Signum-Setup-1.1.4.exe
-!installer/output/Signum-Setup-1.1.4.exe.sha256
+!installer/output/Signum-Setup-1.1.5.exe
+!installer/output/Signum-Setup-1.1.5.exe.sha256
+
+# Local research, reports, session material and corpus tools are not release sources.
+/docs/ADDITIONAL_ANALYSIS.pl.md
+/docs/CLASSIFICATION_100x12.pl.md
+/docs/JEVK5_CLASSIFICATION.pl.md
+/docs/JEV_VALIDATION.pl.md
+/docs/assets/
+/scripts/benchmark_jevk5_classification.py
+/scripts/experiment_additional_analysis.py
+/scripts/generate_fixtures.py
+/scripts/limit_classification_inputs.py
+/scripts/report_classification_benchmark.py
+/scripts/run_classification_benchmark.ps1
+/scripts/venice_api.py
+/scripts/venice_demo.ps1
+/scripts/venice_demo.py
+/scripts/calibrate_multilabel.py
+/scripts/collect_multilabel_scores.py
+/scripts/evaluate_hitl_policy.py
+/scripts/prepare_multilabel_corpus.py
+/tests/test_jev_lab.py
+/JevScript_gotowy.txt
+/experiments/

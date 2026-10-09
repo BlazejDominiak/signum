@@ -9,6 +9,7 @@ from pathlib import Path
 
 from signum import config
 from signum.core.classification import ClassificationBatch, ClassificationRow
+from signum.core.decision import probability
 
 
 def session_path() -> Path:
@@ -79,6 +80,26 @@ def load_collection(path: Path | None = None) -> tuple[list[Path], Classificatio
                 or not math.isfinite(row.confidence) or not 0 <= row.confidence <= 1
             ):
                 raise ValueError("Niepoprawna pewność klasyfikacji")
+            for field_name in ("assigned_categories", "review_reasons", "model_review_reasons",
+                               "review_labels"):
+                value = getattr(row, field_name)
+                if not isinstance(value, list) or any(not isinstance(v, str) for v in value):
+                    raise ValueError("Niepoprawna lista etykiet lub powodów HITL")
+            if len(set(row.assigned_categories)) != len(row.assigned_categories):
+                raise ValueError("Powtórzone etykiety kolekcji")
+            if not isinstance(row.label_scores, dict) or any(
+                not isinstance(k, str) for k in row.label_scores
+            ):
+                raise ValueError("Niepoprawne oceny etykiet")
+            row.label_scores = {k: probability(v) for k, v in row.label_scores.items()}
+            if row.threshold is not None:
+                row.threshold = probability(row.threshold)
+            row.hitl_margin = probability(row.hitl_margin)
+            if (type(row.hitl) is not bool or not isinstance(row.calibration_id, str)
+                    or not isinstance(row.calibration_warning, str)):
+                raise ValueError("Niepoprawne oznaczenie HITL")
+            if row.assigned_categories:
+                row.category = "; ".join(row.assigned_categories)
             rows.append(row)
         allowed_batch = {f.name for f in fields(ClassificationBatch)} - {"rows", "documents"}
         batch = ClassificationBatch(rows=rows, **{

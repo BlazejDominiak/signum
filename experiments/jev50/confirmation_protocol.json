@@ -1,8 +1,0 @@
-{
-  "frozen_at_utc": "2026-10-05T15:59:31.537187+00:00",
-  "labels_sha256": "d64f5bdf39291429ed77f2144b156cab84cc23fd59a1fa0a0ee966c3c1990855",
-  "primary_sha256": "377760b29a14910f70f9145d93402b80574181425d516ee290e06beed3129060",
-  "quality_sha256": "daac0aeb516b662c5ca185a9342ea105af9ffb660ec7958e0fce7cb36338d419",
-  "quality_selected_before_confirmation": true,
-  "original_test_quality_result_is_exploratory": true
-}

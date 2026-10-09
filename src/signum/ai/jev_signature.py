@@ -8,6 +8,7 @@ from typing import Any
 from PIL import Image
 
 from signum.ai.base import AIResponseError, PageAnalysis, VisualSignature
+from signum.core.decision import near_threshold, review_reason
 from signum.core.models import SignatureKind
 
 THRESHOLD = 0.535
@@ -111,7 +112,9 @@ def _scores(response: dict[str, Any]) -> dict[str, float]:
     return scores
 
 
-def parse_signature_views(responses: list[dict[str, Any]]) -> PageAnalysis:
+def parse_signature_views(
+    responses: list[dict[str, Any]], hitl_margin: float = 0.10,
+) -> PageAnalysis:
     if len(responses) != 5:
         raise AIResponseError("Brak kompletu pięciu widoków Jev; wynik nie jest brakiem podpisu.")
     scores = [_scores(response) for response in responses]
@@ -143,4 +146,8 @@ def parse_signature_views(responses: list[dict[str, Any]]) -> PageAnalysis:
                 None,
             )
         )
-    return PageAnalysis("", tuple(signatures), probability)
+    reasons = (
+        (review_reason("obecność podpisu/parafki", score, THRESHOLD, hitl_margin),)
+        if near_threshold(score, THRESHOLD, hitl_margin) else ()
+    )
+    return PageAnalysis("", tuple(signatures), probability, score, THRESHOLD, reasons)
