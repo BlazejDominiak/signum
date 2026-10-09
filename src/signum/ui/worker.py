@@ -7,9 +7,12 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QThread, Signal
 
+from signum.ai import create_vision_model
 from signum.ai.base import AIError, VisionModel
 from signum.ai.ollama_client import OllamaVisionModel
-from signum.core.models import DocumentResult
+from signum.ai.prompts import build_page_prompt
+from signum.config import AppConfig
+from signum.core.models import DocumentResult, DocumentStatus
 from signum.core.pipeline import BatchResult, CancelToken, DocumentAnalyzer, run_batch
 
 
@@ -64,6 +67,102 @@ class BatchWorker(QThread):
         batch.loading_s += self._loading_s
         batch.preflight_s = max(0, self._preflight_s - self._loading_s)
         self.batch_done.emit(batch)
+
+
+class SignatureComparisonWorker(QThread):
+    """Run vision models sequentially, keeping every result and its timings."""
+
+    model_started = Signal(str)
+    file_started = Signal(int, int, str)
+    file_done = Signal(int, object)
+    batch_done = Signal(object)
+
+    def __init__(self, files: list[Path], configs: list[AppConfig]) -> None:
+        super().__init__()
+        self._files = files
+        self._configs = configs
+        self._cancel = CancelToken()
+
+    def cancel(self) -> None:
+        self._cancel.cancel()
+
+    def run(self) -> None:
+        for config in self._configs:
+            if self._cancel.cancelled:
+                name = f"{config.provider}: {getattr(config, config.provider + '_model')}"
+                self.batch_done.emit(BatchResult(
+                    model_name=name, analysis_settings=signature_settings(config),
+                    results=[
+                        DocumentResult(p, status=DocumentStatus.CANCELLED) for p in self._files
+                    ],
+                ))
+            else:
+                self.batch_done.emit(self._run_model(config))
+
+    def _run_model(self, config: AppConfig) -> BatchResult:
+        started = time.time()
+        name = f"{config.provider}: {getattr(config, config.provider + '_model')}"
+        batch = BatchResult(model_name=name, started_at=started)
+        self.model_started.emit(name)
+        model: VisionModel | None = None
+        completed: list[DocumentResult] = []
+        preflight = time.perf_counter()
+        preflight_s = 0.0
+        loading_s = 0.0
+
+        def record(index: int, result: DocumentResult) -> None:
+            completed.append(result)
+            self.file_done.emit(index, result)
+
+        try:
+            model = create_vision_model(config)
+            model.check_connection()
+            preflight_s = time.perf_counter() - preflight
+            loading_s = min(preflight_s, max(0.0, model.loading_seconds))
+            analyzer = DocumentAnalyzer(
+                model, config.max_pages_per_doc, config.model_image_max_side,
+                build_page_prompt(config.custom_prompt, config.provider, config.jev_custom_prompt),
+            )
+            batch = run_batch(
+                self._files, analyzer, self._cancel,
+                on_file_start=lambda i, n, p: self.file_started.emit(i, n, p.name),
+                on_file_done=record,
+            )
+        except Exception as exc:
+            batch.abort_error = str(exc)
+            batch.results = completed
+            # Preserve failed setup explicitly, so it cannot look like a negative prediction.
+            batch.results.extend(
+                DocumentResult(path, status=DocumentStatus.ERROR, error=str(exc))
+                for path in self._files[len(completed):]
+            )
+            batch.preparation_s = sum(r.preparation_s for r in completed)
+            batch.loading_s = sum(r.loading_s for r in completed)
+            batch.inference_s = sum(r.inference_s for r in completed)
+            if not preflight_s:
+                preflight_s = time.perf_counter() - preflight
+                loading_s = min(preflight_s, max(0.0, model.loading_seconds)) if model else 0
+        finally:
+            if model is not None:
+                try:
+                    model.release_resources()
+                except Exception as exc:
+                    batch.abort_error = batch.abort_error or f"Zwalnianie modelu: {exc}"
+            batch.started_at = started
+            batch.finished_at = time.time()
+            batch.loading_s += loading_s
+            batch.preflight_s = max(0.0, preflight_s - loading_s)
+        batch.analysis_settings = signature_settings(config)
+        return batch
+
+
+def signature_settings(config: AppConfig) -> str:
+    additional = getattr(config, config.provider + "_additional_analysis", True)
+    return (
+        f"Limit stron: {config.max_pages_per_doc}; "
+        f"rozmiar obrazu: {config.model_image_max_side}; "
+        f"dodatkowa analiza: {'tak' if additional else 'nie'}"
+    )
 
 
 class ConnectionTestWorker(QThread):

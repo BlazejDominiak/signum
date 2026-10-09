@@ -61,6 +61,7 @@ class BatchResult:
 
     results: list[DocumentResult] = field(default_factory=list)
     model_name: str = ""
+    analysis_settings: str = ""
     started_at: float = 0.0
     finished_at: float = 0.0
     preparation_s: float = 0.0

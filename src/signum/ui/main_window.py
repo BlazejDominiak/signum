@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import time
+from dataclasses import replace
 from pathlib import Path
 
 from PySide6.QtCore import QPointF, Qt, QTimer, QUrl, Signal
@@ -18,6 +19,7 @@ from PySide6.QtGui import (
     QPixmap,
 )
 from PySide6.QtWidgets import (
+    QComboBox,
     QDialog,
     QFileDialog,
     QFrame,
@@ -54,7 +56,12 @@ from signum.ui.classification_panel import ClassificationPanel
 from signum.ui.components_dialog import ComponentsDialog
 from signum.ui.settings_dialog import SettingsDialog
 from signum.ui.theme import SIGNUM_STYLE
-from signum.ui.worker import BatchWorker, ConnectionTestWorker
+from signum.ui.worker import (
+    BatchWorker,
+    ConnectionTestWorker,
+    SignatureComparisonWorker,
+    signature_settings,
+)
 
 _COL_FILE, _COL_TITLE, _COL_SIGNATURES, _COL_CONFIDENCE, _COL_STATUS = range(5)
 
@@ -76,10 +83,11 @@ class MainWindow(QMainWindow):
         self._config = AppConfig.load()
         self._files: list[Path] = []
         self._results: dict[int, DocumentResult] = {}
-        self._worker: BatchWorker | None = None
+        self._worker: BatchWorker | SignatureComparisonWorker | None = None
         self._preflight_worker: ConnectionTestWorker | None = None
         self._pending_model: VisionModel | None = None
         self._last_batch: BatchResult | None = None
+        self._signature_runs: list[BatchResult] = []
         self._batch_started = 0.0
         self._preflight_started = 0.0
         self._preflight_seconds = 0.0
@@ -105,6 +113,8 @@ class MainWindow(QMainWindow):
         self.act_add_folder.triggered.connect(self._on_add_folder)
         self.act_process = QAction("Przetwórz", self)
         self.act_process.triggered.connect(self._on_process)
+        self.act_compare = QAction("Porównaj Ollama + Jev", self)
+        self.act_compare.triggered.connect(self._on_compare)
         self.act_cancel = QAction("Anuluj", self)
         self.act_cancel.triggered.connect(self._on_cancel)
         self.act_export = QAction("Zapisz raport…", self)
@@ -202,9 +212,24 @@ class MainWindow(QMainWindow):
         model_layout.addWidget(self.settings_button)
         model_layout.addWidget(self._action_button(self.act_components))
         model_layout.addWidget(self._action_button(self.act_cancel))
+        model_layout.addWidget(self._action_button(self.act_compare))
         model_layout.addWidget(self._action_button(self.act_process, "primary"))
         signature_layout.addWidget(model_bar)
         self.signature_layout = signature_layout
+        history_bar = QHBoxLayout()
+        history_bar.addWidget(QLabel("Wyniki przebiegu:"))
+        self.signature_runs = QComboBox()
+        self.signature_runs.setMinimumContentsLength(25)
+        self.signature_runs.currentIndexChanged.connect(self._show_signature_run)
+        history_bar.addWidget(self.signature_runs, 1)
+        history_bar.addWidget(QLabel(
+            "Raport zawiera wszystkie przebiegi do wyczyszczenia kolejki."
+        ))
+        signature_layout.addLayout(history_bar)
+        self.signature_comparison = QLabel()
+        self.signature_comparison.setTextFormat(Qt.TextFormat.PlainText)
+        self.signature_comparison.setWordWrap(True)
+        signature_layout.addWidget(self.signature_comparison)
         signature_layout.addWidget(splitter, 1)
         self.mode_tabs = QTabWidget()
         self.mode_tabs.addTab(signature_page, "Sprawdzanie podpisów")
@@ -220,8 +245,8 @@ class MainWindow(QMainWindow):
     def _files_moved(self, moved: dict[Path, Path]) -> None:
         self._files = [moved.get(path, path) for path in self._files]
         results = list(self._results.values())
-        if self._last_batch:
-            results += self._last_batch.results
+        for run in self._signature_runs:
+            results += run.results
         for result in {id(result): result for result in results}.values():
             result.path = moved.get(result.path, result.path)
         for index, path in enumerate(self._files):
@@ -398,6 +423,63 @@ class MainWindow(QMainWindow):
         self._preflight_worker.start()
         self._update_action_states()
 
+    def _on_compare(self) -> None:
+        if self._is_busy() or not self._files:
+            return
+        configs = [replace(self._config, provider=provider) for provider in ("ollama", "vjev")]
+        remote_targets = [cfg.api_base_url for cfg in configs if not processing_is_local(
+            cfg.provider, cfg.api_base_url, cfg.ollama_model,
+        )]
+        dialog = BatchRiskDialog(
+            self._config, len(self._files), self, remote_targets=remote_targets,
+        )
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        worker = SignatureComparisonWorker(list(self._files), configs)
+        self._worker = worker
+        worker.model_started.connect(self._on_comparison_model_started)
+        worker.file_started.connect(self._on_file_started)
+        worker.file_done.connect(self._on_file_done)
+        worker.batch_done.connect(self._on_batch_done)
+        worker.finished.connect(self._on_worker_finished)
+        worker.start()
+        self._update_action_states()
+
+    def _on_comparison_model_started(self, name: str) -> None:
+        self._preflight_started = time.perf_counter()
+        self._batch_started = time.monotonic()
+        self._preflight_loading = 0
+        self._last_batch = None
+        self._results.clear()
+        self._show_details_placeholder()
+        for row in range(self.table.rowCount()):
+            for column in (_COL_TITLE, _COL_SIGNATURES, _COL_CONFIDENCE):
+                self._cell(row, column).setText("")
+            self._set_status_cell(row, "Oczekuje", _GRAY)
+        self.progress.setRange(0, len(self._files))
+        self.progress.setValue(0)
+        self._signature_timer.start(200)
+        self.status_label.setText(f"Porównanie — {name}: sprawdzanie i uruchamianie modelu…")
+
+    def _show_signature_run(self, index: int) -> None:
+        if self._is_busy() or not 0 <= index < len(self._signature_runs):
+            return
+        batch = self._signature_runs[index]
+        self._last_batch = batch
+        by_path = {result.path: result for result in batch.results}
+        self._results.clear()
+        for row, path in enumerate(self._files):
+            result = by_path.get(path)
+            if result is not None:
+                self._results[row] = result
+                self._fill_result_row(row, result)
+            else:
+                for column in (_COL_TITLE, _COL_SIGNATURES, _COL_CONFIDENCE):
+                    self._cell(row, column).setText("")
+                self._set_status_cell(row, "Brak wyniku", _GRAY)
+        self._refresh_signature_time()
+        self._on_selection_changed()
+
     def _start_batch(self, model: VisionModel) -> None:
         analyzer = DocumentAnalyzer(
             model=model,
@@ -492,6 +574,9 @@ class MainWindow(QMainWindow):
         if self._is_busy():
             return
         self._files.clear()
+        self._signature_runs.clear()
+        self.signature_runs.clear()
+        self.signature_comparison.clear()
         self._results.clear()
         self._last_batch = None
         self.table.setRowCount(0)
@@ -524,7 +609,7 @@ class MainWindow(QMainWindow):
         self._refresh_online_badge()
 
     def _on_export(self) -> None:
-        if self._last_batch is None:
+        if not self._signature_runs:
             QMessageBox.information(
                 self, "Raport", "Najpierw przetwórz dokumenty — raport powstaje z wyników."
             )
@@ -551,9 +636,9 @@ class MainWindow(QMainWindow):
         self._remember_dir(path.parent)
         try:
             if "CSV" in selected_filter or path.suffix.lower() == ".csv":
-                write_csv(path, self._last_batch)
+                write_csv(path, self._signature_runs)
             else:
-                write_html(path, self._last_batch)
+                write_html(path, self._signature_runs)
         except OSError as exc:
             QMessageBox.critical(self, "Raport", f"Nie udało się zapisać raportu:\n{exc}")
             return
@@ -591,7 +676,20 @@ class MainWindow(QMainWindow):
             self._show_details(result)
 
     def _on_batch_done(self, batch: BatchResult) -> None:
+        if not batch.analysis_settings:
+            batch.analysis_settings = signature_settings(self._config)
         self._last_batch = batch
+        self._signature_runs.append(batch)
+        self.signature_runs.blockSignals(True)
+        self.signature_runs.addItem(f"{len(self._signature_runs)}. {batch.model_name}")
+        self.signature_runs.setCurrentIndex(len(self._signature_runs) - 1)
+        self.signature_runs.blockSignals(False)
+        self.signature_comparison.setText("\n".join(
+            f"{i}. {run.model_name} — przygotowanie: {run.preparation_s:.2f} s · "
+            f"ładowanie: {run.loading_s:.2f} s · działanie: {run.inference_s:.2f} s · "
+            f"łącznie: {run.duration_s:.2f} s"
+            for i, run in enumerate(self._signature_runs, 1)
+        ))
         self._signature_timer.stop()
         self._refresh_signature_time()
         self.progress.setValue(self.progress.maximum())
@@ -602,10 +700,10 @@ class MainWindow(QMainWindow):
         self.status_label.setText(summary)
         # Uzupełnij wiersze anulowane (worker nie wysłał dla nich file_done).
         for index, result in enumerate(batch.results):
-            if index not in self._results:
-                self._results[index] = result
-                self._fill_result_row(index, result)
-        if batch.abort_error and not self._close_when_finished:
+            self._results[index] = result
+            self._fill_result_row(index, result)
+        if (batch.abort_error and not self._close_when_finished
+                and not isinstance(self._worker, SignatureComparisonWorker)):
             QMessageBox.critical(
                 self,
                 "Przetwarzanie przerwane",
@@ -614,6 +712,7 @@ class MainWindow(QMainWindow):
         self._update_action_states()
 
     def _on_worker_finished(self) -> None:
+        self._signature_timer.stop()
         worker = self._worker
         self._worker = None
         if worker is not None:
@@ -682,10 +781,10 @@ class MainWindow(QMainWindow):
         return f" (pozostało ok. {minutes}:{seconds:02d})"
 
     def _is_processing(self) -> bool:
-        return self._worker is not None and self._worker.isRunning()
+        return self._worker is not None
 
     def _is_preflighting(self) -> bool:
-        return self._preflight_worker is not None and self._preflight_worker.isRunning()
+        return self._preflight_worker is not None
 
     def _is_busy(self) -> bool:
         return self._is_processing() or self._is_preflighting() or self.classification.is_busy()
@@ -700,11 +799,13 @@ class MainWindow(QMainWindow):
         self.act_add_files.setEnabled(not busy)
         self.act_add_folder.setEnabled(not busy)
         self.act_process.setEnabled(not busy and has_files)
+        self.act_compare.setEnabled(not busy and has_files)
+        self.signature_runs.setEnabled(not busy and bool(self._signature_runs))
         self.act_cancel.setEnabled(processing)
         self.act_clear.setEnabled(not busy and has_files)
         self.act_components.setEnabled(not self._is_busy())
         self.act_settings.setEnabled(not busy)
-        self.act_export.setEnabled(not busy and self._last_batch is not None)
+        self.act_export.setEnabled(not busy and bool(self._signature_runs))
 
     def _remember_dir(self, directory: Path) -> None:
         self._config.last_dir = str(directory)

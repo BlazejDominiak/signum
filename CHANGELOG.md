@@ -4,6 +4,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
 
 ## [Unreleased]
 
+## [1.1.8] — 2026-10-09
+
+### Fixed
+- Raport podpisów zachowuje wszystkie przebiegi z bieżącej kolejki. HTML zawiera
+  tabelę czasów modeli i zestawienie wyników każdego dokumentu obok siebie;
+  CSV zapisuje model, przebieg, czasy pliku i całego modelu, zgodność oraz HITL.
+- Przycisk **Porównaj Ollama + Jev** uruchamia oba modele kolejno na tej samej
+  kolejce, z osobnymi pomiarami. Wyniki można przełączać bez ponownej analizy.
+- Błędy, anulowanie i niepełna analiza pozostają widoczne w porównaniu
+  i nie są traktowane jako zgodne rozpoznanie braku podpisu.
+
 ## [1.1.7] — 2026-10-09
 
 ### Fixed

@@ -41,7 +41,11 @@ Cancellation keeps completed files and leaves the remaining sources in place.
 Git ignores PDF inputs; CI and the installer build check delivery inputs with
 `scripts/check_local_documents.py`. See the [Polish usage guide](docs/INSTRUKCJA.pl.md).
 
-The **Sprawdzanie podpisów** tab keeps the existing visual and structural analysis:
+The **Sprawdzanie podpisów** tab compares Ollama and Jev sequentially with
+**Porównaj Ollama + Jev**. It retains runs until the queue is cleared or the app closes.
+HTML reports show model timings and document decisions side by side; CSV includes
+all runs with per-document and model totals, agreement, errors and HITL.
+The tab keeps the existing visual and structural analysis:
 
 Drop in up to a thousand scans and PDFs, click *Przetwórz* (Process), and Signum:
 
@@ -163,8 +167,8 @@ which verifies that the selected service and model are actually available.
 
 ### Installer (recommended)
 
-Signum is a demo project. Download [Signum-Setup-1.1.7.exe](installer/output/Signum-Setup-1.1.7.exe)
-and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.7.exe.sha256).
+Signum is a demo project. Download [Signum-Setup-1.1.8.exe](installer/output/Signum-Setup-1.1.8.exe)
+and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.8.exe.sha256).
 Run the installer to begin setup. Per-user install,
 no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate

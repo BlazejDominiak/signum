@@ -299,7 +299,18 @@ oznacza odejście od przetestowanego wariantu i może zmienić jakość oraz kal
 4. Kliknij wiersz, aby zobaczyć **szczegóły**: rodzaj każdego podpisu, stronę,
    pewność oraz **wycinek podpisu** (kliknij miniaturę, aby powiększyć).
    Dla podpisów cyfrowych wyświetlane są podtyp, podpisujący i data.
-5. **Zapisz raport…** — samowystarczalny HTML albo CSV (średniki, zgodny
+5. **Porównaj Ollama + Jev** uruchamia oba modele kolejno na tej samej kolejce,
+   używając zapisanych ustawień każdego z nich, w tym dodatkowej analizy.
+   **Wyniki przebiegu** pozwalają wrócić do wcześniejszego wyniku bez ponawiania analizy.
+   Wyniki kolejnych uruchomień pozostają w pamięci do **Wyczyść** lub zamknięcia aplikacji.
+6. **Zapisz raport…** eksportuje wszystkie zachowane przebiegi. HTML zawiera
+   tabelę czasów przygotowania, ładowania, działania i całego przebiegu każdego modelu
+   oraz porównanie dokument po dokumencie z zaznaczonymi różnicami i HITL.
+   CSV zawiera osobny wiersz dla każdej pary dokument–przebieg, nazwę modelu,
+   czasy dokumentu, czasy całego modelu i zgodność wyników. Błędy, brak wyniku
+   i niepełna analiza nie oznaczają zgodności. Ustawienia analizy są zapisane przy
+   każdym modelu; porównuj szybkość przy tym samym zakresie analizy.
+   Raport to samowystarczalny HTML albo CSV (średniki, zgodny
    z polskim Excelem). W raporcie HTML przy każdym znalezisku jest wycinek
    oraz **miniatura całej strony z czerwoną ramką** w miejscu wskazanym przez
    model — nawet gdy wycinek chybił, miniatura pokazuje, gdzie szukać podpisu.

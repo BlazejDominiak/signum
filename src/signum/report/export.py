@@ -12,6 +12,7 @@ import csv
 import html
 import io
 import json
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 
@@ -48,12 +49,18 @@ h1 { font-size: 1.5rem; } h2 { font-size: 1.1rem; margin: 0 0 .3rem; }
                border-radius: 4px; background: #fff; }
 .finding img.overview { max-height: 150px; max-width: 120px; }
 .meta { color: #444; font-size: .9rem; }
+.table-wrap { overflow-x: auto; margin: 1rem 0 2rem; }
+table { border-collapse: collapse; width: 100%; background: white; }
+th, td { text-align: left; vertical-align: top; padding: .6rem; border: 1px solid #ddd; }
+th { background: #eef2f7; }
+.different { background: #fff0d3; }
 footer { color: #888; font-size: .8rem; margin-top: 2rem; }
 """
 
 
-def build_html(batch: BatchResult) -> str:
+def build_html(batch: BatchResult | Sequence[BatchResult]) -> str:
     """Buduje pełny raport HTML z partii wyników."""
+    runs = _runs(batch)
     generated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     parts = [
         "<!DOCTYPE html><html lang='pl'><head><meta charset='utf-8'>",
@@ -62,17 +69,21 @@ def build_html(batch: BatchResult) -> str:
         "<title>Signum — raport z analizy podpisów</title>",
         f"<style>{_CSS}</style></head><body>",
         "<h1>Signum — raport z analizy podpisów</h1>",
-        _summary_html(batch),
+        _timings_html(runs),
+        _comparison_html(runs),
     ]
-    if batch.abort_error:
-        parts.append(
-            f"<p class='meta' style='color:#c62828'><b>Partię przerwano:</b> "
-            f"{html.escape(batch.abort_error)}</p>"
-        )
-    parts.extend(_document_html(result) for result in batch.results)
+    for index, run in enumerate(runs, 1):
+        parts.append(f"<h2>Przebieg {index}: {html.escape(run.model_name or '—')}</h2>")
+        parts.append(_summary_html(run))
+        if run.abort_error:
+            parts.append(
+                "<p class='meta error'><b>Partię przerwano:</b> "
+                + html.escape(run.abort_error) + "</p>"
+            )
+        parts.extend(_document_html(result) for result in run.results)
     parts.append(
         f"<footer>Wygenerowano {generated} przez Signum {__version__}; "
-        f"model: {html.escape(batch.model_name or '—')}. "
+        f"modele: {html.escape(', '.join(r.model_name or '—' for r in runs))}. "
         "Signum wykorzystuje AI i może zwrócić wynik błędny lub niepełny. "
         "Wykrywa oznaki obecności podpisów, ale nie potwierdza ich autentyczności, "
         "ważności prawnej lub kryptograficznej ani integralności dokumentu. "
@@ -80,6 +91,93 @@ def build_html(batch: BatchResult) -> str:
         "powinien być jedyną podstawą decyzji. Raport może zawierać poufne fragmenty "
         "dokumentów i powinien być chroniony tak samo jak dokumenty źródłowe."
         "</footer></body></html>"
+    )
+    return "".join(parts)
+
+
+def _runs(batch: BatchResult | Sequence[BatchResult]) -> list[BatchResult]:
+    return [batch] if isinstance(batch, BatchResult) else list(batch)
+
+
+def _documents(runs: Sequence[BatchResult]) -> dict[Path, list[DocumentResult | None]]:
+    documents: dict[Path, list[DocumentResult | None]] = {}
+    for index, run in enumerate(runs):
+        for result in run.results:
+            documents.setdefault(result.path, [None] * len(runs))[index] = result
+    return documents
+
+
+def _agreement(results: Sequence[DocumentResult | None]) -> str:
+    if len(results) < 2:
+        return ""
+    if any(result is None or not result.analysis_complete for result in results):
+        return "NIEPEŁNE DANE"
+    if len({result.page_count for result in results if result is not None}) != 1:
+        return "RÓŻNY ZAKRES STRON"
+    verdicts = {result.signature_verdict for result in results if result is not None}
+    return "ZGODNE" if len(verdicts) == 1 else "RÓŻNICA"
+
+
+def _timings_html(runs: Sequence[BatchResult]) -> str:
+    parts = ["<h2>Czasy i wyniki modeli</h2><div class='table-wrap'><table><thead><tr>"]
+    headings = (
+        "Przebieg / model", "Ustawienia analizy", "Dokumenty OK / wszystkie",
+        "Podpisane", "HITL", "Błędy",
+        "Przygotowanie [s]", "Ładowanie [s]", "Działanie [s]", "Test połączenia [s]",
+        "Łącznie [s]", "Średnie działanie / przetworzony plik [s]",
+    )
+    parts.extend(f"<th>{heading}</th>" for heading in headings)
+    parts.append("</tr></thead><tbody>")
+    for index, run in enumerate(runs, 1):
+        ok = sum(r.status == DocumentStatus.OK for r in run.results)
+        processed = sum(r.status in {DocumentStatus.OK, DocumentStatus.ERROR} for r in run.results)
+        average = f"{run.inference_s / processed:.3f}" if processed else "—"
+        values = (
+            f"{index}. {run.model_name}", run.analysis_settings, f"{ok} / {len(run.results)}",
+            str(run.signed_count),
+            str(sum(r.hitl for r in run.results)), str(run.error_count),
+            f"{run.preparation_s:.3f}", f"{run.loading_s:.3f}", f"{run.inference_s:.3f}",
+            f"{run.preflight_s:.3f}", f"{run.duration_s:.3f}", average,
+        )
+        parts.append("<tr>" + "".join(f"<td>{html.escape(v)}</td>" for v in values) + "</tr>")
+    parts.append(
+        "</tbody></table></div><p class='meta'>Suma czasów przebiegów: "
+        f"{sum(r.duration_s for r in runs):.3f} s. "
+        "Czas łączny obejmuje przygotowanie, ładowanie, test połączenia, "
+        "działanie i zwolnienie zasobów. Ładowanie w teście połączenia jest wliczone "
+        "wyłącznie do kolumny Ładowanie. Czas działania obejmuje żądania i ponowienia; "
+        "dla usług zdalnych obejmuje też transport. "
+        "Średnia pomija pliki anulowane. Porównuj czasy przy tym samym zakresie analizy.</p>"
+    )
+    return "".join(parts)
+
+
+def _comparison_html(runs: Sequence[BatchResult]) -> str:
+    if len(runs) < 2:
+        return ""
+    parts = ["<h2>Porównanie wyników dokument po dokumencie</h2>",
+             "<div class='table-wrap'><table><thead><tr><th>Dokument</th>"]
+    parts.extend(f"<th>{i}. {html.escape(run.model_name)}</th>"
+                 for i, run in enumerate(runs, 1))
+    parts.append("<th>Zgodność obecności podpisu</th></tr></thead><tbody>")
+    for index, (path, results) in enumerate(_documents(runs).items(), 1):
+        agreement = _agreement(results)
+        style = " class='different'" if agreement == "RÓŻNICA" else ""
+        parts.append(f"<tr{style}><td>{index}. {html.escape(path.name)}</td>")
+        for result in results:
+            if result is None:
+                parts.append("<td>BRAK WYNIKU</td>")
+            else:
+                parts.append(
+                    f"<td>{_badge(result)}<br>Działanie: {result.inference_s:.3f} s"
+                    f"<br>Łącznie: {result.duration_s:.3f} s"
+                    f"<br>Strony: {result.pages_analyzed}/{result.page_count}</td>"
+                )
+        parts.append(f"<td>{agreement}</td></tr>")
+    parts.append(
+        "</tbody></table></div><p class='meta'>Zgodność dotyczy obecności podpisu. "
+        "Błędy, brak wyniku i niepełna analiza nie są liczone jako zgodność. "
+        "HITL pozostaje widoczny niezależnie od zgodności modeli.</p>"
     )
     return "".join(parts)
 
@@ -110,6 +208,12 @@ def _document_html(result: DocumentResult) -> str:
         f"<h2>{html.escape(result.title or result.path.name)} {badge}</h2>",
         f"<div class='path'>{html.escape(result.path.name)}</div>",
     ]
+    parts.append(
+        "<p class='meta'>"
+        f"Przygotowanie: {result.preparation_s:.3f} s · "
+        f"Ładowanie: {result.loading_s:.3f} s · "
+        f"Działanie: {result.inference_s:.3f} s · Łącznie: {result.duration_s:.3f} s</p>"
+    )
     if result.status == DocumentStatus.ERROR and result.error:
         parts.append(f"<p class='meta' style='color:#c62828'>{html.escape(result.error)}</p>")
     if result.hitl:
@@ -169,19 +273,22 @@ def _badge(result: DocumentResult) -> str:
     return f"<span class='badge {style}'>{html.escape(result.signature_label)}</span>"
 
 
-def write_html(path: Path, batch: BatchResult) -> None:
+def write_html(path: Path, batch: BatchResult | Sequence[BatchResult]) -> None:
     path.write_text(build_html(batch), encoding="utf-8")
 
 
-def write_csv(path: Path, batch: BatchResult) -> None:
+def write_csv(path: Path, batch: BatchResult | Sequence[BatchResult]) -> None:
     # newline="" wyłącza translację końców linii — CSV ma już CRLF,
     # a write_text zamieniłby je na CRCRLF (puste wiersze w Excelu).
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
         handle.write(build_csv(batch))
 
 
-def build_csv(batch: BatchResult) -> str:
+def build_csv(batch: BatchResult | Sequence[BatchResult]) -> str:
     """CSV z podsumowaniem per plik (separator ``;`` — zgodny z polskim Excelem)."""
+    runs = _runs(batch)
+    documents = _documents(runs)
+    document_ids = {path: i for i, path in enumerate(documents, 1)}
     buf = io.StringIO()
     writer = csv.writer(buf, delimiter=";", lineterminator="\r\n")
     writer.writerow(
@@ -198,28 +305,38 @@ def build_csv(batch: BatchResult) -> str:
             "wszystkie_strony",
             "przygotowanie_s", "ladowanie_s", "dzialanie_s", "lacznie_s",
             "hitl", "powody_hitl", "wyniki_decyzyjne", "progi_decyzyjne",
+            "model", "przebieg", "dokument_id", "zgodnosc_modeli", "blad",
+            "model_przygotowanie_s", "model_ladowanie_s", "model_dzialanie_s",
+            "model_test_polaczenia_s", "model_lacznie_s", "suma_przebiegow_s",
+            "blad_przebiegu", "ustawienia_analizy",
         ]
     )
-    for r in batch.results:
-        writer.writerow(
-            [
-                _safe_csv_cell(r.path.name),
-                _safe_csv_cell(r.title),
-                _STATUS_LABELS[r.status],
-                r.signature_verdict,
-                "" if r.page_signature_probabilities else len(r.findings),
-                r.kinds_summary,
-                r.max_confidence if r.max_confidence is not None else "",
-                json.dumps(r.page_signature_probabilities)
-                if r.page_signature_probabilities
-                else "",
-                r.pages_analyzed,
-                r.page_count,
-                r.preparation_s, r.loading_s, r.inference_s, r.duration_s,
-                "HITL" if r.hitl else "", _safe_csv_cell(r.review_summary),
-                json.dumps(r.page_decision_scores), json.dumps(r.page_decision_thresholds),
-            ]
-        )
+    for index, run in enumerate(runs, 1):
+        for r in run.results:
+            writer.writerow(
+                [
+                    _safe_csv_cell(r.path.name),
+                    _safe_csv_cell(r.title),
+                    _STATUS_LABELS[r.status],
+                    r.signature_verdict,
+                    "" if r.page_signature_probabilities else len(r.findings),
+                    r.kinds_summary,
+                    r.max_confidence if r.max_confidence is not None else "",
+                    json.dumps(r.page_signature_probabilities)
+                    if r.page_signature_probabilities
+                    else "",
+                    r.pages_analyzed,
+                    r.page_count,
+                    r.preparation_s, r.loading_s, r.inference_s, r.duration_s,
+                    "HITL" if r.hitl else "", _safe_csv_cell(r.review_summary),
+                    json.dumps(r.page_decision_scores), json.dumps(r.page_decision_thresholds),
+                    _safe_csv_cell(run.model_name), index, document_ids[r.path],
+                    _agreement(documents[r.path]), _safe_csv_cell(r.error or ""),
+                    run.preparation_s, run.loading_s, run.inference_s, run.preflight_s,
+                    run.duration_s, sum(b.duration_s for b in runs),
+                    _safe_csv_cell(run.abort_error or ""), _safe_csv_cell(run.analysis_settings),
+                ]
+            )
     return buf.getvalue()
 
 

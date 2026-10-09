@@ -64,8 +64,8 @@ scratch/
 # Keep only the current installer and its checksum in the repository.
 !installer/output/
 installer/output/*
-!installer/output/Signum-Setup-1.1.7.exe
-!installer/output/Signum-Setup-1.1.7.exe.sha256
+!installer/output/Signum-Setup-1.1.8.exe
+!installer/output/Signum-Setup-1.1.8.exe.sha256
 
 # Local research, reports, session material and corpus tools are not release sources.
 /docs/ADDITIONAL_ANALYSIS.pl.md
