@@ -205,6 +205,11 @@ def enrich_analysis(
     basic: PageAnalysis,
     decide: Decide,
     check_cancelled: Callable[[], None] | None = None,
+    *,
+    category_threshold: float = CATEGORY_THRESHOLD,
+    candidate_threshold: float = CANDIDATE_THRESHOLD,
+    verify_threshold: float = VERIFY_THRESHOLD,
+    single_threshold: float = 0.5,
 ) -> PageAnalysis:
     """Never adds/removes a basic detection; only adds labels and approximate regions."""
 
@@ -215,7 +220,7 @@ def enrich_analysis(
 
     categories = ask(image, CATEGORY_PROMPT, category_questions())
     ranked = sorted(categories, key=lambda key: (-categories[key], key))
-    selected = [key for key in ranked if key != "other" and categories[key] >= CATEGORY_THRESHOLD][
+    selected = [key for key in ranked if key != "other" and categories[key] >= category_threshold][
         :2
     ]
     description = "; ".join(CATEGORIES[key][1] for key in selected) or "Rodzaj nierozpoznany"
@@ -239,7 +244,7 @@ def enrich_analysis(
         tile_key = "stamp" if is_stamp else "fragment"
         verify_key = "stamp" if is_stamp else "signature"
         groups = connected_cells(
-            {i for i, scores in enumerate(tiles) if scores[tile_key] >= CANDIDATE_THRESHOLD}
+            {i for i, scores in enumerate(tiles) if scores[tile_key] >= candidate_threshold}
         )
         localized = []
         for group in groups:
@@ -248,7 +253,7 @@ def enrich_analysis(
                 with image.crop(box) as view:
                     verified[box] = ask(view, VERIFY_PROMPT, VERIFY_QUESTIONS)
             region_scores = verified[box]
-            if region_scores[verify_key] < VERIFY_THRESHOLD:
+            if region_scores[verify_key] < verify_threshold:
                 # Extra surroundings can hide small marks after server downsampling.
                 # Verify the tighter support region but display the wider context so
                 # the preview does not cut off strokes just across the cell boundary.
@@ -257,7 +262,7 @@ def enrich_analysis(
                     with image.crop(support) as view:
                         verified[support] = ask(view, VERIFY_PROMPT, VERIFY_QUESTIONS)
                 region_scores = verified[support]
-            if region_scores[verify_key] < VERIFY_THRESHOLD:
+            if region_scores[verify_key] < verify_threshold:
                 continue
             left, top, right, bottom = box
             if (right - left) * (bottom - top) > width * height * 0.6:
@@ -269,7 +274,7 @@ def enrich_analysis(
                 math.ceil(right * 1000 / width),
             )
             detail = "Przybliżony obszar oznaczenia (dodatkowa analiza)."
-            if not is_stamp and region_scores["single_signature"] < 0.5:
+            if not is_stamp and region_scores["single_signature"] < single_threshold:
                 detail = "Przybliżony obszar; może obejmować kilka podpisów."
             localized.append(
                 VisualSignature(

@@ -100,6 +100,8 @@ class ClassificationWorker(QThread):
             name: {
                 "provider": profiles[name].provider, "model": profiles[name].model,
                 "api_format": profiles[name].api_format, "url": profiles[name].url,
+                "threshold_override": str(profiles[name].threshold),
+                "hitl_margin_override": str(profiles[name].hitl_margin),
             } for name in self.models if name in profiles
         }
         self.batch_done.emit(batch)

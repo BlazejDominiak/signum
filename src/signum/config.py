@@ -82,6 +82,20 @@ class AppConfig:
     classification_models: str = ""  # JSON profiles; API keys stay in keyring
     classification_categories: str = ""  # JSON names + descriptions; empty uses examples
     vjev_hitl_margin: float = 0.10
+    vjev_threshold: float = 0.535
+    vjev_stamp_threshold: float = 0.5
+    vjev_category_threshold: float = 0.6
+    vjev_candidate_threshold: float = 0.5
+    vjev_verify_threshold: float = 0.65
+    vjev_single_threshold: float = 0.5
+    ollama_threshold: float = 0.5  # presence-only mode
+    ollama_stamp_threshold: float = 0.5
+    ollama_full_threshold: float = 0.0  # retain all generated findings by default
+    ollama_hitl_margin: float = 0.0
+    openai_threshold: float = 0.0
+    openai_hitl_margin: float = 0.0
+    anthropic_threshold: float = 0.0
+    anthropic_hitl_margin: float = 0.0
     classification_prompt: str = ""
     classification_ollama_url: str = "http://localhost:11434"
     classification_ollama_model: str = "gemma4:12b"
@@ -133,7 +147,7 @@ class AppConfig:
             if type(value) is type(default):
                 kwargs[field.name] = value
         config = cls(**kwargs)
-        for name in ("vjev_hitl_margin",):
+        for name in (f.name for f in fields(cls) if isinstance(getattr(defaults, f.name), float)):
             value = raw.get(name, getattr(defaults, name))
             if (isinstance(value, bool) or not isinstance(value, (int, float))
                     or not math.isfinite(value) or not 0 <= value <= 1):
@@ -185,6 +199,34 @@ class AppConfig:
             json.dumps(asdict(self), indent=2, ensure_ascii=False), encoding="utf-8"
         )
         temporary.replace(path)
+
+
+def signature_settings(config: AppConfig) -> str:
+    """Snapshot of the effective settings used by one signature run."""
+    additional = getattr(config, config.provider + "_additional_analysis", True)
+    threshold_name = (
+        "ollama_full_threshold" if config.provider == "ollama" and additional
+        else config.provider + "_threshold"
+    )
+    values = [
+        ("próg decyzji", getattr(config, threshold_name)),
+        ("HITL ±", getattr(config, config.provider + "_hitl_margin")),
+    ]
+    if config.provider == "vjev" or (config.provider == "ollama" and not additional):
+        values.append(("próg pieczątki", getattr(config, config.provider + "_stamp_threshold")))
+    if config.provider == "vjev" and additional:
+        values.extend((label, getattr(config, name)) for label, name in (
+            ("próg kategorii", "vjev_category_threshold"),
+            ("próg obszaru", "vjev_candidate_threshold"),
+            ("próg weryfikacji", "vjev_verify_threshold"),
+            ("próg pojedynczego podpisu", "vjev_single_threshold"),
+        ))
+    return (
+        f"Limit stron: {config.max_pages_per_doc}; "
+        f"rozmiar obrazu: {1120 if config.provider == 'vjev' else config.model_image_max_side}; "
+        f"dodatkowa analiza: {'tak' if additional else 'nie'}; "
+        + "; ".join(f"{label}: {value:.3f}" for label, value in values)
+    )
 
 
 def get_api_key(provider: str) -> str | None:

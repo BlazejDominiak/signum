@@ -9,9 +9,11 @@ from dataclasses import replace
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
     QLabel,
@@ -26,7 +28,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from signum.ai.model_profiles import API_FORMATS, ModelProfile, load_profiles
+from signum.ai.model_profiles import (
+    API_FORMATS,
+    ModelProfile,
+    default_decision_values,
+    load_profiles,
+)
 from signum.ai.text_classifiers import create_text_classifier, venice_key
 from signum.config import AppConfig, get_api_key, set_api_key
 from signum.local_components import repair_instructions
@@ -80,6 +87,7 @@ class ModelsDialog(QDialog):
                 with contextlib.suppress(ValueError, OSError):
                     self.keys[p.id] = venice_key(config)
         self.current = -1
+        self._loading = False
         self.worker: QThread | None = None
         self.setWindowTitle("Ustawienia AI")
         self.resize(860, 660)
@@ -153,6 +161,23 @@ class ModelsDialog(QDialog):
             edit = QLineEdit()
             self.paths[key] = edit
             self.form.addRow(title, edit)
+        self.custom_thresholds = QCheckBox("Własne progi")
+        self.form.addRow("", self.custom_thresholds)
+        self.threshold = QDoubleSpinBox()
+        self.hitl_margin = QDoubleSpinBox()
+        for spin, label in ((self.threshold, "Próg decyzji (0–1):"),
+                            (self.hitl_margin, "Margines HITL (±):")):
+            spin.setRange(0, 1)
+            spin.setDecimals(3)
+            spin.setSingleStep(0.01)
+            self.form.addRow(label, spin)
+        self.reset_thresholds = QPushButton("Domyślne progi")
+        self.reset_thresholds.clicked.connect(lambda: self.custom_thresholds.setChecked(False))
+        self.form.addRow("", self.reset_thresholds)
+        self.custom_thresholds.toggled.connect(self._threshold_defaults)
+        self.provider.currentIndexChanged.connect(self._threshold_defaults)
+        self.protocol.currentIndexChanged.connect(self._threshold_defaults)
+        self.model.currentTextChanged.connect(self._threshold_defaults)
         self.test = QPushButton("Testuj połączenie")
         self.test.clicked.connect(self._test)
         self.form.addRow("", self.test)
@@ -196,6 +221,8 @@ class ModelsDialog(QDialog):
         p.url = self.url.text().strip()
         p.model = self.model.currentText().strip()
         p.api_format = self.protocol.currentData()
+        p.threshold = self.threshold.value() if self.custom_thresholds.isChecked() else None
+        p.hitl_margin = self.hitl_margin.value() if self.custom_thresholds.isChecked() else None
         self.keys[p.id] = self.key.text().strip()
         for key, edit in self.paths.items():
             setattr(p, key, edit.text().strip())
@@ -208,6 +235,7 @@ class ModelsDialog(QDialog):
         if index < 0:
             return
         p = self.profiles[index]
+        self._loading = True
         self.name.setText(p.name)
         self.provider.setCurrentIndex(self.provider.findData(p.provider))
         self.url.setText(p.url)
@@ -217,8 +245,29 @@ class ModelsDialog(QDialog):
         self.key.setText(self.keys.get(p.id, ""))
         for key, edit in self.paths.items():
             edit.setText(getattr(p, key))
+        defaults = default_decision_values(p)
+        self.custom_thresholds.setChecked(p.threshold is not None or p.hitl_margin is not None)
+        self.threshold.setValue(p.threshold if p.threshold is not None else defaults[0])
+        self.hitl_margin.setValue(p.hitl_margin if p.hitl_margin is not None else defaults[1])
+        self._loading = False
+        self._threshold_defaults()
         self.message.clear()
         self._visibility()
+
+    def _threshold_defaults(self) -> None:
+        if self._loading:
+            return
+        custom = self.custom_thresholds.isChecked()
+        self.threshold.setEnabled(custom)
+        self.hitl_margin.setEnabled(custom)
+        if not custom:
+            profile = ModelProfile(
+                id="preview", provider=self.provider.currentData(),
+                model=self.model.currentText(), api_format=self.protocol.currentData(),
+            )
+            threshold, margin = default_decision_values(profile)
+            self.threshold.setValue(threshold)
+            self.hitl_margin.setValue(margin)
 
     def _visibility(self) -> None:
         provider = self.provider.currentData()

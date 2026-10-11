@@ -12,7 +12,7 @@ Ollama, Jev or JevK5, or connect a supported remote API. Choose your models,
 edit classification categories and prompts, compare results, and review decisions
 before organizing files.
 
-[Download the Windows installer](installer/output/Signum-Setup-1.1.8.exe) ·
+[Download the Windows installer](installer/output/Signum-Setup-1.1.9.exe) ·
 [Instrukcja po polsku](docs/INSTRUKCJA.pl.md) · [Changelog](CHANGELOG.md)
 
 ## What you can do
@@ -60,7 +60,11 @@ Bundled profiles apply to the matching model, default prompt and category set:
 | Gemma `gemma4:12b` | 0.65 | ±0.05 | Model-declared confidence |
 
 Scores are not guarantees of correctness. A custom model, prompt or category
-definition without a matching calibration profile requires review. Use
+definition without a matching calibration profile requires review in default mode.
+To tune it yourself, enable **Własne progi** in that configuration's **Ustawienia AI**
+and set **Próg decyzji (0–1)** and **Margines HITL (±)**. **Domyślne progi** restores
+automatic profile selection. Explicit custom values apply even to custom categories
+and prompts; they are recorded as user-defined, not measured calibration. Use
 **Sprawdź etykiety…** to inspect scores and confirm or correct up to three labels.
 Collections and human corrections are saved automatically between sessions;
 the saved collection contains file references and results, not extracted PDF text.
@@ -113,6 +117,21 @@ localization belongs to experimental **Dodatkowa analiza**; basic Jev does not
 return visual crops or count signatures.
 
 ## How signature analysis works
+
+Signature **Ustawienia AI** exposes decision thresholds and HITL margins for each
+provider. Ollama has separate thresholds for presence-only and additional analysis;
+Jev also exposes stamp, category, candidate-region, verification and single-signature
+thresholds. **Domyślne progi** restores the values in the selected group.
+All fields use a 0–1 scale. Generative vision modes filter reported confidence
+(converted from 0–100); their default threshold and HITL margin are zero, preserving
+the previous behavior. In these modes and basic Ollama, a zero margin disables
+score-based HITL. For Jev and text classification, the HITL interval includes the
+threshold itself even with a zero margin. Generative modes cannot score signatures
+that the model did not report. PDF structural detections are independent of these settings.
+
+Changes apply to new runs, including CLI runs using saved settings. Earlier results
+retain their original decisions and thresholds. Adjusting a decision threshold does
+not refit Jev's displayed probability calibration.
 
 ```mermaid
 flowchart LR
@@ -191,7 +210,8 @@ including vjev and compatible on-prem API servers. Remote endpoints require HTTP
 
 Jev uses a separate editable default prompt, nine typed questions and five views
 of each page: the full page and four overlapping quarters. The largest view score
-at or above **0.535** indicates a visible handwritten signature or initials.
+at or above the configured threshold (**0.535** by default) indicates a visible
+handwritten signature or initials.
 The displayed probability uses calibration fitted on the experimental sample;
 it is also shown for negative results and is not a guarantee for other documents.
 Stamps are reported separately and do not make a document signed.
@@ -202,8 +222,9 @@ The managed local Jev server releases GPU memory after an analysis batch.
 
 *Testuj połączenie* for Jev checks the selected model and sends a small synthetic
 image, which may incur API charges. A successful test validates transport and response
-shape; it does not measure detection quality. Signature scores within ±0.10
-of the 0.535 threshold are marked HITL, including negative decisions.
+shape; it does not measure detection quality. Signature scores within the configured
+HITL margin (default **±0.10** around **0.535**) are marked for review, including
+negative decisions.
 The transport follows the
 [vjev API contract](https://github.com/BubbleCal/vjev-serve#the-api).
 
@@ -228,8 +249,8 @@ which verifies that the selected service and model are actually available.
 
 ### Installer (recommended)
 
-Signum is a demo project. Download [Signum-Setup-1.1.8.exe](installer/output/Signum-Setup-1.1.8.exe)
-and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.8.exe.sha256).
+Signum is a demo project. Download [Signum-Setup-1.1.9.exe](installer/output/Signum-Setup-1.1.9.exe)
+and its [SHA-256 checksum](installer/output/Signum-Setup-1.1.9.exe.sha256).
 Run the installer to begin setup. Per-user install,
 no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate
@@ -256,7 +277,7 @@ requires `/ACKNOWLEDGERISKS=1`.
 ### From source
 
 ```powershell
-git clone https://github.com/BlazejDominiak/signum.git
+git clone <repository-url>
 cd signum
 python -m venv .venv
 .venv\Scripts\python -m pip install --upgrade pip==26.1.2

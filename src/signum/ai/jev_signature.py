@@ -114,7 +114,11 @@ def _scores(response: dict[str, Any]) -> dict[str, float]:
 
 def parse_signature_views(
     responses: list[dict[str, Any]], hitl_margin: float = 0.10,
+    threshold: float = THRESHOLD, stamp_threshold: float = 0.5,
 ) -> PageAnalysis:
+    threshold, stamp_threshold, hitl_margin = map(
+        _probability, (threshold, stamp_threshold, hitl_margin)
+    )
     if len(responses) != 5:
         raise AIResponseError("Brak kompletu pięciu widoków Jev; wynik nie jest brakiem podpisu.")
     scores = [_scores(response) for response in responses]
@@ -124,7 +128,7 @@ def parse_signature_views(
     z = INTERCEPT + SLOPE * 4 * (score - 0.5)
     probability = 1 / (1 + math.exp(-max(-40, min(40, z))))
     signatures = []
-    if score >= THRESHOLD:
+    if score >= threshold:
         kind = (
             SignatureKind.INITIALS
             if scores[best]["initials"] > scores[best]["handwritten"]
@@ -138,7 +142,7 @@ def parse_signature_views(
             )
         )
     # Stamp is a separate, uncalibrated observation, not evidence of signing.
-    if scores[0]["stamp"] >= 0.5:
+    if scores[0]["stamp"] >= stamp_threshold:
         signatures.append(
             VisualSignature(
                 SignatureKind.STAMP,
@@ -147,7 +151,7 @@ def parse_signature_views(
             )
         )
     reasons = (
-        (review_reason("obecność podpisu/parafki", score, THRESHOLD, hitl_margin),)
-        if near_threshold(score, THRESHOLD, hitl_margin) else ()
+        (review_reason("obecność podpisu/parafki", score, threshold, hitl_margin),)
+        if near_threshold(score, threshold, hitl_margin) else ()
     )
-    return PageAnalysis("", tuple(signatures), probability, score, THRESHOLD, reasons)
+    return PageAnalysis("", tuple(signatures), probability, score, threshold, reasons)

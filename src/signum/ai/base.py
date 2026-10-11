@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from PIL import Image
 
+from signum.core.decision import near_threshold, review_reason
 from signum.core.models import SignatureKind
 
 
@@ -55,6 +56,8 @@ class VisionModel(ABC):
 
     loading_seconds: float = 0.0
     request_seconds: float | None = None
+    finding_threshold: float = 0.0
+    finding_hitl_margin: float = 0.0
 
     @property
     @abstractmethod
@@ -83,7 +86,22 @@ class VisionModel(ABC):
         from signum.ai.prompts import PAGE_PROMPT  # noqa: PLC0415
 
         raw = self._generate(image_jpeg, prompt or PAGE_PROMPT)
-        return parse_page_analysis(raw)
+        analysis = parse_page_analysis(raw)
+        reasons = tuple(
+            review_reason(item.kind.label_pl, item.confidence / 100,
+                          self.finding_threshold, self.finding_hitl_margin)
+            for item in analysis.signatures
+            if item.kind != SignatureKind.STAMP and self.finding_hitl_margin > 0
+            and near_threshold(item.confidence / 100,
+                               self.finding_threshold, self.finding_hitl_margin)
+        )
+        return replace(
+            analysis,
+            signatures=tuple(item for item in analysis.signatures
+                             if item.confidence / 100 >= self.finding_threshold),
+            signature_threshold=self.finding_threshold,
+            review_reasons=reasons,
+        )
 
     def stop_local(self) -> str:
         """Zwalnia pamięć lokalnego modelu, jeśli dostawca obsługuje zarządzanie."""

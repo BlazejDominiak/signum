@@ -13,6 +13,7 @@ from signum.ai.base import AIConnectionError, AIResponseError, PageAnalysis, Vis
 from signum.ai.basic_analysis import BASIC_PROMPT, BASIC_SCHEMA, parse_basic_analysis
 from signum.ai.parsing import extract_first_json_object
 from signum.ai.prompts import RESPONSE_SCHEMA
+from signum.core.decision import probability
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
 DEFAULT_URL = "http://localhost:11434"
@@ -40,6 +41,10 @@ class OllamaVisionModel(VisionModel):
         api_key: str = "",
         runtime_dir: str = "",
         additional_analysis: bool = True,
+        threshold: float = 0.5,
+        hitl_margin: float = 0.0,
+        stamp_threshold: float = 0.5,
+        full_threshold: float = 0.0,
     ) -> None:
         self._base_url = normalize_ai_endpoint(base_url, DEFAULT_URL, "Ollamy")
         self._session = requests.Session()
@@ -53,6 +58,10 @@ class OllamaVisionModel(VisionModel):
         self._api_key = api_key
         self._runtime_dir = runtime_dir
         self._additional_analysis = additional_analysis
+        self._threshold = probability(threshold)
+        self._stamp_threshold = probability(stamp_threshold)
+        self.finding_threshold = probability(full_threshold)
+        self.finding_hitl_margin = probability(hitl_margin)
         self.last_metrics: list[dict[str, Any]] = []
         self.loading_seconds = 0.0
         self.request_seconds: float = 0.0
@@ -77,7 +86,10 @@ class OllamaVisionModel(VisionModel):
             "stream": False, "think": False, "format": BASIC_SCHEMA,
             "options": {"temperature": 0, "num_ctx": self._num_ctx, "num_predict": 96},
         }
-        return parse_basic_analysis(self._post_chat(payload))
+        return parse_basic_analysis(
+            self._post_chat(payload), self._threshold,
+            self.finding_hitl_margin, self._stamp_threshold,
+        )
 
     def _generate(self, image_jpeg: bytes, prompt: str) -> str:
         for structured in (False, True):

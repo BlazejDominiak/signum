@@ -6,7 +6,7 @@ modele lokalne lub obsługiwane API, edytować kategorie i instrukcje, porównyw
 wyniki modeli oraz ręcznie poprawiać etykiety przed porządkowaniem plików.
 
 [Opis projektu](../README.md) · [Historia zmian](../CHANGELOG.md) ·
-[Instalator Windows](../installer/output/Signum-Setup-1.1.8.exe)
+[Instalator Windows](../installer/output/Signum-Setup-1.1.9.exe)
 
 ## Dwa sposoby pracy
 
@@ -78,8 +78,16 @@ Wbudowane profile dotyczą zgodnego modelu, domyślnego promptu i zestawu katego
 | Lokalny JevK5 | 0,83 | ±0,03 | Oceny modelu decyzyjnego |
 | Gemma `gemma4:12b` | 0,65 | ±0,05 | Pewność deklarowana przez model |
 
-Własny model, prompt lub kategorie bez pasującego profilu kalibracji wymagają
-przeglądu wyników. Wysoka ocena nie gwarantuje poprawności. Wybierz dokument
+W trybie domyślnym własny model, prompt lub kategorie bez pasującego profilu
+kalibracji wymagają przeglądu wyników. Aby dobrać progi samodzielnie, otwórz
+**Ustawienia AI…**, wybierz konfigurację i zaznacz **Własne progi**. Ustaw
+**Próg decyzji (0–1)** oraz **Margines HITL (±)**. Własne wartości działają także
+z własnym promptem i kategoriami, a wynik zapisuje je jako ustawienia użytkownika.
+**Domyślne progi** przywraca automatyczny dobór profilu. Duplikowanie konfiguracji
+kopiuje również jej progi. Modele bez ocen liczbowych nadal wymagają ręcznego przeglądu.
+
+Zmiany dotyczą kolejnych analiz. Zapisane wyniki zachowują użyte wcześniej progi,
+etykiety i ręczne korekty. Wysoka ocena nie gwarantuje poprawności. Wybierz dokument
 i **Sprawdź etykiety…**, przejrzyj oceny, a następnie potwierdź lub popraw do
 trzech etykiet. Ręczna korekta zachowuje pierwotny wynik modelu w danych kolekcji.
 Starsze wyniki Gemmy bez ocen liczbowych wymagają nowego przebiegu, aby je uzyskać.
@@ -291,15 +299,39 @@ API na `localhost`, `127.0.0.1` i `::1` jest rozpoznawane jako lokalne także dl
 vjev i serwerów zgodnych z pozostałymi API.
 
 Jev analizuje pełną stronę i cztery zachodzące na siebie ćwiartki. Dziewięć pytań
-typowanych dostarcza ocen do heurystyki z progiem 0,535. Program pokazuje
+typowanych dostarcza ocen do reguły z domyślnym progiem 0,535. Program pokazuje
 prawdopodobieństwo obecności podpisu lub parafki także przy wyniku ujemnym.
 Kalibracja pochodzi z próby eksperymentalnej; nie gwarantuje jakości na innych dokumentach.
-Wyniki w paśmie ±0,10 wokół progu 0,535 otrzymują HITL, także przy decyzji ujemnej.
+Wyniki w ustawionym paśmie HITL (domyślnie ±0,10 wokół 0,535) wymagają przeglądu,
+także przy decyzji ujemnej.
 Pieczątka jest osobnym znaleziskiem i sama nie oznacza podpisanego dokumentu.
 **Podstawowy Jev nie zlicza podpisów i nie zwraca wycinków**. Podpisy cyfrowe są nadal
 wykrywane niezależnie ze struktury PDF. Tytułem pozostaje nazwa pliku.
 Przycisk **Otwórz dokument źródłowy** pozwala zweryfikować wynik.
 Jeżeli limit stron pomija część PDF-a, brak podpisu dotyczy tylko badanej części.
+
+### Zmiana progów decyzji i HITL
+
+W **Ustawienia AI…** wybierz dostawcę i zmień wartości w grupie **Progi (0–1)**.
+**Zapisz** zachowuje ustawienia; **Domyślne progi** przywraca wartości danej grupy.
+
+| Tryb | Dostępne progi | Domyślne wartości |
+|---|---|---|
+| Jev / vjev | Podpis, margines HITL, pieczątka | 0,535; ±0,10; 0,50 |
+| Jev — dodatkowa analiza | Kategoria, obszar, weryfikacja, pojedynczy podpis | 0,60; 0,50; 0,65; 0,50 |
+| Ollama — podstawowa | Podpis, pieczątka, margines HITL | 0,50; 0,50; 0 |
+| Ollama — dodatkowa, zgodne API i Anthropic | Pewność znaleziska, margines HITL | 0; 0 |
+
+Ollama zachowuje osobny próg dla każdego trybu; margines HITL jest wspólny.
+W modelach generatywnych próg filtruje pewność zgłoszonych znalezisk po przeliczeniu
+z procentów na 0–1. Nie obejmuje podpisów, których model w ogóle nie zgłosił.
+Zerowy próg zachowuje wszystkie znaleziska, a zerowy margines wyłącza HITL oparty
+na ocenach w tych trybach i podstawowej Ollamie. W Jev i kategoryzacji margines
+zero oznacza przegląd przy wyniku równym progowi. Progi nie zmieniają skanu pól
+podpisów cyfrowych ani nie dopasowują ponownie kalibracji prawdopodobieństwa Jev.
+
+Nowe wartości działają od następnej analizy, także w CLI korzystającym z zapisanych
+ustawień. Raporty zachowują progi użyte w danym przebiegu.
 
 ### Dodatkowa analiza
 
@@ -459,7 +491,7 @@ potwierdzenia. W trybie cichym podaj `/OLLAMAMODELDIR`, jeśli ścieżka nie by�
 Przykład instalacji bez okien (PowerShell):
 
 ```powershell
-.\Signum-Setup-1.1.8.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ACKNOWLEDGERISKS=1 /COMPONENTS=app,gemma_small /AIDIR="H:\Tools\SignumAI"
+.\Signum-Setup-1.1.9.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ACKNOWLEDGERISKS=1 /COMPONENTS=app,gemma_small /AIDIR="H:\Tools\SignumAI"
 ```
 
 Parametr `/OLLAMAMODELDIR="pełna ścieżka"` wskazuje magazyn istniejącej usługi.

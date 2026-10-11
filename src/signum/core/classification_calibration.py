@@ -10,9 +10,9 @@ from importlib import resources
 from pathlib import Path
 from typing import Any
 
-from signum.ai.model_profiles import ModelProfile
+from signum.ai.model_profiles import ModelProfile, default_decision_values
 from signum.core.classification import ClassificationBatch, apply_classification, make_question
-from signum.core.decision import MAX_CLASSIFICATION_LABELS, label_questions
+from signum.core.decision import MAX_CLASSIFICATION_LABELS, label_questions, probability
 
 
 def question_identity(question: dict[str, Any]) -> str:
@@ -62,6 +62,18 @@ def local_identity(model_dir: str, runtime: str) -> str:
 
 
 def policy_for(profile: ModelProfile, question: dict[str, Any]) -> dict[str, Any]:
+    if profile.threshold is not None or profile.hitl_margin is not None:
+        threshold, margin = default_decision_values(profile)
+        return {
+            "id": "user-defined",
+            "threshold": probability(profile.threshold if profile.threshold is not None
+                                     else threshold),
+            "hitl_margin": probability(profile.hitl_margin if profile.hitl_margin is not None
+                                       else margin),
+            "max_labels": MAX_CLASSIFICATION_LABELS,
+            "review_labels": [],
+            "review_reason": "",
+        }
     source = resources.files("signum.core") / "classification_profiles.json"
     profiles = json.loads(source.read_text(encoding="utf-8"))
     question_sha = question_identity(question)

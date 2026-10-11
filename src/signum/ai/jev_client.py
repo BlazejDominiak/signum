@@ -23,7 +23,12 @@ from signum.ai.base import (
 )
 from signum.ai.jev_additional import enrich_analysis
 from signum.ai.jev_prompts import DOCUMENT_TYPES, JEV_PROMPT_INSTRUCTIONS, decision_questions
-from signum.ai.jev_signature import QUALITY_QUESTIONS, parse_signature_views, signature_views
+from signum.ai.jev_signature import (
+    QUALITY_QUESTIONS,
+    THRESHOLD,
+    parse_signature_views,
+    signature_views,
+)
 from signum.ai.local_vjev import start_local_vjev, stop_local_vjev
 from signum.core.decision import near_threshold, probability, review_reason
 from signum.core.models import SignatureKind
@@ -46,6 +51,12 @@ class JevVisionModel(VisionModel):
         runtime_dir: str = "",
         additional_analysis: bool = False,
         hitl_margin: float = 0.10,
+        threshold: float = THRESHOLD,
+        stamp_threshold: float = 0.5,
+        category_threshold: float = 0.6,
+        candidate_threshold: float = 0.5,
+        verify_threshold: float = 0.65,
+        single_threshold: float = 0.5,
     ) -> None:
         self.loading_seconds = 0.0
         self.request_seconds: float = 0.0
@@ -56,6 +67,14 @@ class JevVisionModel(VisionModel):
         self._runtime_dir = runtime_dir
         self._additional_analysis = additional_analysis
         self._hitl_margin = probability(hitl_margin)
+        self._threshold = probability(threshold)
+        self._stamp_threshold = probability(stamp_threshold)
+        self._additional_thresholds = {
+            "category_threshold": probability(category_threshold),
+            "candidate_threshold": probability(candidate_threshold),
+            "verify_threshold": probability(verify_threshold),
+            "single_threshold": probability(single_threshold),
+        }
         self._session = requests.Session()
         self._session.trust_env = not is_loopback_endpoint(self._base_url)
         if api_key:
@@ -151,9 +170,13 @@ class JevVisionModel(VisionModel):
                     QUALITY_QUESTIONS,
                 )
             )
-        basic = parse_signature_views(responses, self._hitl_margin)
+        basic = parse_signature_views(
+            responses, self._hitl_margin, self._threshold, self._stamp_threshold,
+        )
         if self._additional_analysis:
-            return enrich_analysis(image, basic, self._decide, check_cancelled)
+            return enrich_analysis(
+                image, basic, self._decide, check_cancelled, **self._additional_thresholds,
+            )
         return basic
 
     def check_connection(self) -> str:

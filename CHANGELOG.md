@@ -4,6 +4,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
 
 ## [Unreleased]
 
+## [1.1.9] — 2026-10-11
+
+### Added
+- Edytowalne progi decyzji i marginesy HITL w ustawieniach obu modułów,
+  z zachowaniem dotychczasowych wartości domyślnych i przyciskiem ich przywracania.
+- Własne progi dla każdej konfiguracji klasyfikatora, także przy własnych
+  kategoriach i promptach; kopiowanie konfiguracji zachowuje te ustawienia.
+- Progi podpisu i pieczątki dla podstawowej analizy Ollamy i Jev, filtr pewności
+  znalezisk dla modeli generatywnych oraz progi kategorii i lokalizacji dodatkowej analizy Jev.
+- Zapis użytych progów w wynikach i raportach; zmiana ustawień dotyczy nowych
+  analiz i nie przelicza zapisanych kolekcji ani wcześniejszych przebiegów.
+
+### Validation
+- Testy zmiany decyzji i HITL, zapisu i odczytu ustawień, wartości granicznych,
+  osobnych konfiguracji modeli, przywracania domyślnych i zachowania starych wyników.
+
 ## [1.1.8] — 2026-10-09
 
 ### Fixed

@@ -12,7 +12,7 @@ from pathlib import Path
 from signum import __version__
 from signum.ai import AIError, create_vision_model
 from signum.ai.prompts import build_page_prompt
-from signum.config import PROVIDERS, AppConfig
+from signum.config import PROVIDERS, AppConfig, signature_settings
 from signum.core.discovery import collect_documents
 from signum.core.models import DocumentResult, DocumentStatus
 from signum.core.pipeline import BatchResult, CancelToken, DocumentAnalyzer, run_batch
@@ -109,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
         batch = run_batch(files, analyzer, CancelToken(), on_start, on_done)
     finally:
         analyzer.release_resources()
+    batch.analysis_settings = signature_settings(config)
     _print_summary(batch)
 
     if args.html:

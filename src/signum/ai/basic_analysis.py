@@ -7,6 +7,7 @@ from typing import Any
 
 from signum.ai.base import AIResponseError, PageAnalysis, VisualSignature
 from signum.ai.parsing import extract_first_json_object
+from signum.core.decision import near_threshold, probability, review_reason
 from signum.core.models import SignatureKind
 
 BASIC_PROMPT = """Inspect this document page. Estimate the probability (0 to 1) that
@@ -28,7 +29,12 @@ BASIC_SCHEMA: dict[str, Any] = {
 }
 
 
-def parse_basic_analysis(raw: str) -> PageAnalysis:
+def parse_basic_analysis(
+    raw: str, threshold: float = 0.5, hitl_margin: float = 0.0, stamp_threshold: float = 0.5,
+) -> PageAnalysis:
+    threshold, hitl_margin, stamp_threshold = map(
+        probability, (threshold, hitl_margin, stamp_threshold)
+    )
     data = extract_first_json_object(raw)
     scores = []
     for key in BASIC_SCHEMA["required"]:
@@ -46,6 +52,10 @@ def parse_basic_analysis(raw: str) -> PageAnalysis:
         for kind, score in zip(
             (SignatureKind.HANDWRITTEN, SignatureKind.STAMP), scores, strict=True
         )
-        if score >= 0.5
+        if score >= (stamp_threshold if kind == SignatureKind.STAMP else threshold)
     )
-    return PageAnalysis("", signatures, scores[0])
+    reasons = (
+        (review_reason("obecność podpisu/parafki", scores[0], threshold, hitl_margin),)
+        if hitl_margin > 0 and near_threshold(scores[0], threshold, hitl_margin) else ()
+    )
+    return PageAnalysis("", signatures, scores[0], scores[0], threshold, reasons)

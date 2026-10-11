@@ -11,7 +11,7 @@ from signum.ai import create_vision_model
 from signum.ai.base import AIError, VisionModel
 from signum.ai.ollama_client import OllamaVisionModel
 from signum.ai.prompts import build_page_prompt
-from signum.config import AppConfig
+from signum.config import AppConfig, signature_settings
 from signum.core.models import DocumentResult, DocumentStatus
 from signum.core.pipeline import BatchResult, CancelToken, DocumentAnalyzer, run_batch
 
@@ -154,15 +154,6 @@ class SignatureComparisonWorker(QThread):
             batch.preflight_s = max(0.0, preflight_s - loading_s)
         batch.analysis_settings = signature_settings(config)
         return batch
-
-
-def signature_settings(config: AppConfig) -> str:
-    additional = getattr(config, config.provider + "_additional_analysis", True)
-    return (
-        f"Limit stron: {config.max_pages_per_doc}; "
-        f"rozmiar obrazu: {config.model_image_max_side}; "
-        f"dodatkowa analiza: {'tak' if additional else 'nie'}"
-    )
 
 
 class ConnectionTestWorker(QThread):

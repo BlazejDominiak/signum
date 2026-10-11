@@ -9,9 +9,15 @@ połączenie API z formatem **Decisions (Jev / Venice)**:
 
 Program wysyła tekst PDF-a do usługi. Ten tryb nie wykonuje OCR.
 Jev otrzymuje osobne pytanie dla każdej kategorii i zwraca niezależne oceny.
-Signum przypisuje do trzech najwyższych wyników przekraczających próg 0,74.
+Signum przypisuje do trzech najwyższych wyników osiągających próg, domyślnie 0,74.
 Profil dotyczy domyślnego promptu i katalogu etykiet; zmiana definicji wymaga
 odpowiedniej kalibracji. Wyniki w paśmie ±0,03 otrzymują oznaczenie HITL.
+
+Aby eksperymentować, w **Ustawienia AI…** tej konfiguracji zaznacz **Własne progi**
+i ustaw **Próg decyzji (0–1)** oraz **Margines HITL (±)**. Własne wartości zastępują
+profil dla kolejnych analiz, także przy zmienionych etykietach lub prompcie.
+**Domyślne progi** przywraca automatyczny dobór profilu; wcześniejsze wyniki pozostają
+bez zmian.
 
 Wybierz dokument i **Sprawdź etykiety…**, aby obejrzeć wszystkie oceny,
 zmienić przypisanie i zapisać sprawdzony wynik. Dwukrotne kliknięcie nazwy

@@ -82,6 +82,7 @@ class SettingsDialog(QDialog):
         self._key_edits: dict[str, QLineEdit] = {}
         self._url_edits: dict[str, QLineEdit] = {}
         self._model_edits: dict[str, QLineEdit] = {}
+        self._decision_edits: dict[str, QDoubleSpinBox] = {}
         self._prompt_family: str | None = None
         self._prompt_drafts = {
             "llm": config.custom_prompt or PROMPT_INSTRUCTIONS,
@@ -182,6 +183,22 @@ class SettingsDialog(QDialog):
             "Opis dokumentu i wycinki oznaczeń. Po wyłączeniu: tylko obecność podpisu i pieczątki."
         )
         form.addRow("", self.ollama_additional_analysis)
+        basic = self._decision_group("Progi — podstawowa (0–1)", (
+            ("ollama_threshold", "Próg podpisu:"),
+            ("ollama_stamp_threshold", "Próg pieczątki:"),
+        ))
+        full = self._decision_group("Progi — dodatkowa (0–1)", (
+            ("ollama_full_threshold", "Próg znaleziska:"),
+        ))
+        form.addRow(basic)
+        form.addRow(full)
+        self.ollama_additional_analysis.toggled.connect(basic.setHidden)
+        self.ollama_additional_analysis.toggled.connect(full.setVisible)
+        basic.setVisible(not self._config.ollama_additional_analysis)
+        full.setVisible(self._config.ollama_additional_analysis)
+        form.addRow(self._decision_group("HITL", (
+            ("ollama_hitl_margin", "Margines HITL (±):"),
+        )))
         self.ollama_key = self._password_edit()
         self._key_edits["ollama"] = self.ollama_key
         form.addRow("Klucz API (opcjonalny):", self._with_reveal(self.ollama_key))
@@ -219,6 +236,10 @@ class SettingsDialog(QDialog):
         self._url_edits["openai"] = self.openai_base_url
         self._model_edits["openai"] = self.openai_model
         form.addRow("Klucz API:", self._with_reveal(self.openai_key))
+        form.addRow(self._decision_group("Progi (0–1)", (
+            ("openai_threshold", "Próg znaleziska:"),
+            ("openai_hitl_margin", "Margines HITL (±):"),
+        )))
         return page
 
     def _build_anthropic_page(self) -> QWidget:
@@ -235,6 +256,10 @@ class SettingsDialog(QDialog):
         self._url_edits["anthropic"] = self.anthropic_base_url
         self._model_edits["anthropic"] = self.anthropic_model
         form.addRow("Klucz API:", self._with_reveal(self.anthropic_key))
+        form.addRow(self._decision_group("Progi (0–1)", (
+            ("anthropic_threshold", "Próg znaleziska:"),
+            ("anthropic_hitl_margin", "Margines HITL (±):"),
+        )))
         return page
 
     def _build_jev_page(self, provider: str) -> QWidget:
@@ -260,19 +285,45 @@ class SettingsDialog(QDialog):
             "Wydłuża analizę; podstawowa ocena obecności podpisu pozostaje bez zmian."
         )
         form.addRow("", self.vjev_additional_analysis)
-        self.vjev_hitl_margin = QDoubleSpinBox()
-        self.vjev_hitl_margin.setRange(0, 1)
-        self.vjev_hitl_margin.setDecimals(3)
-        self.vjev_hitl_margin.setSingleStep(0.01)
-        self.vjev_hitl_margin.setToolTip(
-            "HITL po obu stronach zoptymalizowanego progu 0,535. "
-            "Margines ostrzeżenia nie zmienia decyzji ani kalibracji."
-        )
-        form.addRow("Margines HITL (±):", self.vjev_hitl_margin)
+        form.addRow(self._decision_group("Progi (0–1)", (
+            ("vjev_threshold", "Próg podpisu:"),
+            ("vjev_hitl_margin", "Margines HITL (±):"),
+            ("vjev_stamp_threshold", "Próg pieczątki:"),
+        )))
+        self.vjev_hitl_margin = self._decision_edits["vjev_hitl_margin"]
+        extra = self._decision_group("Progi — dodatkowa (0–1)", (
+            ("vjev_category_threshold", "Próg kategorii:"),
+            ("vjev_candidate_threshold", "Próg obszaru:"),
+            ("vjev_verify_threshold", "Próg weryfikacji:"),
+            ("vjev_single_threshold", "Próg pojedynczego podpisu:"),
+        ))
+        form.addRow(extra)
+        self.vjev_additional_analysis.toggled.connect(extra.setVisible)
+        extra.setVisible(self._config.vjev_additional_analysis)
         self.stop_jev_button = QPushButton("Zatrzymaj lokalny Jev / zwolnij GPU")
         self.stop_jev_button.clicked.connect(lambda: self._on_test_clicked(stop_local=True))
         form.addRow("", self.stop_jev_button)
         return page
+
+    def _decision_group(self, title: str, fields: tuple[tuple[str, str], ...]) -> QGroupBox:
+        group = QGroupBox(title)
+        form = QFormLayout(group)
+        for name, label in fields:
+            edit = QDoubleSpinBox()
+            edit.setRange(0, 1)
+            edit.setDecimals(3)
+            edit.setSingleStep(0.01)
+            self._decision_edits[name] = edit
+            form.addRow(label, edit)
+        reset = QPushButton("Domyślne progi")
+        reset.clicked.connect(lambda: self._reset_decisions(fields))
+        form.addRow("", reset)
+        return group
+
+    def _reset_decisions(self, fields: tuple[tuple[str, str], ...]) -> None:
+        defaults = AppConfig()
+        for name, _ in fields:
+            self._decision_edits[name].setValue(getattr(defaults, name))
 
     def _build_processing_group(self) -> QGroupBox:
         group = QGroupBox("Przetwarzanie")
@@ -373,7 +424,8 @@ class SettingsDialog(QDialog):
         self.ollama_num_ctx.setValue(cfg.ollama_num_ctx)
         self.ollama_additional_analysis.setChecked(cfg.ollama_additional_analysis)
         self.vjev_additional_analysis.setChecked(cfg.vjev_additional_analysis)
-        self.vjev_hitl_margin.setValue(cfg.vjev_hitl_margin)
+        for name, spin in self._decision_edits.items():
+            spin.setValue(getattr(cfg, name))
         self.vjev_runtime_dir.setText(cfg.vjev_runtime_dir)
         self._on_provider_changed(self.provider_combo.currentIndex())
 
@@ -405,7 +457,8 @@ class SettingsDialog(QDialog):
         cfg.ollama_num_ctx = self.ollama_num_ctx.value()
         cfg.ollama_additional_analysis = self.ollama_additional_analysis.isChecked()
         cfg.vjev_additional_analysis = self.vjev_additional_analysis.isChecked()
-        cfg.vjev_hitl_margin = self.vjev_hitl_margin.value()
+        for name, spin in self._decision_edits.items():
+            setattr(cfg, name, spin.value())
         cfg.vjev_runtime_dir = self.vjev_runtime_dir.text().strip() or defaults.vjev_runtime_dir
         if self._prompt_family is not None:
             self._prompt_drafts[self._prompt_family] = self.prompt_edit.toPlainText().strip()

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, fields
+from importlib import resources
 from pathlib import Path
 
 from signum.config import AppConfig
+from signum.core.decision import probability
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
 API_FORMATS = {
@@ -30,6 +32,8 @@ class ModelProfile:
     model_dir: str = ""
     runtime: str = ""
     packages: str = ""
+    threshold: float | None = None
+    hitl_margin: float | None = None
 
     @property
     def label(self) -> str:
@@ -48,6 +52,9 @@ class ModelProfile:
         return self.key_slot or f"classification-{self.id}"
 
     def validate(self) -> None:
+        for value in (self.threshold, self.hitl_margin):
+            if value is not None:
+                probability(value)
         if not self.id or self.provider not in {"ollama", "api", "jevk5"}:
             raise ValueError("Wybierz rodzaj połączenia.")
         if self.provider == "jevk5":
@@ -78,6 +85,7 @@ def load_profiles(config: AppConfig) -> list[ModelProfile]:
                 if any(
                     type(getattr(profile, f.name)) is not (bool if f.name == "enabled" else str)
                     for f in fields(ModelProfile)
+                    if f.name not in {"threshold", "hitl_margin"}
                 ):
                     raise ValueError("Nieprawidłowe pola konfiguracji modelu.")
                 profile.validate()
@@ -131,3 +139,17 @@ def load_profiles(config: AppConfig) -> list[ModelProfile]:
 
 def dump_profiles(profiles: list[ModelProfile]) -> str:
     return json.dumps([asdict(profile) for profile in profiles], ensure_ascii=False)
+
+
+def default_decision_values(profile: ModelProfile) -> tuple[float, float]:
+    """Display bundled defaults without claiming calibration for a custom task."""
+    family = (
+        "jevk5" if profile.provider == "jevk5" else
+        "venice" if profile.provider == "api" and profile.api_format == "decisions" else
+        "gemma" if profile.provider == "ollama" and profile.model == "gemma4:12b" else ""
+    )
+    source = resources.files("signum.core") / "classification_profiles.json"
+    for policy in json.loads(source.read_text(encoding="utf-8")):
+        if policy["model"] == family:
+            return float(policy["threshold"]), float(policy["hitl_margin"])
+    return 0.5, 0.03
