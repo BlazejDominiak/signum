@@ -97,6 +97,21 @@ agreement, errors and HITL. Partial or failed analysis remains visible in the re
 > Signum detects indications of signature **presence**. It does not validate
 > identity, authenticity, certificates, document integrity or legal validity.
 
+### TODO — improve signature localization
+
+- [ ] Improve the spatial localization of signatures by **Gemma and
+  `vjev-vision`**, especially in documents containing multiple signatures.
+  Current bounding boxes and crops are not reliable enough: they can miss
+  signatures, combine several signatures into one region or point to the wrong
+  area. Work should cover tighter boxes, separation of individual signatures,
+  and evaluation on documents with both single and multiple signatures.
+
+This is a known limitation and remains open work. Detecting signature presence
+does not guarantee its correct location or finding every signature. Review the
+full source page rather than relying on a crop or report overlay alone. For vjev,
+localization belongs to experimental **Dodatkowa analiza**; basic Jev does not
+return visual crops or count signatures.
+
 ## How signature analysis works
 
 ```mermaid
