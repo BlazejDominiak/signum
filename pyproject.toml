@@ -39,7 +39,7 @@ dev = [
     "pytest>=8.0",
     "pytest-qt>=4.4",
     "ruff>=0.6",
-    "mypy>=1.11",
+    "mypy>=2.3.0",
     "types-requests",
     "pyinstaller>=6.10",
     "reportlab>=4.0",
