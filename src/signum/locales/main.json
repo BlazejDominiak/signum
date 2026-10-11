@@ -694,5 +694,21 @@
   "main.filing.copy_infinitive": {
     "pl": "skopiowania",
     "en": "copy"
+  },
+  "main.language": {
+    "pl": "Język (restart):",
+    "en": "Language (restart):"
+  },
+  "main.language_polish": {
+    "pl": "Polski",
+    "en": "Polski"
+  },
+  "main.language_english": {
+    "pl": "English",
+    "en": "English"
+  },
+  "main.language_save_failed": {
+    "pl": "Nie można zapisać języka: {error}",
+    "en": "Could not save the language: {error}"
   }
 }

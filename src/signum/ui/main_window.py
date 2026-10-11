@@ -7,7 +7,7 @@ import time
 from dataclasses import replace
 from pathlib import Path
 
-from PySide6.QtCore import QPointF, Qt, QTimer, QUrl, Signal
+from PySide6.QtCore import QPointF, QSignalBlocker, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import (
     QAction,
     QColor,
@@ -247,8 +247,41 @@ class MainWindow(QMainWindow):
         self.classification.settings_changed.connect(self._reload_config)
         self.classification.files_moved.connect(self._files_moved)
         self.mode_tabs.currentChanged.connect(self._mode_changed)
-        self.mode_tabs.setCornerWidget(self._action_button(self.act_about, "quiet"))
+        app_controls = QWidget()
+        controls_layout = QHBoxLayout(app_controls)
+        controls_layout.setContentsMargins(8, 0, 8, 0)
+        language_label = QLabel(tr("main.language"))
+        controls_layout.addWidget(language_label)
+        self.language_combo = QComboBox()
+        self.language_combo.addItem(tr("main.language_polish"), "pl")
+        self.language_combo.addItem(tr("main.language_english"), "en")
+        self.language_combo.setCurrentIndex(self.language_combo.findData(self._config.language))
+        self.language_combo.setAccessibleName(tr("main.language"))
+        language_label.setBuddy(self.language_combo)
+        self.language_combo.currentIndexChanged.connect(self._on_language_changed)
+        controls_layout.addWidget(self.language_combo)
+        controls_layout.addWidget(self._action_button(self.act_about, "quiet"))
+        self.mode_tabs.setCornerWidget(app_controls)
         self.setCentralWidget(self.mode_tabs)
+
+    def _on_language_changed(self, _index: int) -> None:
+        config = AppConfig.load()
+        language = self.language_combo.currentData()
+        if language == config.language:
+            return
+        previous_language = config.language
+        config.language = language
+        try:
+            config.save()
+        except OSError as exc:
+            with QSignalBlocker(self.language_combo):
+                self.language_combo.setCurrentIndex(
+                    self.language_combo.findData(previous_language)
+                )
+            QMessageBox.warning(self, tr("main.language"),
+                                tr("main.language_save_failed", error=exc))
+            return
+        self._config = config
 
     def _files_moved(self, moved: dict[Path, Path]) -> None:
         self._files = [moved.get(path, path) for path in self._files]
@@ -849,6 +882,7 @@ class MainWindow(QMainWindow):
         self.act_clear.setEnabled(not busy and has_files)
         self.act_components.setEnabled(not self._is_busy())
         self.act_settings.setEnabled(not busy)
+        self.language_combo.setEnabled(not busy)
         self.act_export.setEnabled(not busy and bool(self._signature_runs))
 
     def _remember_dir(self, directory: Path) -> None:

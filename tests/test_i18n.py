@@ -100,12 +100,22 @@ def test_main_window_uses_saved_language(qtbot, language: str, tab: str, action:
     assert window.act_add_files.text() == action
 
 
-def test_settings_save_language_for_next_launch(qtbot, monkeypatch) -> None:
+def test_top_bar_saves_language_for_next_launch(qtbot, monkeypatch) -> None:
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.show()
+    for tab in (0, 1):
+        window.mode_tabs.setCurrentIndex(tab)
+        assert window.language_combo.isVisible()
+        assert window.mode_tabs.cornerWidget().isAncestorOf(window.language_combo)
+    window.language_combo.setCurrentIndex(window.language_combo.findData("en"))
+    assert AppConfig.load().language == "en"
+    assert get_language() == "pl"
     monkeypatch.setattr("signum.ui.settings_dialog.get_api_key", lambda provider: "")
     monkeypatch.setattr("signum.ui.settings_dialog.set_api_key", lambda provider, key: None)
-    dialog = SettingsDialog(AppConfig())
+    dialog = SettingsDialog(window._config)
     qtbot.addWidget(dialog)
-    dialog.language_combo.setCurrentIndex(dialog.language_combo.findData("en"))
+    assert not hasattr(dialog, "language_combo")
     dialog._on_save()
     assert dialog.result() == QDialog.DialogCode.Accepted
     assert AppConfig.load().language == "en"

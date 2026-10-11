@@ -4,6 +4,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-10-11
+
+### Changed
+- Przełącznik języka przeniesiony z ustawień AI na górny pasek aplikacji, obok
+  przycisku O programie; dostępny w obu modułach. Wybór zapisuje się automatycznie
+  i obowiązuje po ponownym uruchomieniu.
+- Instalator w repozytorium zaktualizowany do wersji 1.2.1.
+
 ## [1.2.0] — 2026-10-11
 
 ### Added

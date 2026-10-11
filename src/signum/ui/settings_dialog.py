@@ -102,12 +102,6 @@ class SettingsDialog(QDialog):
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
-        language_form = QFormLayout()
-        self.language_combo = QComboBox()
-        self.language_combo.addItem(tr("settings.language_polish"), "pl")
-        self.language_combo.addItem(tr("settings.language_english"), "en")
-        language_form.addRow(tr("settings.language"), self.language_combo)
-        outer.addLayout(language_form)
         self.components_button = QPushButton(tr("settings.components_button"))
         self.components_button.clicked.connect(self._components)
         outer.addWidget(self.components_button)
@@ -406,7 +400,6 @@ class SettingsDialog(QDialog):
 
     def _load_config(self) -> None:
         cfg = self._config
-        self.language_combo.setCurrentIndex(max(0, self.language_combo.findData(cfg.language)))
         self.api_format.setCurrentIndex(max(0, self.api_format.findData(cfg.provider)))
         self.provider_combo.setCurrentIndex(
             _PROVIDER_ORDER.index(
@@ -437,7 +430,6 @@ class SettingsDialog(QDialog):
     def _collect_config(self) -> AppConfig:
         """Zbiera ustawienia z formularza (bez zapisywania)."""
         cfg = replace(self._config)
-        cfg.language = self.language_combo.currentData()
         cfg.provider = self._provider()
         cfg.ollama_url = normalize_ai_endpoint(
             self.ollama_url.text(), "http://localhost:11434", tr("settings.ollama_name")

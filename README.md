@@ -12,13 +12,14 @@ Ollama, Jev or JevK5, or connect a supported remote API. Choose your models,
 edit classification categories and prompts, compare results, and review decisions
 before organizing files.
 
-[Download the Windows installer](installer/output/Signum-Setup-1.2.0.exe) ·
+[Download the Windows installer](installer/output/Signum-Setup-1.2.1.exe) ·
 [Instrukcja po polsku](docs/INSTRUKCJA.pl.md) · [Changelog](CHANGELOG.md)
 
 ## Interface language
 
-Signum supports **Polish and English**. Open **Signature detection → AI settings…**,
-choose **Language / Język (restart) → English**, save, and restart Signum.
+Signum supports **Polish and English**. Use **Language (restart) → English**
+in the top bar, next to **About**. The choice is saved automatically; restart
+Signum to apply it. The switch is available in both workspaces.
 The selection applies to both workspaces, dialogs, application messages and report
 labels. CLI uses the saved application language. A fresh installation starts in
 the language chosen in the installer; upgrades preserve the saved preference.
@@ -267,8 +268,8 @@ which verifies that the selected service and model are actually available.
 
 ### Installer (recommended)
 
-Signum is a demo project. Download [Signum-Setup-1.2.0.exe](installer/output/Signum-Setup-1.2.0.exe)
-and its [SHA-256 checksum](installer/output/Signum-Setup-1.2.0.exe.sha256).
+Signum is a demo project. Download [Signum-Setup-1.2.1.exe](installer/output/Signum-Setup-1.2.1.exe)
+and its [SHA-256 checksum](installer/output/Signum-Setup-1.2.1.exe.sha256).
 Run the installer to begin setup. Per-user install,
 no administrator rights required. Polish and English installer languages. The
 installer contains the Python runtime and application libraries, so a separate

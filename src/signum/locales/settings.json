@@ -575,21 +575,9 @@
     "pl": "Folder: {path}",
     "en": "Folder: {path}"
   },
-  "settings.language": {
-    "pl": "Język / Language (restart):",
-    "en": "Language / Język (restart):"
-  },
   "settings.ollama_folder": {
     "pl": "Folder modeli Ollamy: {path}",
     "en": "Ollama model folder: {path}"
-  },
-  "settings.language_polish": {
-    "pl": "Polski",
-    "en": "Polski"
-  },
-  "settings.language_english": {
-    "pl": "English",
-    "en": "English"
   },
   "settings.libraries_failed": {
     "pl": "Instalacja bibliotek nie powiodła się. Log: {path}\n{detail}",

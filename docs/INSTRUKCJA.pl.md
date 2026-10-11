@@ -6,13 +6,14 @@ modele lokalne lub obsługiwane API, edytować kategorie i instrukcje, porównyw
 wyniki modeli oraz ręcznie poprawiać etykiety przed porządkowaniem plików.
 
 [Opis projektu](../README.md) · [Historia zmian](../CHANGELOG.md) ·
-[Instalator Windows](../installer/output/Signum-Setup-1.2.0.exe)
+[Instalator Windows](../installer/output/Signum-Setup-1.2.1.exe)
 
 ## Język interfejsu
 
-Signum obsługuje **polski i angielski**. W zakładce **Sprawdzanie podpisów** otwórz
-**Ustawienia AI… → Język / Language (restart)**, wybierz **Polski** albo **English**,
-zapisz i uruchom program ponownie. Ustawienie dotyczy obu modułów, okien dialogowych,
+Signum obsługuje **polski i angielski**. Na górnym pasku, obok **O programie**,
+wybierz **Język (restart) → Polski** albo **English**. Wybór zapisuje się automatycznie;
+uruchom program ponownie, aby go zastosować. Przełącznik jest dostępny w obu modułach.
+Ustawienie dotyczy obu modułów, okien dialogowych,
 komunikatów programu i etykiet raportów. CLI korzysta z zapisanego języka aplikacji.
 Przy pierwszej instalacji język wybierany jest w instalatorze; aktualizacja zachowuje
 dotychczasową preferencję.
@@ -512,7 +513,7 @@ potwierdzenia. W trybie cichym podaj `/OLLAMAMODELDIR`, jeśli ścieżka nie by�
 Przykład instalacji bez okien (PowerShell):
 
 ```powershell
-.\Signum-Setup-1.2.0.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ACKNOWLEDGERISKS=1 /COMPONENTS=app,gemma_small /AIDIR="H:\Tools\SignumAI"
+.\Signum-Setup-1.2.1.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ACKNOWLEDGERISKS=1 /COMPONENTS=app,gemma_small /AIDIR="H:\Tools\SignumAI"
 ```
 
 Parametr `/OLLAMAMODELDIR="pełna ścieżka"` wskazuje magazyn istniejącej usługi.
