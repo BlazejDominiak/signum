@@ -5,13 +5,13 @@ build-backend = "hatchling.build"
 [project]
 name = "signum"
 dynamic = ["version"]
-description = "Desktop app that detects handwritten signatures, initials, stamps and digital signatures in PDFs and scanned documents using a local (Ollama) or cloud vision model."
+description = "Windows desktop app for AI document classification, folder organization and signature detection with Ollama, Jev, JevK5 and configurable APIs."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Signum contributors" }]
-keywords = ["signature-detection", "pdf", "ocr", "ollama", "vision-llm", "desktop", "qt"]
+keywords = ["document-classification", "document-organization", "signature-detection", "pdf", "ollama", "jev", "jevk5", "vision-llm", "desktop", "qt"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Win32 (MS Windows)",

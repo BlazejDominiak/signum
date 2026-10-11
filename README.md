@@ -1,4 +1,4 @@
-# Signum — document categorization and signature detection
+# Signum — AI document classification, organization and signature detection
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![Qt for Python](https://img.shields.io/badge/GUI-PySide6-41cd52.svg)](https://doc.qt.io/qtforpython-6/)
@@ -6,70 +6,105 @@
 [![Linted with Ruff](https://img.shields.io/badge/ruff-passing-brightgreen)](https://docs.astral.sh/ruff/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-A Windows desktop application with two separate workspaces:
-**document categorization** and **signature detection**.
+**Signum is a Windows desktop application for classifying PDFs, organizing them
+into folders, and finding signatures in PDFs and scans.** Use local AI through
+Ollama, Jev or JevK5, or connect a supported remote API. Choose your models,
+edit classification categories and prompts, compare results, and review decisions
+before organizing files.
 
-The **Kategoryzowanie dokumentów** tab classifies PDF text into 2–12 editable
-categories. Add your own model configurations: Ollama, an API with a custom URL,
-model and key (Chat Completions, Messages or Decisions), or a local JevK5 runtime.
-Compare any selected configurations sequentially on identical text inputs. Categories and prompts
-are saved independently of signature settings. Load your own PDFs, sample up to
-100 files from a folder, or open a locally saved benchmark protocol. Small color markers connect labels with results. The compact desktop layout puts
-documents and file commands first; expand **Instrukcja klasyfikacji** to edit the
-English default prompt, and **Pomiary** to inspect model timings. Both tabs show preparation, local loading, model processing and total
-times. Test connections in **Ustawienia AI** and double-click a PDF to open it.
-Results and timings can be exported to CSV or JSON.
-A document can receive up to three labels: the highest scores above the threshold.
-All scores remain available, including the fourth score omitted by this accepted limit.
-Independent Jev scores use measured, model-specific thresholds. **HITL** marks
-scores within ±0.03 of the threshold, including rejected labels when fewer than
-three labels are selected. High scores and sparse calibration support alone do
-not force review. Use **Sprawdź etykiety…** to review up to three labels together.
-Existing collections refresh obsolete HITL flags while preserving assigned labels
-and human corrections. Bundled thresholds are **0.74 for Jev / Venice** and
-**0.83 for JevK5**, for the matching default categories, prompt and model.
-A changed model or category definition without a matching profile requires review.
-Use **Skopiuj do folderów…** or **Przenieś do folderów…** to organize the selected
-collection into label-named folders. Choose a destination, select a model/pass
-when comparing runs, and review every target path before applying the operation.
-Existing files are never overwritten; duplicate names receive numbered suffixes.
-Files with errors, unresolved HITL, or no assigned labels are skipped. Copies go to every
-selected category; moving requires one destination category. Moves verify the copied
-bytes before deleting the source and update paths in both workspaces and reports.
-Cancellation keeps completed files and leaves the remaining sources in place.
-**Test PDFs are local only and are not included in the repository or installer.**
-Git ignores PDF inputs; CI and the installer build check delivery inputs with
-`scripts/check_local_documents.py`. See the [Polish usage guide](docs/INSTRUKCJA.pl.md).
+[Download the Windows installer](installer/output/Signum-Setup-1.1.8.exe) ·
+[Instrukcja po polsku](docs/INSTRUKCJA.pl.md) · [Changelog](CHANGELOG.md)
 
-The **Sprawdzanie podpisów** tab compares Ollama and Jev sequentially with
-**Porównaj Ollama + Jev**. It retains runs until the queue is cleared or the app closes.
-HTML reports show model timings and document decisions side by side; CSV includes
-all runs with per-document and model totals, agreement, errors and HITL.
-The tab keeps the existing visual and structural analysis:
+## What you can do
 
-Drop in up to a thousand scans and PDFs, click *Przetwórz* (Process), and Signum:
+| Workspace | Main capabilities | Outputs |
+|---|---|---|
+| **Document classification** — Kategoryzowanie dokumentów | Define 2–12 categories; assign up to three labels per PDF; compare selected models on the same text; review and correct labels; copy or move files into category folders. | Persistent collection, operation log, CSV and JSON. |
+| **Signature detection** — Sprawdzanie podpisów | Find handwritten signatures, initials and stamps; inspect digital signature fields; compare Ollama and Jev on the same queue; inspect source documents and available crops. | Results for each run, self-contained HTML and CSV comparison reports. |
 
-- gives every file a short **AI-generated title** (e.g. `Skan_01.jpeg` → *"Formularz świadomej zgody"*),
-- detects **handwritten signatures, initials (parafki), stamps** — visually, with a vision LLM,
-- detects **all common digital signature types** — deterministically, from PDF structure
-  (PAdES/CAdES, CMS/PKCS#7, X.509, RFC 3161 timestamps, certification signatures/DocMDP,
-  usage-rights signatures),
-- reports a **confidence score** for every detection,
-- shows a **cropped image of each signature** so a human can verify at a glance,
-- exports a self-contained **HTML report** (crops embedded, plus a page thumbnail
-  with the detection box marked for every finding) and **CSV**.
+### Your models, categories and instructions
 
-> Signum detects the **presence** of signatures. It does not verify their cryptographic
-> validity or legal force.
+- **Choose the backend.** Add and duplicate classification model configurations
+  with your own API URL, model and key, or use a prepared local JevK5 runtime.
+  Supported API formats are Chat Completions, Messages and Decisions.
+- **Define the task.** Edit category names, descriptions and the classification
+  prompt. Signature analysis has separate prompts for generative vision models
+  and Jev's decision instructions. Settings for the two workspaces are independent.
+- **Choose the depth of signature analysis.** Ollama can check presence only or
+  generate descriptions and crops. Jev has an optional experimental extension
+  for document categories and approximate crops.
+- **Compare before choosing.** Classification supports selected configurations
+  and 1–10 passes on identical prepared text. Signature analysis can run Ollama
+  and Jev sequentially and show their decisions side by side. Timings distinguish
+  preparation, local loading, model processing and total time.
+- **Keep control of the result.** Open source PDFs directly, inspect all category
+  scores, correct labels and preview destination paths before copying or moving.
 
-## How it works
+### Document classification and organization
+
+Add PDFs or folders, sample up to 100 PDFs from a folder, or open a locally saved
+benchmark protocol. Classification reads the **PDF text layer, without OCR**.
+It uses the beginning of the document (up to 12,000 characters), shortened to a
+shared input budget for the selected models. Image-only scans need a text layer
+before they can be classified in this workspace.
+
+Signum keeps all category scores and selects up to three labels above the model's
+threshold. **HITL (human-in-the-loop)** flags decisions for review, including
+borderline rejected labels when fewer than three labels were selected.
+Bundled profiles apply to the matching model, default prompt and category set:
+
+| Classification model | Label threshold | HITL margin | Score source |
+|---|---|---|---|
+| Jev through Venice | 0.74 | ±0.03 | Decision-model scores |
+| Local JevK5 | 0.83 | ±0.03 | Decision-model scores |
+| Gemma `gemma4:12b` | 0.65 | ±0.05 | Model-declared confidence |
+
+Scores are not guarantees of correctness. A custom model, prompt or category
+definition without a matching calibration profile requires review. Use
+**Sprawdź etykiety…** to inspect scores and confirm or correct up to three labels.
+Collections and human corrections are saved automatically between sessions;
+the saved collection contains file references and results, not extracted PDF text.
+
+**Skopiuj do folderów…** and **Przenieś do folderów…** organize selected documents
+using the labels from a chosen model/pass. Review the destination plan first:
+
+- Copies can go to every assigned category; moving requires one destination category.
+- Existing files are never overwritten; duplicate names receive numbered suffixes.
+- Files with errors, unresolved HITL or no assigned labels are skipped.
+- Moves verify the copied bytes before deleting the source and update paths in
+  both workspaces and reports. An operation log records the changes.
+- Cancellation keeps completed operations and leaves the remaining sources in place.
+
+### Signature detection and comparison
+
+Add PDFs or images (JPG, PNG, TIFF, BMP or WebP) and run a selected provider,
+or use **Porównaj Ollama + Jev** to compare both on the same queue.
+Signum combines visual analysis with an independent scan of PDF signature fields.
+
+| Analysis mode | What it returns |
+|---|---|
+| Generative vision model; Ollama with **Dodatkowa analiza** enabled | Short document title, visible signatures/initials/stamps, confidence and approximate boxes used for crops. |
+| Ollama with **Dodatkowa analiza** disabled | Signature/initial and stamp presence, without generated titles or visual crops. |
+| Basic Jev / `vjev-vision` | Signature/initial presence probability and separate stamp findings, using five views of each page; no signature counting or visual crops. |
+| Jev with **Dodatkowa analiza** enabled | The same basic presence decision, plus up to two of 48 document categories and experimental approximate crops. |
+| PDF structure scan, independent of the AI provider | Digital signature fields and subtypes, available signer/date metadata and visible widget crops. |
+
+Signature runs remain available until the queue is cleared or the app closes.
+HTML reports include model timings, side-by-side document decisions, and available
+crops with page thumbnails showing the detected regions. CSV includes all runs,
+agreement, errors and HITL. Partial or failed analysis remains visible in the results.
+
+> Signum detects indications of signature **presence**. It does not validate
+> identity, authenticity, certificates, document integrity or legal validity.
+
+## How signature analysis works
 
 ```mermaid
 flowchart LR
     A[PDF / JPG / PNG / TIFF] --> B[Rendering<br>pypdfium2 + Pillow]
     A --> C[PDF structure scan<br>pypdf: /Sig fields]
-    B --> D[Vision LLM<br>Ollama / OpenAI / Claude]
-    D --> E[JSON: title + signatures<br>+ bounding boxes + confidence]
+    B --> D[Visual analysis<br>Ollama / compatible API / Claude / Jev]
+    D --> E[Presence and confidence<br>titles and boxes depend on mode]
     C --> F[Digital signatures<br>subtype, signer, date, widget rect]
     E --> G[Crops + report]
     F --> G
@@ -77,20 +112,34 @@ flowchart LR
 
 Two independent detection paths are combined per document:
 
-1. **Visual path** — every page is rendered to an image and sent to a vision model with a
-   structured-output JSON schema. The model returns a short document description and a list
-   of visible signatures (`handwritten` / `initials` / `stamp`) with normalized bounding
-   boxes (`[ymin, xmin, ymax, xmax]`, 0–1000 scale) and confidence 0–100. Boxes are
-   validated, padded and cropped from the full-resolution render.
-2. **Structural path (PDF only)** — signature form fields are read directly from the PDF.
-   A filled `/Sig` field *is* a digital signature (confidence 100), classified by
-   `/SubFilter`; the visible signature widget is cropped from the rendered page.
+1. **Visual path** — pages within the configured limit are rendered and passed
+   to the selected model. Generative models return structured JSON; Jev answers
+   typed decision questions. When a mode supplies bounding boxes, Signum validates
+   them and creates crops from the full-resolution render.
+2. **Structural path (PDF only)** — populated signature fields are inspected
+   directly, including their signature data and `/SubFilter`. Supported structures
+   include PAdES/CAdES, CMS/PKCS#7, X.509, RFC 3161 timestamps, certification
+   signatures/DocMDP and usage-rights signatures. Empty placeholders are not
+   positive detections. A confidence of 100 describes structural presence,
+   not cryptographic validation.
 
 Files are processed **sequentially** with a progress bar and ETA — memory usage stays flat
 even for 1000-file batches. A per-file error never stops the batch; a lost AI connection
 aborts it with a clear message.
 
-## AI providers
+## Models and AI providers
+
+Jev for images and JevK5 for text have different roles and separate settings:
+
+| Model / connection | Role in Signum | Where it runs |
+|---|---|---|
+| **Jev / `vjev-vision`** | Visual signature and stamp detection; optional experimental categories and crops. | Prepared local CUDA runtime or a compatible vjev API server. |
+| **JevK5** | PDF text classification with independent category scores; reuses the document prefix across label questions. | Local PyTorch/CUDA worker. |
+| **Jev through Venice** | PDF text classification through the Decisions API. | Remote service; see [setup details](docs/VENICE.pl.md). |
+| **Ollama, including Gemma** | Text classification or signature analysis, depending on the selected model's capabilities. | Local Ollama or a configured remote server. |
+| **Compatible APIs / Anthropic** | Text classification and, with an image-capable model, signature analysis. | Your configured service. |
+
+Signature provider settings:
 
 | Provider | Configuration | Notes |
 |---|---|---|
@@ -146,14 +195,11 @@ The transport follows the
 API keys are stored in the **Windows Credential Manager** (via `keyring`) — never in
 config files. Settings live in `%APPDATA%\Signum\settings.json`.
 
-The vision model must support images. On this project's reference setup —
-[Gemma 4 12B](https://blog.google/innovation-and-ai/technology/developers-tools/introducing-gemma-4-12b/)
-via Ollama — a page takes ~8–30 s and bounding boxes land with IoU 0.6–0.9.
-Note: Ollama currently hard-codes Gemma 4's visual token budget to 280
-(≈0.65 Mpx per page — an A4 page is seen at ~672×912 px), so image sizes above
-1120 px mainly benefit cloud models. Because model-reported boxes are
-approximate by nature, the HTML report pairs every crop with a page thumbnail
-showing where the model pointed.
+Signature analysis requires an image-capable model; text classification does not.
+Processing time and localization quality depend on the model, hardware, document
+and analysis mode. The **Pomiary** panel and exported reports expose timings for
+your runs. Model-reported boxes are approximate, so the HTML report pairs crops
+with page thumbnails showing the detected regions.
 
 Switching from a local endpoint to any remote endpoint triggers a warning dialog
 (documents will leave your machine) with a 3-second hold on the confirm button,
@@ -187,14 +233,15 @@ after a successful inference test. The check-only action performs no downloads.
 External components retain their own licences and remain after uninstalling Signum.
 Downloads occur only for components selected by the user. The
 installer includes a separate document-and-AI risk page with four required
-acknowledgements covering human verification, authorization to process files,
-local AI processing, and transfer to an Internet provider. Silent installation
+acknowledgements covering its educational purpose, sample documents without
+personal or sensitive data, local AI processing, and transfer to a remote provider.
+See the [installer notice](installer/legal/RISK-NOTICE-en.txt). Silent installation
 requires `/ACKNOWLEDGERISKS=1`.
 
 ### From source
 
 ```powershell
-git clone <repository-url>
+git clone https://github.com/BlazejDominiak/signum.git
 cd signum
 python -m venv .venv
 .venv\Scripts\python -m pip install --upgrade pip==26.1.2
@@ -210,12 +257,17 @@ ollama pull gemma4:12b
 
 ## Usage
 
-**GUI:** start Signum → (first run) *Ustawienia AI* → choose provider and model →
-drag & drop files/folders or use *Dodaj pliki…* / *Dodaj folder…* → *Przetwórz* →
-confirm the single risk notice for the whole batch → review results and signature
-crops → *Zapisz raport…* (HTML/CSV).
+**Classify and organize:** open *Kategoryzowanie dokumentów* → add PDFs → edit
+categories and instructions → choose a model in *Ustawienia AI* → *Kategoryzuj*
+or *Porównaj modele* → confirm the batch notice → review labels → export CSV/JSON
+or preview a copy/move into category folders.
 
-**CLI** (automation / batch jobs):
+**Check signatures:** open *Sprawdzanie podpisów* → choose the provider, model
+and analysis mode in *Ustawienia AI* → add PDFs/images → *Przetwórz* or
+*Porównaj Ollama + Jev* → confirm the batch notice → review source documents,
+decisions and available crops → *Zapisz raport…* (HTML/CSV).
+
+**CLI** (signature analysis in scripts / batch jobs):
 
 ```powershell
 signum-cli C:\skany --html raport.html --csv raport.csv --acknowledge-risks
@@ -287,12 +339,14 @@ src/signum/
 ├── app.py            # GUI entry point
 ├── cli.py            # headless batch mode (signum-cli)
 ├── config.py         # settings JSON + API keys in Credential Manager
-├── ai/               # vision clients (Ollama, OpenAI, Claude, vjev),
-│                     # generation/decision prompts and response parsers
-├── core/             # domain models, file discovery, PDF/image rendering,
-│                     # digital signature scan, bbox cropping, batch pipeline
-├── report/           # self-contained HTML + CSV export
-└── ui/               # PySide6 main window, settings dialog, worker threads
+├── ai/               # vision and text clients, Jev/JevK5 workers,
+│                     # local runtimes, prompts and response parsers
+├── core/             # classification, calibration, collection persistence,
+│                     # folder filing, rendering and signature detection
+├── setup_local_ai.py # optional AI component installation and checks
+├── report/           # signature reports and model comparisons (HTML/CSV)
+└── ui/               # both workspaces, model/settings/component dialogs,
+                      # label review, filing preview and worker threads
 ```
 
 Design notes live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md);
@@ -304,21 +358,27 @@ a Polish user guide in [docs/INSTRUKCJA.pl.md](docs/INSTRUKCJA.pl.md).
   contents are still passed to an AI model. A LAN or Internet API endpoint is
   remote and is labelled as such. Local execution alone does not determine whether
   the processing is authorized or appropriate.
-- With cloud providers, page images are sent to the provider's API — check your
+- With remote providers, extracted text (classification) or page images
+  (signature analysis) are sent to the provider's API — check your
   organization's policy before use. Signum makes this explicit: a countdown
   warning when switching away from the local provider and a persistent
   "Model online" badge in the status bar.
-- Visual detection is probabilistic: confidence scores and crops exist precisely so that
-  a human can verify. Digital-signature detection is structural and exact, but Signum
+- Visual detection and text classification are probabilistic. Scores, source
+  documents and available crops support human review. Digital-signature detection
+  inspects PDF structure, but Signum
   **does not** validate certificates, revocation or document integrity.
 - The user is responsible for authorization to process the selected documents,
   applicable organizational and confidentiality requirements, and verifying that
   results are fit for the intended purpose. A Signum result must not be the sole
   basis for a legal, business, or organizational decision.
-- HTML reports contain signature crops and page thumbnails derived from source
-  documents. CSV and HTML contain document file names, but never full local paths.
-  Treat exported reports as confidential and review them before sharing.
+- Signature HTML reports contain available crops and page thumbnails; signature
+  CSV/HTML use file names rather than full local paths. Classification CSV/JSON
+  and saved collections include file paths and results, but not extracted PDF
+  text or API keys. Review exports before sharing.
 - Encrypted PDFs that require a password are reported as errors (structure scan is skipped).
+- Test PDFs, benchmark corpora and research reports remain local and are excluded
+  from the repository and installer. Git ignores PDF inputs; CI and installer
+  builds check delivery inputs with `scripts/check_local_documents.py`.
 
 ## License
 
