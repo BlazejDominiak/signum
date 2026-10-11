@@ -14,6 +14,7 @@ from signum.ai.prompts import build_page_prompt
 from signum.config import AppConfig, signature_settings
 from signum.core.models import DocumentResult, DocumentStatus
 from signum.core.pipeline import BatchResult, CancelToken, DocumentAnalyzer, run_batch
+from signum.i18n import tr
 
 
 class BatchWorker(QThread):
@@ -24,8 +25,11 @@ class BatchWorker(QThread):
     batch_done = Signal(object)  # BatchResult
 
     def __init__(
-        self, files: list[Path], analyzer: DocumentAnalyzer,
-        preflight_s: float = 0, loading_s: float = 0,
+        self,
+        files: list[Path],
+        analyzer: DocumentAnalyzer,
+        preflight_s: float = 0,
+        loading_s: float = 0,
     ) -> None:
         super().__init__()
         self._preflight_s = preflight_s
@@ -56,12 +60,16 @@ class BatchWorker(QThread):
             )
         except Exception as exc:  # obrona: wyjątek nie może zabić wątku po cichu
             batch = BatchResult(
-                results=completed, started_at=started, abort_error=f"Nieoczekiwany błąd: {exc}"
+                results=completed,
+                started_at=started,
+                abort_error=tr("main.worker.unexpected_error", arg0=exc),
             )
         try:
             self._analyzer.release_resources()
         except Exception as exc:
-            batch.abort_error = batch.abort_error or f"Nie udało się zwolnić modelu: {exc}"
+            batch.abort_error = batch.abort_error or tr(
+                "main.worker.could_not_release_the_model", arg0=exc
+            )
         batch.started_at -= self._preflight_s
         batch.finished_at = time.time()
         batch.loading_s += self._loading_s
@@ -90,12 +98,15 @@ class SignatureComparisonWorker(QThread):
         for config in self._configs:
             if self._cancel.cancelled:
                 name = f"{config.provider}: {getattr(config, config.provider + '_model')}"
-                self.batch_done.emit(BatchResult(
-                    model_name=name, analysis_settings=signature_settings(config),
-                    results=[
-                        DocumentResult(p, status=DocumentStatus.CANCELLED) for p in self._files
-                    ],
-                ))
+                self.batch_done.emit(
+                    BatchResult(
+                        model_name=name,
+                        analysis_settings=signature_settings(config),
+                        results=[
+                            DocumentResult(p, status=DocumentStatus.CANCELLED) for p in self._files
+                        ],
+                    )
+                )
             else:
                 self.batch_done.emit(self._run_model(config))
 
@@ -120,11 +131,15 @@ class SignatureComparisonWorker(QThread):
             preflight_s = time.perf_counter() - preflight
             loading_s = min(preflight_s, max(0.0, model.loading_seconds))
             analyzer = DocumentAnalyzer(
-                model, config.max_pages_per_doc, config.model_image_max_side,
+                model,
+                config.max_pages_per_doc,
+                config.model_image_max_side,
                 build_page_prompt(config.custom_prompt, config.provider, config.jev_custom_prompt),
             )
             batch = run_batch(
-                self._files, analyzer, self._cancel,
+                self._files,
+                analyzer,
+                self._cancel,
                 on_file_start=lambda i, n, p: self.file_started.emit(i, n, p.name),
                 on_file_done=record,
             )
@@ -134,7 +149,7 @@ class SignatureComparisonWorker(QThread):
             # Preserve failed setup explicitly, so it cannot look like a negative prediction.
             batch.results.extend(
                 DocumentResult(path, status=DocumentStatus.ERROR, error=str(exc))
-                for path in self._files[len(completed):]
+                for path in self._files[len(completed) :]
             )
             batch.preparation_s = sum(r.preparation_s for r in completed)
             batch.loading_s = sum(r.loading_s for r in completed)
@@ -147,7 +162,9 @@ class SignatureComparisonWorker(QThread):
                 try:
                     model.release_resources()
                 except Exception as exc:
-                    batch.abort_error = batch.abort_error or f"Zwalnianie modelu: {exc}"
+                    batch.abort_error = batch.abort_error or tr(
+                        "main.worker.releasing_model", arg0=exc
+                    )
             batch.started_at = started
             batch.finished_at = time.time()
             batch.loading_s += loading_s
@@ -180,7 +197,7 @@ class ConnectionTestWorker(QThread):
         except AIError as exc:
             self.finished_with_result.emit(False, str(exc))
         except Exception as exc:  # nie przepuszczaj żadnego wyjątku do Qt
-            self.finished_with_result.emit(False, f"Nieoczekiwany błąd: {exc}")
+            self.finished_with_result.emit(False, tr("main.worker.unexpected_error", arg0=exc))
         else:
             self.finished_with_result.emit(True, message)
 
@@ -206,7 +223,7 @@ class ModelListWorker(QThread):
         except AIError as exc:
             self.finished_with_result.emit(False, str(exc))
         except Exception as exc:
-            self.finished_with_result.emit(False, f"Nieoczekiwany błąd: {exc}")
+            self.finished_with_result.emit(False, tr("main.worker.unexpected_error", arg0=exc))
         else:
             self.finished_with_result.emit(True, models)
 

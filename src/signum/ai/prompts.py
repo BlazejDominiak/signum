@@ -14,23 +14,19 @@ pozostawiać w rękach użytkownika.
 from __future__ import annotations
 
 from signum.ai.jev_prompts import JEV_PROMPT_INSTRUCTIONS
+from signum.i18n import catalog, tr
 
-PROMPT_INSTRUCTIONS = """Jesteś ekspertem analizy dokumentów. Otrzymujesz obraz JEDNEJ strony dokumentu.
+PROMPT_INSTRUCTIONS = catalog()["prompt.vision.instructions"]["pl"]
 
-Zadania:
-1. "description": bardzo krótki opis rodzaju dokumentu po polsku (2-6 słów), np. "Umowa o dzieło", "Faktura VAT", "Formularz świadomej zgody".
-2. "signatures": lista WSZYSTKICH podpisów odręcznych, parafek i pieczątek widocznych na stronie.
+PROMPT_FORMAT = catalog()["prompt.vision.format"]["pl"]
 
-Wskazówki:
-- handwritten (podpis odręczny): odręczne pociągnięcia pióra/długopisu, często pochyłe pętle, zwykle nad linią podpisu lub obok dopisku typu "(podpis)". Może być nieczytelny.
-- initials (parafka): bardzo krótki odręczny znak (inicjały, 1-3 znaki), często na marginesie lub przy poprawkach.
-- stamp (pieczątka): odbita pieczęć — okrągła lub prostokątna ramka z tekstem, często niebieska/fioletowa/czerwona.
-- NIE zgłaszaj drukowanego tekstu, logo, pustych linii ani pustych pól podpisu.
-- Jeśli strona nie zawiera żadnych podpisów ani pieczątek, zwróć pustą listę "signatures"."""
 
-PROMPT_FORMAT = """Dla każdego znaleziska podaj "box_2d" = [ymin, xmin, ymax, xmax] w skali 0-1000 względem całej strony oraz "confidence" 0-100.
-Odpowiedz WYŁĄCZNIE poprawnym JSON zgodnym ze schematem:
-{"description": "...", "signatures": [{"type": "handwritten|initials|stamp", "confidence": 0-100, "box_2d": [ymin, xmin, ymax, xmax]}]}"""
+def default_instructions() -> str:
+    return tr("prompt.vision.instructions")
+
+
+def localized_prompt_format() -> str:
+    return tr("prompt.vision.format")
 
 
 def build_page_prompt(
@@ -42,11 +38,11 @@ def build_page_prompt(
     """
     if provider == "vjev":
         return jev_instructions.strip() or JEV_PROMPT_INSTRUCTIONS
-    instructions = custom_instructions.strip() or PROMPT_INSTRUCTIONS
-    return f"{instructions}\n\n{PROMPT_FORMAT}"
+    instructions = custom_instructions.strip() or default_instructions()
+    return f"{instructions}\n\n{localized_prompt_format()}"
 
 
-PAGE_PROMPT = build_page_prompt()
+PAGE_PROMPT = f"{PROMPT_INSTRUCTIONS}\n\n{PROMPT_FORMAT}"
 
 # Schemat JSON dla structured outputs Ollamy — używany wyłącznie w ponowieniu,
 # gdy odpowiedź bez wymuszania nie zawiera obiektu JSON (wymuszanie gramatyką

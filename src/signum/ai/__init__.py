@@ -11,6 +11,7 @@ from signum.ai.ollama_client import OllamaVisionModel
 from signum.ai.openai_client import OpenAIVisionModel
 from signum.config import get_api_key
 from signum.core.decision import probability
+from signum.i18n import tr
 
 if TYPE_CHECKING:
     from signum.config import AppConfig
@@ -85,4 +86,4 @@ def create_vision_model(config: AppConfig, api_key: str | None = None) -> Vision
             verify_threshold=config.vjev_verify_threshold,
             single_threshold=config.vjev_single_threshold,
         )
-    raise ValueError(f"Nieznany dostawca AI: {config.provider!r}")
+    raise ValueError(tr("ai.unknown_provider", provider=config.provider))

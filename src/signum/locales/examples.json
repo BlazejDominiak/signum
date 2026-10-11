@@ -1,0 +1,98 @@
+{
+  "examples.category.0.name": {
+    "pl": "Umowy i porozumienia",
+    "en": "Contracts and agreements"
+  },
+  "examples.category.0.detail": {
+    "pl": "Umowy, porozumienia i aneksy.",
+    "en": "Contracts, agreements and amendments."
+  },
+  "examples.category.1.name": {
+    "pl": "Finanse i rozliczenia",
+    "en": "Finance and settlements"
+  },
+  "examples.category.1.detail": {
+    "pl": "Faktury, rachunki, płatności, podatki i dokumenty bankowe.",
+    "en": "Invoices, bills, payments, taxes and banking documents."
+  },
+  "examples.category.2.name": {
+    "pl": "Wnioski, zgody i oświadczenia",
+    "en": "Applications, consents and declarations"
+  },
+  "examples.category.2.detail": {
+    "pl": "Wnioski, formularze zgód, oświadczenia i ankiety.",
+    "en": "Applications, consent forms, declarations and surveys."
+  },
+  "examples.category.3.name": {
+    "pl": "Raporty i protokoły",
+    "en": "Reports and minutes"
+  },
+  "examples.category.3.detail": {
+    "pl": "Raporty, analizy, wyniki badań naukowych i protokoły spotkań.",
+    "en": "Reports, analyses, scientific research findings and meeting minutes."
+  },
+  "examples.category.4.name": {
+    "pl": "Dokumenty urzędowe",
+    "en": "Official documents"
+  },
+  "examples.category.4.detail": {
+    "pl": "Decyzje administracyjne, pozwolenia i zaświadczenia urzędowe.",
+    "en": "Administrative decisions, permits and official certificates."
+  },
+  "examples.category.5.name": {
+    "pl": "Dokumenty prawne i sądowe",
+    "en": "Legal and court documents"
+  },
+  "examples.category.5.detail": {
+    "pl": "Pisma sądowe, ustawy, regulaminy i pełnomocnictwa.",
+    "en": "Court filings, laws, regulations and powers of attorney."
+  },
+  "examples.category.6.name": {
+    "pl": "Sprawy pracownicze",
+    "en": "Employment and HR"
+  },
+  "examples.category.6.detail": {
+    "pl": "Rekrutacja, zatrudnienie, kadry i listy płac.",
+    "en": "Recruitment, employment, personnel and payroll."
+  },
+  "examples.category.7.name": {
+    "pl": "Dokumentacja medyczna",
+    "en": "Medical records"
+  },
+  "examples.category.7.detail": {
+    "pl": "Dokumentacja pacjenta, wyniki badań i opieka zdrowotna.",
+    "en": "Patient records, test results and healthcare."
+  },
+  "examples.category.8.name": {
+    "pl": "Edukacja i szkolenia",
+    "en": "Education and training"
+  },
+  "examples.category.8.detail": {
+    "pl": "Szkoły, uczelnie, kursy, szkolenia i dokumenty nauczania.",
+    "en": "Schools, universities, courses, training and teaching documents."
+  },
+  "examples.category.9.name": {
+    "pl": "Dokumentacja techniczna",
+    "en": "Technical documentation"
+  },
+  "examples.category.9.detail": {
+    "pl": "Specyfikacje, budownictwo, konserwacja i instrukcje obsługi.",
+    "en": "Specifications, construction, maintenance and operating instructions."
+  },
+  "examples.category.10.name": {
+    "pl": "Korespondencja i zawiadomienia",
+    "en": "Correspondence and notices"
+  },
+  "examples.category.10.detail": {
+    "pl": "Listy, zawiadomienia, skargi i korespondencja ogólna.",
+    "en": "Letters, notices, complaints and general correspondence."
+  },
+  "examples.category.11.name": {
+    "pl": "Inne dokumenty",
+    "en": "Other documents"
+  },
+  "examples.category.11.detail": {
+    "pl": "Dokumenty niepasujące do żadnej z pozostałych kategorii.",
+    "en": "Documents that do not fit any other category."
+  }
+}

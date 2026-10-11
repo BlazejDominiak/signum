@@ -11,6 +11,8 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 from signum import APP_NAME, __version__
+from signum.config import AppConfig, config_file
+from signum.i18n import catalog, get_language, set_language, tr
 from signum.ui.main_window import MainWindow
 
 _INSTANCE_MUTEX_NAME = "Local\\Signum-6D6C3F52-9C1B-4E6A-9A57-2B1FBD6A7E31"
@@ -34,11 +36,13 @@ def main() -> int:
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
     )
+    _initialize_language(sys.argv[1:])
     if "--setup-local-ai" in sys.argv and "--headless" in sys.argv:
         from signum.setup_local_ai import run_setup_dialog  # noqa: PLC0415
 
         return run_setup_dialog(sys.argv[1:])
     app = QApplication(sys.argv)
+    _install_qt_translation(app)
     app.setApplicationName(APP_NAME)
     app.setApplicationVersion(__version__)
     app.setWindowIcon(_load_icon())
@@ -50,12 +54,36 @@ def main() -> int:
         QMessageBox.information(
             None,
             APP_NAME,
-            "Signum jest już uruchomione w tej sesji użytkownika.",
+            tr("app.already_running"),
         )
         return 0
     window = MainWindow()
     window.show()
     return app.exec()
+
+
+def _initialize_language(arguments: list[str]) -> None:
+    """Use installer language once; preserve preferences and read-only checks."""
+    config = AppConfig.load()
+    if (not config_file().exists() and "--language" in arguments
+            and "--check-only" not in arguments):
+        index = arguments.index("--language") + 1
+        if index < len(arguments) and arguments[index] in {"pl", "en"}:
+            config.language = arguments[index]
+            config.save()
+    set_language(config.language)
+
+
+def _install_qt_translation(app: QApplication) -> None:
+    """Translate Qt-owned buttons/dialogs using Qt's official Polish catalog."""
+    from PySide6.QtCore import QLibraryInfo, QLocale, QTranslator  # noqa: PLC0415
+
+    QLocale.setDefault(QLocale("pl_PL" if get_language() == "pl" else "en_US"))
+    if get_language() == "pl":
+        translator = QTranslator(app)
+        directory = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
+        if translator.load("qtbase_pl", directory):
+            app.installTranslator(translator)
 
 
 def _self_test(*, local_jev: bool = False) -> int:
@@ -67,6 +95,14 @@ def _self_test(*, local_jev: bool = False) -> int:
     from PIL import Image  # noqa: PLC0415
 
     dependencies = (keyring, pypdf, pypdfium2, requests, Image)
+    translations = catalog()
+    if not translations or any(set(entry) != {"pl", "en"} for entry in translations.values()):
+        return 1
+    for language in ("pl", "en"):
+        set_language(language)
+        if not tr("app.already_running"):
+            return 1
+    set_language("pl")
     icon_path = resources.files("signum.ui.resources") / "signum.ico"
     jev_bootstrap = resources.files("signum.ai") / "vjev_bootstrap.py"
     probe = resources.files("signum.ai") / "runtime_probe.py"

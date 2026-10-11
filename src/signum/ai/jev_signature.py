@@ -10,6 +10,7 @@ from PIL import Image
 from signum.ai.base import AIResponseError, PageAnalysis, VisualSignature
 from signum.core.decision import near_threshold, review_reason
 from signum.core.models import SignatureKind
+from signum.i18n import tr
 
 THRESHOLD = 0.535
 INTERCEPT = -1.2752369584469005
@@ -83,44 +84,46 @@ def signature_views(image: Image.Image) -> list[Image.Image]:
 
 def _probability(value: Any) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise AIResponseError("Jev zwrócił niepoprawną ocenę obecności podpisu.")
+        raise AIResponseError(tr("ai.jev_invalid_presence"))
     result = float(value)
     if not math.isfinite(result) or not 0 <= result <= 1:
-        raise AIResponseError("Jev zwrócił ocenę poza zakresem 0–1.")
+        raise AIResponseError(tr("ai.jev_score_out_of_range"))
     return result
 
 
 def _scores(response: dict[str, Any]) -> dict[str, float]:
     answers = response.get("answers")
     if not isinstance(answers, dict):
-        raise AIResponseError("Brak odpowiedzi klasyfikatora podpisów Jev.")
+        raise AIResponseError(tr("ai.jev_missing_response"))
     scores = {}
     for key in QUALITY_QUESTIONS:
         answer = answers.get(key)
         if not isinstance(answer, dict) or answer.get("type") != QUALITY_QUESTIONS[key]["type"]:
-            raise AIResponseError(f"Brak poprawnej odpowiedzi Jev: {key}.")
+            raise AIResponseError(tr("ai.jev_invalid_response", field=key))
         if key == "binary":
             probabilities = answer.get("probabilities")
             if not isinstance(probabilities, dict):
-                raise AIResponseError("Brak prawdopodobieństw pytania binarnego Jev.")
+                raise AIResponseError(tr("ai.jev_missing_probabilities"))
             scores["choice"] = _probability(probabilities.get("present"))
             absent = _probability(probabilities.get("absent"))
             if abs(scores["choice"] + absent - 1) > 0.01:
-                raise AIResponseError("Niespójne prawdopodobieństwa odpowiedzi Jev.")
+                raise AIResponseError(tr("ai.jev_inconsistent_probabilities"))
         else:
             scores[key] = _probability(answer.get("noul"))
     return scores
 
 
 def parse_signature_views(
-    responses: list[dict[str, Any]], hitl_margin: float = 0.10,
-    threshold: float = THRESHOLD, stamp_threshold: float = 0.5,
+    responses: list[dict[str, Any]],
+    hitl_margin: float = 0.10,
+    threshold: float = THRESHOLD,
+    stamp_threshold: float = 0.5,
 ) -> PageAnalysis:
     threshold, stamp_threshold, hitl_margin = map(
         _probability, (threshold, stamp_threshold, hitl_margin)
     )
     if len(responses) != 5:
-        raise AIResponseError("Brak kompletu pięciu widoków Jev; wynik nie jest brakiem podpisu.")
+        raise AIResponseError(tr("ai.jev_incomplete_views"))
     scores = [_scores(response) for response in responses]
     means = [sum(view[key] for key in MEAN_KEYS) / 4 for view in scores]
     best = max(range(5), key=lambda index: means[index])
@@ -151,7 +154,8 @@ def parse_signature_views(
             )
         )
     reasons = (
-        (review_reason("obecność podpisu/parafki", score, threshold, hitl_margin),)
-        if near_threshold(score, threshold, hitl_margin) else ()
+        (review_reason(tr("ai.signature_presence"), score, threshold, hitl_margin),)
+        if near_threshold(score, threshold, hitl_margin)
+        else ()
     )
     return PageAnalysis("", tuple(signatures), probability, score, threshold, reasons)

@@ -65,3 +65,13 @@ def isolated_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setattr(config_module, "config_file", lambda: target)
     monkeypatch.setattr(config_module, "config_dir", lambda: target.parent)
     return target
+
+
+@pytest.fixture(autouse=True)
+def isolated_language():
+    """Language selection in one GUI/setup test must not leak to another."""
+    from signum.i18n import set_language
+
+    set_language("pl")
+    yield
+    set_language("pl")

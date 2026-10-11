@@ -9,6 +9,7 @@ from signum.ai.base import AIResponseError, PageAnalysis, VisualSignature
 from signum.ai.parsing import extract_first_json_object
 from signum.core.decision import near_threshold, probability, review_reason
 from signum.core.models import SignatureKind
+from signum.i18n import tr
 
 BASIC_PROMPT = """Inspect this document page. Estimate the probability (0 to 1) that
 it contains a visible handwritten signature or signing initial, and separately
@@ -30,7 +31,10 @@ BASIC_SCHEMA: dict[str, Any] = {
 
 
 def parse_basic_analysis(
-    raw: str, threshold: float = 0.5, hitl_margin: float = 0.0, stamp_threshold: float = 0.5,
+    raw: str,
+    threshold: float = 0.5,
+    hitl_margin: float = 0.0,
+    stamp_threshold: float = 0.5,
 ) -> PageAnalysis:
     threshold, hitl_margin, stamp_threshold = map(
         probability, (threshold, hitl_margin, stamp_threshold)
@@ -45,7 +49,7 @@ def parse_basic_analysis(
             or not math.isfinite(value)
             or not 0 <= value <= 1
         ):
-            raise AIResponseError(f"Niepoprawna ocena obecności: {key}")
+            raise AIResponseError(tr("ai.invalid_presence_score", field=key))
         scores.append(float(value))
     signatures = tuple(
         VisualSignature(kind, round(score * 100), None)
@@ -55,7 +59,8 @@ def parse_basic_analysis(
         if score >= (stamp_threshold if kind == SignatureKind.STAMP else threshold)
     )
     reasons = (
-        (review_reason("obecność podpisu/parafki", scores[0], threshold, hitl_margin),)
-        if hitl_margin > 0 and near_threshold(scores[0], threshold, hitl_margin) else ()
+        (review_reason(tr("ai.signature_presence"), scores[0], threshold, hitl_margin),)
+        if hitl_margin > 0 and near_threshold(scores[0], threshold, hitl_margin)
+        else ()
     )
     return PageAnalysis("", signatures, scores[0], scores[0], threshold, reasons)

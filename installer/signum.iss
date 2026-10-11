@@ -164,7 +164,7 @@ Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; WorkingDir: "{app}"; Check: AIReadyOrNotSelected; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Parameters: "--language {code:AppLanguage}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; WorkingDir: "{app}"; Check: AIReadyOrNotSelected; Flags: nowait postinstall skipifsilent
 
 [Code]
 var
@@ -193,6 +193,14 @@ var
   JevInstalled: Boolean;
   JevK5Installed: Boolean;
   ModelsKnown: Boolean;
+
+function AppLanguage(Param: String): String;
+begin
+  if ActiveLanguage = 'english' then
+    Result := 'en'
+  else
+    Result := 'pl';
+end;
 
 function LocalAISelected: Boolean;
 begin

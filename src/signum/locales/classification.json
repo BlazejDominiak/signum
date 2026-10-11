@@ -1,0 +1,546 @@
+{
+  "classification.waiting_measurement": {
+    "pl": "Czeka na pomiar",
+    "en": "Waiting for measurement"
+  },
+  "classification.review_title": {
+    "pl": "Sprawdź etykiety dokumentu",
+    "en": "Review document labels"
+  },
+  "classification.review_hint": {
+    "pl": "Wybierz wszystkie pasujące etykiety.",
+    "en": "Select all matching labels."
+  },
+  "classification.declared_hint": {
+    "pl": "\nOceny oznaczają deklarowaną pewność modelu.",
+    "en": "\nScores are the model's self-reported confidence."
+  },
+  "classification.save_review": {
+    "pl": "Zapisz sprawdzone etykiety",
+    "en": "Save reviewed labels"
+  },
+  "classification.cancel": {
+    "pl": "Anuluj",
+    "en": "Cancel"
+  },
+  "classification.selection_empty": {
+    "pl": "Możesz też pozostawić listę pustą.",
+    "en": "You can also leave the list empty."
+  },
+  "classification.selection_limit": {
+    "pl": "Odznacz nadmiarowe etykiety, aby zapisać wynik.",
+    "en": "Uncheck extra labels to save the result."
+  },
+  "classification.add_pdfs": {
+    "pl": "Dodaj PDF-y…",
+    "en": "Add PDFs…"
+  },
+  "classification.add_folder": {
+    "pl": "Dodaj folder…",
+    "en": "Add folder…"
+  },
+  "classification.copy_folders": {
+    "pl": "Skopiuj do folderów…",
+    "en": "Copy to folders…"
+  },
+  "classification.move_folders": {
+    "pl": "Przenieś do folderów…",
+    "en": "Move to folders…"
+  },
+  "classification.sample_folder": {
+    "pl": "Losuj 100 z folderu…",
+    "en": "Sample 100 from folder…"
+  },
+  "classification.local_set": {
+    "pl": "Zestaw lokalny…",
+    "en": "Local test set…"
+  },
+  "classification.more": {
+    "pl": "Więcej",
+    "en": "More"
+  },
+  "classification.open_set": {
+    "pl": "Otwórz zestaw lokalny…",
+    "en": "Open local test set…"
+  },
+  "classification.operation_log": {
+    "pl": "Dziennik operacji",
+    "en": "Operation log"
+  },
+  "classification.clear_list": {
+    "pl": "Wyczyść listę",
+    "en": "Clear list"
+  },
+  "classification.empty_count": {
+    "pl": "0 PDF",
+    "en": "0 PDFs"
+  },
+  "classification.model": {
+    "pl": "Model:",
+    "en": "Model:"
+  },
+  "classification.ai_settings_action": {
+    "pl": "Ustawienia AI…",
+    "en": "AI settings…"
+  },
+  "classification.ai_components_action": {
+    "pl": "Składniki AI…",
+    "en": "AI components…"
+  },
+  "classification.runs": {
+    "pl": "Przejścia:",
+    "en": "Runs:"
+  },
+  "classification.categorize": {
+    "pl": "Kategoryzuj",
+    "en": "Categorize"
+  },
+  "classification.labels_heading": {
+    "pl": "Etykiety · maks. 3",
+    "en": "Labels · max. 3"
+  },
+  "classification.descriptions": {
+    "pl": "Opisy",
+    "en": "Descriptions"
+  },
+  "classification.examples": {
+    "pl": "Przykładowe",
+    "en": "Examples"
+  },
+  "classification.label": {
+    "pl": "Etykieta",
+    "en": "Label"
+  },
+  "classification.description": {
+    "pl": "Opis",
+    "en": "Description"
+  },
+  "classification.labels_tooltip": {
+    "pl": "Od 2 do 12 etykiet. Dwukrotne kliknięcie lub F2: edycja.",
+    "en": "2–12 labels. Double-click or press F2 to edit."
+  },
+  "classification.instructions": {
+    "pl": "Instrukcja klasyfikacji",
+    "en": "Classification instructions"
+  },
+  "classification.documents": {
+    "pl": "Dokumenty",
+    "en": "Documents"
+  },
+  "classification.review_labels": {
+    "pl": "Sprawdź etykiety…",
+    "en": "Review labels…"
+  },
+  "classification.measurements": {
+    "pl": "Pomiary",
+    "en": "Measurements"
+  },
+  "classification.save_results": {
+    "pl": "Zapisz wyniki…",
+    "en": "Save results…"
+  },
+  "classification.file": {
+    "pl": "Plik",
+    "en": "File"
+  },
+  "classification.model_run": {
+    "pl": "Model / próba",
+    "en": "Model / run"
+  },
+  "classification.labels": {
+    "pl": "Etykiety",
+    "en": "Labels"
+  },
+  "classification.processing": {
+    "pl": "Działanie",
+    "en": "Processing"
+  },
+  "classification.api_wait": {
+    "pl": "Limit API",
+    "en": "API wait"
+  },
+  "classification.scores": {
+    "pl": "Oceny",
+    "en": "Scores"
+  },
+  "classification.status": {
+    "pl": "Status",
+    "en": "Status"
+  },
+  "classification.drop_files": {
+    "pl": "Przeciągnij tutaj pliki PDF",
+    "en": "Drop PDF files here"
+  },
+  "classification.ready": {
+    "pl": "Gotowy",
+    "en": "Ready"
+  },
+  "classification.local_runtime": {
+    "pl": "Lokalny runtime",
+    "en": "Local runtime"
+  },
+  "classification.ai_provider": {
+    "pl": "AI od dostawcy",
+    "en": "AI provider"
+  },
+  "classification.compare_models": {
+    "pl": "Porównaj modele",
+    "en": "Compare models"
+  },
+  "classification.error": {
+    "pl": "Błąd",
+    "en": "Error"
+  },
+  "classification.model_error": {
+    "pl": "Błąd modelu — jak naprawić",
+    "en": "Model error — troubleshooting"
+  },
+  "classification.opening_pdf": {
+    "pl": "Otwieranie PDF",
+    "en": "Opening PDF"
+  },
+  "classification.open_failed": {
+    "pl": "Nie można otworzyć pliku ani folderu.",
+    "en": "Unable to open the file or folder."
+  },
+  "classification.open_pdf": {
+    "pl": "Otwórz PDF",
+    "en": "Open PDF"
+  },
+  "classification.open_folder": {
+    "pl": "Otwórz folder",
+    "en": "Open folder"
+  },
+  "classification.change_label": {
+    "pl": "Zmień etykietę…",
+    "en": "Change label…"
+  },
+  "classification.select_pdfs": {
+    "pl": "Wybierz PDF-y",
+    "en": "Select PDFs"
+  },
+  "classification.pdf_filter": {
+    "pl": "PDF (*.pdf)",
+    "en": "PDF (*.pdf)"
+  },
+  "classification.pdf_folder": {
+    "pl": "Folder z PDF-ami",
+    "en": "Folder containing PDFs"
+  },
+  "classification.sample_title": {
+    "pl": "Wylosuj 100 PDF-ów z folderu",
+    "en": "Sample 100 PDFs from a folder"
+  },
+  "classification.protocol_title": {
+    "pl": "Wybierz protocol.json zapisanego testu",
+    "en": "Select protocol.json from a saved test"
+  },
+  "classification.protocol_filter": {
+    "pl": "Protokół JSON (*.json)",
+    "en": "JSON protocol (*.json)"
+  },
+  "classification.protocol_missing": {
+    "pl": "Część PDF-ów z protokołu nie jest dostępna.",
+    "en": "Some PDFs listed in the protocol are unavailable."
+  },
+  "classification.test_set": {
+    "pl": "Zestaw testowy",
+    "en": "Test set"
+  },
+  "classification.test_loaded": {
+    "pl": "Wczytano PDF-y testowe. Użyte zostaną kategorie i prompt z tego ekranu.",
+    "en": "Test PDFs loaded. The categories and prompt on this screen will be used."
+  },
+  "classification.add_documents": {
+    "pl": "Dodaj dokumenty",
+    "en": "Add documents"
+  },
+  "classification.waiting_analysis": {
+    "pl": "Czeka na analizę",
+    "en": "Waiting for analysis"
+  },
+  "classification.no_documents": {
+    "pl": "Najpierw dodaj dokumenty PDF.",
+    "en": "Add PDF documents first."
+  },
+  "classification.categorization": {
+    "pl": "Kategoryzowanie",
+    "en": "Categorization"
+  },
+  "classification.ai_settings": {
+    "pl": "Ustawienia AI",
+    "en": "AI settings"
+  },
+  "classification.no_models": {
+    "pl": "Dodaj i zaznacz przynajmniej jeden model.",
+    "en": "Add and select at least one model."
+  },
+  "classification.cancelling": {
+    "pl": "Anulowanie — czekam na zakończenie bieżącego żądania.",
+    "en": "Cancelling — waiting for the current request to finish."
+  },
+  "classification.no_labels": {
+    "pl": "Brak etykiet",
+    "en": "No labels"
+  },
+  "classification.error_hitl": {
+    "pl": "Błąd · HITL",
+    "en": "Error · HITL"
+  },
+  "classification.hitl": {
+    "pl": "HITL",
+    "en": "HITL"
+  },
+  "classification.reviewed": {
+    "pl": "Sprawdzone",
+    "en": "Reviewed"
+  },
+  "classification.ok": {
+    "pl": "OK",
+    "en": "OK"
+  },
+  "classification.truncated": {
+    "pl": " (tekst skrócony)",
+    "en": " (text truncated)"
+  },
+  "classification.no_calibration": {
+    "pl": "Brak kalibracji",
+    "en": "No calibration"
+  },
+  "classification.declared_scores": {
+    "pl": "Oceny: deklarowana pewność modelu",
+    "en": "Scores: model's self-reported confidence"
+  },
+  "classification.decision_scores": {
+    "pl": "Oceny decyzyjne modelu",
+    "en": "Model decision scores"
+  },
+  "classification.include_tooltip": {
+    "pl": "\nZaznaczenie: uwzględnij w porządkowaniu",
+    "en": "\nChecked: include when organizing"
+  },
+  "classification.not_selected": {
+    "pl": "Niewybrany",
+    "en": "Not selected"
+  },
+  "classification.total": {
+    "pl": "Łącznie",
+    "en": "Total"
+  },
+  "classification.cancelled": {
+    "pl": "Anulowano.",
+    "en": "Cancelled."
+  },
+  "classification.error_hint": {
+    "pl": " Kliknij dwukrotnie Błąd, aby zobaczyć instrukcję naprawy.",
+    "en": " Double-click Error for troubleshooting instructions."
+  },
+  "classification.export_title": {
+    "pl": "Zapisz kategorie i pomiary",
+    "en": "Save categories and measurements"
+  },
+  "classification.export_filename": {
+    "pl": "kategoryzowanie.csv",
+    "en": "categorization.csv"
+  },
+  "classification.export_filter": {
+    "pl": "Tabela CSV (*.csv);;Pełny raport JSON (*.json)",
+    "en": "CSV table (*.csv);;Full JSON report (*.json)"
+  },
+  "classification.export": {
+    "pl": "Eksport",
+    "en": "Export"
+  },
+  "classification.moved": {
+    "pl": "Przeniesiono",
+    "en": "Moved"
+  },
+  "classification.copied": {
+    "pl": "Skopiowano",
+    "en": "Copied"
+  },
+  "classification.pending": {
+    "pl": "Oczekuje",
+    "en": "Pending"
+  },
+  "classification.restored": {
+    "pl": "Przywrócono kolekcję",
+    "en": "Collection restored"
+  },
+  "classification.restored_hitl": {
+    "pl": " · odświeżono oznaczenia HITL",
+    "en": " · HITL flags refreshed"
+  },
+  "classification.connection_ok": {
+    "pl": "Połączenie działa. Model odpowiada.",
+    "en": "Connected. The model is responding."
+  },
+  "classification.components_repair": {
+    "pl": "Składniki AI — instaluj / napraw…",
+    "en": "AI components — install / repair…"
+  },
+  "classification.models_heading": {
+    "pl": "Modele do porównania",
+    "en": "Models to compare"
+  },
+  "classification.add": {
+    "pl": "Dodaj",
+    "en": "Add"
+  },
+  "classification.duplicate": {
+    "pl": "Duplikuj",
+    "en": "Duplicate"
+  },
+  "classification.remove": {
+    "pl": "Usuń",
+    "en": "Remove"
+  },
+  "classification.configuration_name": {
+    "pl": "Nazwa konfiguracji:",
+    "en": "Configuration name:"
+  },
+  "classification.jevk5_provider": {
+    "pl": "JevK5 — lokalnie, PyTorch",
+    "en": "JevK5 — local, PyTorch"
+  },
+  "classification.connection": {
+    "pl": "Połączenie:",
+    "en": "Connection:"
+  },
+  "classification.api_format": {
+    "pl": "Format API:",
+    "en": "API format:"
+  },
+  "classification.api_url": {
+    "pl": "Adres API:",
+    "en": "API URL:"
+  },
+  "classification.refresh_list": {
+    "pl": "Odśwież listę",
+    "en": "Refresh list"
+  },
+  "classification.api_key": {
+    "pl": "Klucz API:",
+    "en": "API key:"
+  },
+  "classification.python_cuda": {
+    "pl": "Python z CUDA:",
+    "en": "Python with CUDA:"
+  },
+  "classification.model_directory": {
+    "pl": "Katalog modelu:",
+    "en": "Model directory:"
+  },
+  "classification.runtime_directory": {
+    "pl": "Katalog runtime:",
+    "en": "Runtime directory:"
+  },
+  "classification.libraries": {
+    "pl": "Biblioteki:",
+    "en": "Libraries:"
+  },
+  "classification.custom_thresholds": {
+    "pl": "Własne progi",
+    "en": "Custom thresholds"
+  },
+  "classification.decision_threshold": {
+    "pl": "Próg decyzji (0–1):",
+    "en": "Decision threshold (0–1):"
+  },
+  "classification.hitl_margin": {
+    "pl": "Margines HITL (±):",
+    "en": "HITL margin (±):"
+  },
+  "classification.default_thresholds": {
+    "pl": "Domyślne progi",
+    "en": "Default thresholds"
+  },
+  "classification.test_connection": {
+    "pl": "Testuj połączenie",
+    "en": "Test connection"
+  },
+  "classification.save": {
+    "pl": "Zapisz",
+    "en": "Save"
+  },
+  "classification.copy_suffix": {
+    "pl": " — kopia",
+    "en": " — copy"
+  },
+  "classification.ollama_endpoint": {
+    "pl": "Ollamy",
+    "en": "Ollama"
+  },
+  "classification.testing": {
+    "pl": "Testowanie…",
+    "en": "Testing…"
+  },
+  "classification.selection_count": {
+    "pl": "Wybrano {count}/{limit}. ",
+    "en": "Selected {count}/{limit}. "
+  },
+  "classification.save_settings_failed": {
+    "pl": "Nie udało się zapisać ustawień: {error}",
+    "en": "Unable to save settings: {error}"
+  },
+  "classification.compare_selected": {
+    "pl": "Porównaj zaznaczone modele ({count})",
+    "en": "Compare selected models ({count})"
+  },
+  "classification.sample_all": {
+    "pl": "Folder zawiera {count} PDF-ów; dodano wszystkie.",
+    "en": "The folder contains {count} PDFs; all were added."
+  },
+  "classification.score_count": {
+    "pl": "{count} ocen",
+    "en": "{count} scores"
+  },
+  "classification.row_tooltip": {
+    "pl": "{value}\n{path}\n{characters} znaków tekstu",
+    "en": "{value}\n{path}\n{characters} text characters"
+  },
+  "classification.calibration": {
+    "pl": "Próg: {threshold:.3f}; HITL ±{margin:.3f}",
+    "en": "Threshold: {threshold:.3f}; HITL ±{margin:.3f}"
+  },
+  "classification.metric_detail": {
+    "pl": "Tekst: {preparation:.2f} s\nŁadowanie: {loading}\nDziałanie: {processing:.2f} s",
+    "en": "Text: {preparation:.2f} s\nLoading: {loading}\nProcessing: {processing:.2f} s"
+  },
+  "classification.timing": {
+    "pl": "Tekst: {preparation:.2f} s   ·   Ładowanie: {loading:.2f} s   ·   Działanie: {processing:.2f} s   ·   Łącznie: {total:.2f} s",
+    "en": "Text: {preparation:.2f} s   ·   Loading: {loading:.2f} s   ·   Processing: {processing:.2f} s   ·   Total: {total:.2f} s"
+  },
+  "classification.done": {
+    "pl": "Gotowe. Błędy: {errors}. HITL: {hitl}.",
+    "en": "Done. Errors: {errors}. HITL: {hitl}."
+  },
+  "classification.saved": {
+    "pl": "Zapisano {path}",
+    "en": "Saved {path}"
+  },
+  "classification.filing_done": {
+    "pl": "{action}: {completed} · Błędy: {errors}",
+    "en": "{action}: {completed} · Errors: {errors}"
+  },
+  "classification.file_count": {
+    "pl": "{count} PDF",
+    "en": "{count} PDFs"
+  },
+  "classification.save_collection_failed": {
+    "pl": "Nie zapisano kolekcji: {error}",
+    "en": "Unable to save collection: {error}"
+  },
+  "classification.load_collection_failed": {
+    "pl": "Nie odczytano kolekcji: {error}",
+    "en": "Unable to read collection: {error}"
+  },
+  "classification.available_models": {
+    "pl": "Dostępne modele: {count}.",
+    "en": "Available models: {count}."
+  },
+  "classification.local_paths_error": {
+    "pl": "{model}: sprawdź ścieżki lokalnego modelu.",
+    "en": "{model}: check the local model paths."
+  }
+}

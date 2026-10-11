@@ -1,0 +1,698 @@
+{
+  "main.main_window.documents_pdf_jpg_jpeg_png_tif_tiff": {
+    "pl": "Dokumenty (*.pdf *.jpg *.jpeg *.png *.tif *.tiff *.bmp *.webp);;Wszystkie pliki (*.*)",
+    "en": "Documents (*.pdf *.jpg *.jpeg *.png *.tif *.tiff *.bmp *.webp);;All files (*.*)"
+  },
+  "main.main_window.finished_files_in_s_with_signatures_errors": {
+    "pl": "Zakończono: {arg0} plików w {arg1:.0f} s — z podpisami: {arg2}, błędy: {arg3}.",
+    "en": "Finished: {arg0} files in {arg1:.0f} s — with signatures: {arg2}, errors: {arg3}."
+  },
+  "main.main_window.about_remaining": {
+    "pl": " (pozostało ok. {arg0}:{arg1:02d})",
+    "en": " (about {arg0}:{arg1:02d} remaining)"
+  },
+  "main.main_window.add_files": {
+    "pl": "Dodaj pliki…",
+    "en": "Add files…"
+  },
+  "main.main_window.add_folder": {
+    "pl": "Dodaj folder…",
+    "en": "Add folder…"
+  },
+  "main.main_window.process": {
+    "pl": "Przetwórz",
+    "en": "Process"
+  },
+  "main.main_window.compare_ollama_jev": {
+    "pl": "Porównaj Ollama + Jev",
+    "en": "Compare Ollama + Jev"
+  },
+  "main.main_window.cancel": {
+    "pl": "Anuluj",
+    "en": "Cancel"
+  },
+  "main.main_window.save_report": {
+    "pl": "Zapisz raport…",
+    "en": "Save report…"
+  },
+  "main.main_window.clear": {
+    "pl": "Wyczyść",
+    "en": "Clear"
+  },
+  "main.main_window.ai_settings": {
+    "pl": "Ustawienia AI…",
+    "en": "AI settings…"
+  },
+  "main.main_window.ai_components": {
+    "pl": "Składniki AI…",
+    "en": "AI components…"
+  },
+  "main.main_window.about": {
+    "pl": "O programie",
+    "en": "About"
+  },
+  "main.main_window.main": {
+    "pl": "Główne",
+    "en": "Main"
+  },
+  "main.main_window.drop_pdf_files_or_scans_here": {
+    "pl": "Przeciągnij tutaj pliki PDF lub skany",
+    "en": "Drop PDF files or scans here"
+  },
+  "main.main_window.0_files": {
+    "pl": "0 plików",
+    "en": "0 files"
+  },
+  "main.main_window.signature_detection": {
+    "pl": "Sprawdzanie podpisów",
+    "en": "Signature detection"
+  },
+  "main.main_window.document_classification": {
+    "pl": "Kategoryzowanie dokumentów",
+    "en": "Document classification"
+  },
+  "main.main_window.ai_connection_not_checked": {
+    "pl": "AI: połączenie niesprawdzone",
+    "en": "AI: connection not checked"
+  },
+  "main.main_window.preparation_s_loading_s_inference_s_total": {
+    "pl": "Przygotowanie: {arg0:.2f} s   ·   Ładowanie: {arg1:.2f} s   ·   Działanie: {arg2:.2f} s   ·   Łącznie: {arg3:.2f} s",
+    "en": "Preparation: {arg0:.2f} s   ·   Loading: {arg1:.2f} s   ·   Inference: {arg2:.2f} s   ·   Total: {arg3:.2f} s"
+  },
+  "main.main_window.ai_provider": {
+    "pl": "AI od dostawcy",
+    "en": "AI provider"
+  },
+  "main.main_window.choose_documents": {
+    "pl": "Wybierz dokumenty",
+    "en": "Choose documents"
+  },
+  "main.main_window.choose_a_document_folder": {
+    "pl": "Wybierz folder z dokumentami",
+    "en": "Choose a document folder"
+  },
+  "main.main_window.queued_files": {
+    "pl": "W kolejce: {arg0} plików.",
+    "en": "Queued: {arg0} files."
+  },
+  "main.main_window.checking_ai_service_and_model_availability": {
+    "pl": "Sprawdzanie usługi AI i dostępności modelu…",
+    "en": "Checking AI service and model availability…"
+  },
+  "main.main_window.comparison_checking_and_starting_the_model": {
+    "pl": "Porównanie — {arg0}: sprawdzanie i uruchamianie modelu…",
+    "en": "Comparison — {arg0}: checking and starting the model…"
+  },
+  "main.main_window.add_documents": {
+    "pl": "Dodaj dokumenty",
+    "en": "Add documents"
+  },
+  "main.main_window.report_confidentiality": {
+    "pl": "Poufność raportu",
+    "en": "Report confidentiality"
+  },
+  "main.main_window.the_report_contains_document_names_and_information": {
+    "pl": "Raport zawiera nazwy dokumentów i informacje uzyskane z ich treści. Raport HTML zawiera również wycinki podpisów i miniatury stron.\n\nPrzed przekazaniem raportu innej osobie sprawdź uprawnienia, poufność oraz miejsce zapisu. Kontynuować?",
+    "en": "The report contains document names and information extracted from their content. The HTML report also includes signature crops and page thumbnails.\n\nBefore sharing the report, check permissions, confidentiality and the save location. Continue?"
+  },
+  "main.main_window.save_report_51": {
+    "pl": "Zapisz raport",
+    "en": "Save report"
+  },
+  "main.main_window.html_report_html_csv_report_csv": {
+    "pl": "Raport HTML (*.html);;Raport CSV (*.csv)",
+    "en": "HTML report (*.html);;CSV report (*.csv)"
+  },
+  "main.main_window.report_saved": {
+    "pl": "Zapisano raport: {arg0}",
+    "en": "Report saved: {arg0}"
+  },
+  "main.main_window.version_two_separate_workspaces_classifying_pdf_text": {
+    "pl": "<b>{arg0}</b><br>wersja {arg1}<br><br>Dwie osobne funkcje: kategoryzowanie tekstu PDF do własnych kategorii oraz sprawdzanie podpisów.<br><br>Wykrywa podpisy odręczne, parafki, pieczątki i podpisy cyfrowe w dokumentach PDF i skanach przy użyciu wizyjnych modeli AI (lokalnie przez Ollamę albo przez API chmurowe).<br><br>Program stwierdza wyłącznie <i>obecność</i> podpisów — nie weryfikuje ich autentyczności, ważności prawnej ani kryptograficznej. Wyniki AI mogą być błędne lub niepełne i wymagają ręcznej weryfikacji.",
+    "en": "<b>{arg0}</b><br>version {arg1}<br><br>Two separate workspaces: classifying PDF text into your own categories and detecting signatures.<br><br>Detects handwritten signatures, initials, stamps and digital signatures in PDF documents and scans using vision AI models (locally through Ollama or through cloud APIs).<br><br>The program detects only the <i>presence</i> of signatures — it does not verify authenticity, legal validity or cryptographic validity. AI results may be incorrect or incomplete and require manual review."
+  },
+  "main.main_window.processing": {
+    "pl": "Przetwarzanie {arg0}/{arg1}: {arg2}{arg3}",
+    "en": "Processing {arg0}/{arg1}: {arg2}{arg3}"
+  },
+  "main.main_window.analyzing": {
+    "pl": "Analiza…",
+    "en": "Analyzing…"
+  },
+  "main.main_window.files": {
+    "pl": "{arg0} plików",
+    "en": "{arg0} files"
+  },
+  "main.main_window.select_a_document": {
+    "pl": "Wybierz dokument",
+    "en": "Select a document"
+  },
+  "main.main_window.open_source_document": {
+    "pl": "Otwórz dokument źródłowy",
+    "en": "Open source document"
+  },
+  "main.main_window.analyzed_pages_in_s": {
+    "pl": "Przeanalizowano {arg0}/{arg1} stron w {arg2:.1f} s.",
+    "en": "Analyzed {arg0}/{arg1} pages in {arg2:.1f} s."
+  },
+  "main.main_window.detected": {
+    "pl": "<b>Wykryto: {arg0}</b>",
+    "en": "<b>Detected: {arg0}</b>"
+  },
+  "main.main_window.page_confidence": {
+    "pl": "<b>{arg0}</b> — strona {arg1}, pewność {arg2}%",
+    "en": "<b>{arg0}</b> — page {arg1}, confidence {arg2}%"
+  },
+  "main.main_window.click_to_enlarge": {
+    "pl": "Kliknij, aby powiększyć",
+    "en": "Click to enlarge"
+  },
+  "main.main_window.signature_crop": {
+    "pl": "Wycinek podpisu",
+    "en": "Signature crop"
+  },
+  "main.main_window.the_active_ai_service_runs_outside_this": {
+    "pl": "Aktywna usługa AI nie działa na tym komputerze — analizowane dokumenty są wysyłane przez sieć poza ten komputer.\nTrybem lokalnym jest API pod adresem pętli zwrotnej tego komputera (np. http://localhost:8800/v1).",
+    "en": "The active AI service runs outside this computer — analyzed documents are sent over the network.\nLocal mode uses an API at this computer’s loopback address (e.g. http://localhost:8800/v1)."
+  },
+  "main.main_window.file": {
+    "pl": "Plik",
+    "en": "File"
+  },
+  "main.main_window.description_name": {
+    "pl": "Opis / nazwa",
+    "en": "Description / name"
+  },
+  "main.main_window.signatures": {
+    "pl": "Podpisy",
+    "en": "Signatures"
+  },
+  "main.main_window.score": {
+    "pl": "Ocena",
+    "en": "Score"
+  },
+  "main.main_window.status": {
+    "pl": "Status",
+    "en": "Status"
+  },
+  "main.main_window.run_results": {
+    "pl": "Wyniki przebiegu:",
+    "en": "Run results:"
+  },
+  "main.main_window.the_report_includes_all_runs_until_the": {
+    "pl": "Raport zawiera wszystkie przebiegi do wyczyszczenia kolejki.",
+    "en": "The report includes all runs until the queue is cleared."
+  },
+  "main.main_window.no_new_supported_documents_found": {
+    "pl": "Nie znaleziono nowych obsługiwanych dokumentów.",
+    "en": "No new supported documents found."
+  },
+  "main.main_window.analysis_was_not_started": {
+    "pl": "Analiza nie została uruchomiona.",
+    "en": "Analysis was not started."
+  },
+  "main.main_window.pending": {
+    "pl": "Oczekuje",
+    "en": "Pending"
+  },
+  "main.main_window.ai_service_unavailable": {
+    "pl": "Usługa AI niedostępna",
+    "en": "AI service unavailable"
+  },
+  "main.main_window.ai_service_unavailable_check_settings": {
+    "pl": "Usługa AI niedostępna — sprawdź ustawienia.",
+    "en": "AI service unavailable — check settings."
+  },
+  "main.main_window.missing_api_key": {
+    "pl": "Brak klucza API",
+    "en": "Missing API key"
+  },
+  "main.main_window.no_api_key_is_saved_for_the": {
+    "pl": "Nie zapisano klucza API dla wybranego dostawcy.\nOtworzyć ustawienia AI?",
+    "en": "No API key is saved for the selected provider.\nOpen AI settings?"
+  },
+  "main.main_window.cancelling_waiting_for_the_current_page_to": {
+    "pl": "Anulowanie — czekam na zakończenie bieżącej strony…",
+    "en": "Cancelling — waiting for the current page to finish…"
+  },
+  "main.main_window.ai_settings_saved": {
+    "pl": "Zapisano ustawienia AI.",
+    "en": "AI settings saved."
+  },
+  "main.main_window.report": {
+    "pl": "Raport",
+    "en": "Report"
+  },
+  "main.main_window.process_documents_first_the_report_is_created": {
+    "pl": "Najpierw przetwórz dokumenty — raport powstaje z wyników.",
+    "en": "Process documents first — the report is created from results."
+  },
+  "main.main_window.processing_interrupted": {
+    "pl": "Przetwarzanie przerwane",
+    "en": "Processing interrupted"
+  },
+  "main.main_window.missing_table_cell": {
+    "pl": "Brak komórki tabeli ({arg0}, {arg1})",
+    "en": "Missing table cell ({arg0}, {arg1})"
+  },
+  "main.main_window.only_part_of_the_document_was_analyzed": {
+    "pl": "Analiza obejmuje tylko część dokumentu. Pozostałe strony mogą zawierać podpisy. Zwiększ limit stron w ustawieniach AI.",
+    "en": "Only part of the document was analyzed. Other pages may contain signatures. Increase the page limit in AI settings."
+  },
+  "main.main_window.no_signatures_detected": {
+    "pl": "<b>Nie wykryto podpisów.</b>",
+    "en": "<b>No signatures detected.</b>"
+  },
+  "main.main_window.source_document": {
+    "pl": "Dokument źródłowy",
+    "en": "Source document"
+  },
+  "main.main_window.could_not_open_the_document_in_the": {
+    "pl": "Nie udało się otworzyć dokumentu w domyślnym programie.",
+    "en": "Could not open the document in the default application."
+  },
+  "main.main_window.checking_ai_service": {
+    "pl": "Trwa sprawdzanie usługi AI",
+    "en": "Checking AI service"
+  },
+  "main.main_window.wait_for_the_check_to_finish_and": {
+    "pl": "Poczekać na zakończenie sprawdzania i zamknąć program?",
+    "en": "Wait for the check to finish and close the application?"
+  },
+  "main.main_window.processing_in_progress": {
+    "pl": "Trwa przetwarzanie",
+    "en": "Processing in progress"
+  },
+  "main.main_window.documents_are_being_analyzed_cancel_and_close": {
+    "pl": "Trwa analiza dokumentów. Przerwać i zamknąć program?",
+    "en": "Documents are being analyzed. Cancel and close the application?"
+  },
+  "main.main_window.online_model": {
+    "pl": "Model online",
+    "en": "Online model"
+  },
+  "main.main_window.ai_settings_112": {
+    "pl": "Ustawienia AI",
+    "en": "AI settings"
+  },
+  "main.main_window.no_result": {
+    "pl": "Brak wyniku",
+    "en": "No result"
+  },
+  "main.main_window.signature_report_html": {
+    "pl": "raport_podpisy.html",
+    "en": "signature_report.html"
+  },
+  "main.main_window.could_not_save_the_report": {
+    "pl": "Nie udało się zapisać raportu:\n{arg0}",
+    "en": "Could not save the report:\n{arg0}"
+  },
+  "main.main_window.preparation_s_loading_s_inference_s_total_121": {
+    "pl": "{arg0}. {arg1} — przygotowanie: {arg2:.2f} s · ładowanie: {arg3:.2f} s · działanie: {arg4:.2f} s · łącznie: {arg5:.2f} s",
+    "en": "{arg0}. {arg1} — preparation: {arg2:.2f} s · loading: {arg3:.2f} s · inference: {arg4:.2f} s · total: {arg5:.2f} s"
+  },
+  "main.main_window.highest_probability_of_signature_presence_across_analyzed": {
+    "pl": "Najwyższe prawdopodobieństwo obecności podpisu na analizowanych stronach.",
+    "en": "Highest probability of signature presence across analyzed pages."
+  },
+  "main.main_window.error": {
+    "pl": "Błąd",
+    "en": "Error"
+  },
+  "main.main_window.file_skipped_cancelled": {
+    "pl": "Plik pominięty (anulowano).",
+    "en": "File skipped (cancelled)."
+  },
+  "main.main_window.review_document": {
+    "pl": "Sprawdź dokument — ",
+    "en": "Review document — "
+  },
+  "main.main_window.page": {
+    "pl": "strona {arg0}: {arg1:.1f}%",
+    "en": "page {arg0}: {arg1:.1f}%"
+  },
+  "main.main_window.signature_presence_probability": {
+    "pl": "Prawdopodobieństwo obecności podpisu: ",
+    "en": "Signature presence probability: "
+  },
+  "main.main_window.closing_after_the_ai_service_check_finishes": {
+    "pl": "Zamykanie po zakończeniu sprawdzania usługi AI…",
+    "en": "Closing after the AI service check finishes…"
+  },
+  "main.main_window.closing_after_the_current_ai_request_finishes": {
+    "pl": "Zamykanie po bezpiecznym zakończeniu bieżącego żądania AI…",
+    "en": "Closing after the current AI request finishes safely…"
+  },
+  "main.main_window.cancelled": {
+    "pl": "Anulowano",
+    "en": "Cancelled"
+  },
+  "main.main_window.document_error": {
+    "pl": "Błąd dokumentu",
+    "en": "Document error"
+  },
+  "main.worker.could_not_release_the_model": {
+    "pl": "Nie udało się zwolnić modelu: {arg0}",
+    "en": "Could not release the model: {arg0}"
+  },
+  "main.worker.unexpected_error": {
+    "pl": "Nieoczekiwany błąd: {arg0}",
+    "en": "Unexpected error: {arg0}"
+  },
+  "main.worker.releasing_model": {
+    "pl": "Zwalnianie modelu: {arg0}",
+    "en": "Releasing model: {arg0}"
+  },
+  "main.batch_risk_dialog.before_starting_analysis": {
+    "pl": "Przed uruchomieniem analizy",
+    "en": "Before starting analysis"
+  },
+  "main.batch_risk_dialog.documents_selected_for_analysis": {
+    "pl": "<b>Do analizy wybrano {arg0} dokumentów.</b>",
+    "en": "<b>Documents selected for analysis: {arg0}.</b>"
+  },
+  "main.batch_risk_dialog.local_mode_selected_documents_will_be_analyzed": {
+    "pl": "Tryb lokalny: wybrane dokumenty będą analizowane przez model AI na tym komputerze.",
+    "en": "Local mode: selected documents will be analyzed by an AI model on this computer."
+  },
+  "main.batch_risk_dialog.i_understand_that_the_content_of_selected": {
+    "pl": "Rozumiem, że treść wybranych dokumentów będzie przetwarzana przez lokalny model AI.",
+    "en": "I understand that the content of selected documents will be processed by a local AI model."
+  },
+  "main.batch_risk_dialog.remote_mode_selected_documents_will_leave_this": {
+    "pl": "Tryb zdalny: wybrane dokumenty opuszczą komputer. Ich treść będzie przetwarzana przez zewnętrzną usługę AI.",
+    "en": "Remote mode: selected documents will leave this computer. Their content will be processed by an external AI service."
+  },
+  "main.batch_risk_dialog.i_understand_that_the_content_of_selected_161": {
+    "pl": "Rozumiem, że treść wybranych dokumentów będzie przesyłana przez internet do usług stron trzecich i tam przetwarzana.",
+    "en": "I understand that the content of selected documents will be sent over the internet to third-party services and processed there."
+  },
+  "main.batch_risk_dialog.i_understand_that_this_tool_is_educational": {
+    "pl": "Rozumiem, że narzędzie jest edukacyjne i nie nadaje się do użytku w organizacjach.",
+    "en": "I understand that this tool is educational and unsuitable for use in organizations."
+  },
+  "main.batch_risk_dialog.i_understand_start_analysis": {
+    "pl": "Rozumiem — uruchom analizę",
+    "en": "I understand — start analysis"
+  },
+  "main.batch_risk_dialog.cancel": {
+    "pl": "Anuluj",
+    "en": "Cancel"
+  },
+  "main.batch_risk_dialog.classification_results_may_be_incorrect_or_incomplete": {
+    "pl": "Wyniki kategoryzacji mogą być błędne lub niepełne. Sprawdź je przed użyciem.",
+    "en": "Classification results may be incorrect or incomplete. Review them before use."
+  },
+  "main.batch_risk_dialog.signum_is_intended_for_learning_and_experimenting": {
+    "pl": "Signum służy do nauki i eksperymentów z wykrywaniem podpisów. Wyniki AI mogą być błędne lub niepełne. Program nie potwierdza autentyczności ani ważności podpisu.",
+    "en": "Signum is intended for learning and experimenting with signature detection. AI results may be incorrect or incomplete. The application does not confirm signature authenticity or validity."
+  },
+  "main.filing_dialog.labels_from": {
+    "pl": "Etykiety z:",
+    "en": "Labels from:"
+  },
+  "main.filing_dialog.destination_folder": {
+    "pl": "Folder docelowy",
+    "en": "Destination folder"
+  },
+  "main.filing_dialog.browse": {
+    "pl": "Przeglądaj…",
+    "en": "Browse…"
+  },
+  "main.filing_dialog.save_in": {
+    "pl": "Zapisz w:",
+    "en": "Save in:"
+  },
+  "main.filing_dialog.choose_a_destination_folder": {
+    "pl": "Wybierz folder docelowy.",
+    "en": "Choose a destination folder."
+  },
+  "main.filing_dialog.open_folder": {
+    "pl": "Otwórz folder",
+    "en": "Open folder"
+  },
+  "main.filing_dialog.cancel": {
+    "pl": "Anuluj",
+    "en": "Cancel"
+  },
+  "main.filing_dialog.choose_a_destination_folder_and_classification_result": {
+    "pl": "Wybierz folder docelowy i wynik klasyfikacji.",
+    "en": "Choose a destination folder and classification result."
+  },
+  "main.filing_dialog.to_skipped": {
+    "pl": "Do {arg0}: {arg1}   ·   Pominięte: {arg2}",
+    "en": "To {arg0}: {arg1}   ·   Skipped: {arg2}"
+  },
+  "main.filing_dialog.moved": {
+    "pl": "Przeniesiono",
+    "en": "Moved"
+  },
+  "main.filing_dialog.copied": {
+    "pl": "Skopiowano",
+    "en": "Copied"
+  },
+  "main.filing_dialog.close": {
+    "pl": "Zamknij",
+    "en": "Close"
+  },
+  "main.filing_dialog.move_to_folders": {
+    "pl": "Przenieś do folderów",
+    "en": "Move to folders"
+  },
+  "main.filing_dialog.copy_to_folders": {
+    "pl": "Skopiuj do folderów",
+    "en": "Copy to folders"
+  },
+  "main.filing_dialog.choose_a_classification_result": {
+    "pl": "Wybierz wynik klasyfikacji…",
+    "en": "Choose a classification result…"
+  },
+  "main.filing_dialog.run": {
+    "pl": "{arg0} · przejście {arg1}",
+    "en": "{arg0} · run {arg1}"
+  },
+  "main.filing_dialog.originals_will_be_moved_existing_files_will": {
+    "pl": "Oryginały zostaną przeniesione. Istniejące pliki nie będą nadpisane.",
+    "en": "Originals will be moved. Existing files will not be overwritten."
+  },
+  "main.filing_dialog.originals_will_stay_in_place_existing_files": {
+    "pl": "Oryginały pozostaną na miejscu. Istniejące pliki nie będą nadpisane.",
+    "en": "Originals will stay in place. Existing files will not be overwritten."
+  },
+  "main.filing_dialog.document": {
+    "pl": "Dokument",
+    "en": "Document"
+  },
+  "main.filing_dialog.destination_folder_file": {
+    "pl": "Folder / plik docelowy",
+    "en": "Destination folder / file"
+  },
+  "main.filing_dialog.status": {
+    "pl": "Stan",
+    "en": "Status"
+  },
+  "main.filing_dialog.move": {
+    "pl": "Przenieś",
+    "en": "Move"
+  },
+  "main.filing_dialog.copy": {
+    "pl": "Skopiuj",
+    "en": "Copy"
+  },
+  "main.filing_dialog.moving": {
+    "pl": "Przenoszenie…",
+    "en": "Moving…"
+  },
+  "main.filing_dialog.copying": {
+    "pl": "Kopiowanie…",
+    "en": "Copying…"
+  },
+  "main.filing_dialog.skipped": {
+    "pl": "   ·   Pominięte: {arg0}",
+    "en": "   ·   Skipped: {arg0}"
+  },
+  "main.filing_dialog.cancelling": {
+    "pl": "Anulowanie…",
+    "en": "Cancelling…"
+  },
+  "main.filing_dialog.errors": {
+    "pl": "{arg0}: {arg1}   ·   Błędy: {arg2}",
+    "en": "{arg0}: {arg1}   ·   Errors: {arg2}"
+  },
+  "main.filing_dialog.ready": {
+    "pl": "Gotowy",
+    "en": "Ready"
+  },
+  "main.filing_dialog.cancelled": {
+    "pl": "Anulowano. ",
+    "en": "Cancelled. "
+  },
+  "main.filing_dialog.cancelled_216": {
+    "pl": "Anulowano",
+    "en": "Cancelled"
+  },
+  "main.export.fileswith_signatureswithout_signatureserrors_nbsp_stotal_nbsp_spreparation": {
+    "pl": "<div class='summary'><div><b>{arg0}</b>plików</div><div><b>{arg1}</b>z podpisami</div><div><b>{arg2}</b>bez podpisów</div><div><b>{arg3}</b>błędów</div><div><b>{arg4:.2f}&nbsp;s</b>łącznie</div><div><b>{arg5:.2f}&nbsp;s</b>przygotowanie</div><div><b>{arg6:.2f}&nbsp;s</b>ładowanie modelu</div><div><b>{arg7:.2f}&nbsp;s</b>działanie modelu</div><div><b>{arg8}</b>przetworzonych</div></div>",
+    "en": "<div class='summary'><div><b>{arg0}</b>files</div><div><b>{arg1}</b>with signatures</div><div><b>{arg2}</b>without signatures</div><div><b>{arg3}</b>errors</div><div><b>{arg4:.2f}&nbsp;s</b>total</div><div><b>{arg5:.2f}&nbsp;s</b>preparation</div><div><b>{arg6:.2f}&nbsp;s</b>model loading</div><div><b>{arg7:.2f}&nbsp;s</b>model inference</div><div><b>{arg8}</b>processed</div></div>"
+  },
+  "main.export.signum_signature_analysis_report": {
+    "pl": "<title>Signum — raport z analizy podpisów</title>",
+    "en": "<title>Signum — signature analysis report</title>"
+  },
+  "main.export.signum_signature_analysis_report_229": {
+    "pl": "<h1>Signum — raport z analizy podpisów</h1>",
+    "en": "<h1>Signum — signature analysis report</h1>"
+  },
+  "main.export.generated_by_signum_models_signum_uses_ai": {
+    "pl": "<footer>Wygenerowano {arg0} przez Signum {arg1}; modele: {arg2}. Signum wykorzystuje AI i może zwrócić wynik błędny lub niepełny. Wykrywa oznaki obecności podpisów, ale nie potwierdza ich autentyczności, ważności prawnej lub kryptograficznej ani integralności dokumentu. Każdy wynik wymaga ręcznej weryfikacji w dokumencie źródłowym i nie powinien być jedyną podstawą decyzji. Raport może zawierać poufne fragmenty dokumentów i powinien być chroniony tak samo jak dokumenty źródłowe.</footer></body></html>",
+    "en": "<footer>Generated {arg0} by Signum {arg1}; models: {arg2}. Signum uses AI and may return incorrect or incomplete results. It detects signs of signature presence but does not confirm authenticity, legal or cryptographic validity, or document integrity. Every result requires manual review in the source document and should not be the sole basis for decisions. The report may contain confidential document excerpts and should be protected in the same way as the source documents.</footer></body></html>"
+  },
+  "main.export.incomplete_data": {
+    "pl": "NIEPEŁNE DANE",
+    "en": "INCOMPLETE DATA"
+  },
+  "main.export.different_page_scope": {
+    "pl": "RÓŻNY ZAKRES STRON",
+    "en": "DIFFERENT PAGE SCOPE"
+  },
+  "main.export.agree": {
+    "pl": "ZGODNE",
+    "en": "AGREE"
+  },
+  "main.export.difference": {
+    "pl": "RÓŻNICA",
+    "en": "DIFFERENCE"
+  },
+  "main.export.model_timings_and_results": {
+    "pl": "<h2>Czasy i wyniki modeli</h2><div class='table-wrap'><table><thead><tr>",
+    "en": "<h2>Model timings and results</h2><div class='table-wrap'><table><thead><tr>"
+  },
+  "main.export.run_model": {
+    "pl": "Przebieg / model",
+    "en": "Run / model"
+  },
+  "main.export.analysis_settings": {
+    "pl": "Ustawienia analizy",
+    "en": "Analysis settings"
+  },
+  "main.export.documents_ok_all": {
+    "pl": "Dokumenty OK / wszystkie",
+    "en": "Documents OK / all"
+  },
+  "main.export.signed": {
+    "pl": "Podpisane",
+    "en": "Signed"
+  },
+  "main.export.errors": {
+    "pl": "Błędy",
+    "en": "Errors"
+  },
+  "main.export.preparation_s": {
+    "pl": "Przygotowanie [s]",
+    "en": "Preparation [s]"
+  },
+  "main.export.loading_s": {
+    "pl": "Ładowanie [s]",
+    "en": "Loading [s]"
+  },
+  "main.export.inference_s": {
+    "pl": "Działanie [s]",
+    "en": "Inference [s]"
+  },
+  "main.export.connection_check_s": {
+    "pl": "Test połączenia [s]",
+    "en": "Connection check [s]"
+  },
+  "main.export.total_s": {
+    "pl": "Łącznie [s]",
+    "en": "Total [s]"
+  },
+  "main.export.mean_inference_processed_file_s": {
+    "pl": "Średnie działanie / przetworzony plik [s]",
+    "en": "Mean inference / processed file [s]"
+  },
+  "main.export.sum_of_run_times_s_total_time": {
+    "pl": "</tbody></table></div><p class='meta'>Suma czasów przebiegów: {arg0:.3f} s. Czas łączny obejmuje przygotowanie, ładowanie, test połączenia, działanie i zwolnienie zasobów. Ładowanie w teście połączenia jest wliczone wyłącznie do kolumny Ładowanie. Czas działania obejmuje żądania i ponowienia; dla usług zdalnych obejmuje też transport. Średnia pomija pliki anulowane. Porównuj czasy przy tym samym zakresie analizy.</p>",
+    "en": "</tbody></table></div><p class='meta'>Sum of run times: {arg0:.3f} s. Total time includes preparation, loading, connection checks, inference and resource release. Loading during a connection check is included only in the Loading column. Inference time includes requests and retries; for remote services it also includes transport. The mean excludes cancelled files. Compare timings using the same analysis scope.</p>"
+  },
+  "main.export.document_by_document_comparison": {
+    "pl": "<h2>Porównanie wyników dokument po dokumencie</h2>",
+    "en": "<h2>Document-by-document comparison</h2>"
+  },
+  "main.export.document": {
+    "pl": "<div class='table-wrap'><table><thead><tr><th>Dokument</th>",
+    "en": "<div class='table-wrap'><table><thead><tr><th>Document</th>"
+  },
+  "main.export.agreement_on_signature_presence": {
+    "pl": "<th>Zgodność obecności podpisu</th></tr></thead><tbody>",
+    "en": "<th>Agreement on signature presence</th></tr></thead><tbody>"
+  },
+  "main.export.agreement_concerns_signature_presence_errors_missing_results": {
+    "pl": "</tbody></table></div><p class='meta'>Zgodność dotyczy obecności podpisu. Błędy, brak wyniku i niepełna analiza nie są liczone jako zgodność. HITL pozostaje widoczny niezależnie od zgodności modeli.</p>",
+    "en": "</tbody></table></div><p class='meta'>Agreement concerns signature presence. Errors, missing results and incomplete analyses do not count as agreement. HITL remains visible regardless of model agreement.</p>"
+  },
+  "main.export.preparation_s_loading_s_inference_s_total": {
+    "pl": "<p class='meta'>Przygotowanie: {arg0:.3f} s · Ładowanie: {arg1:.3f} s · Działanie: {arg2:.3f} s · Łącznie: {arg3:.3f} s</p>",
+    "en": "<p class='meta'>Preparation: {arg0:.3f} s · Loading: {arg1:.3f} s · Inference: {arg2:.3f} s · Total: {arg3:.3f} s</p>"
+  },
+  "main.export.pages": {
+    "pl": "{arg0}/{arg1} stron",
+    "en": "{arg0}/{arg1} pages"
+  },
+  "main.export.run": {
+    "pl": "<h2>Przebieg {arg0}: {arg1}</h2>",
+    "en": "<h2>Run {arg0}: {arg1}</h2>"
+  },
+  "main.export.analyzed_in_s": {
+    "pl": "<div class='meta'>{arg0} — przeanalizowano {arg1} w {arg2:.1f} s</div>",
+    "en": "<div class='meta'>{arg0} — analyzed {arg1} in {arg2:.1f} s</div>"
+  },
+  "main.export.not_all_pages_of_the_document_were": {
+    "pl": "<p class='meta'>Nie zbadano wszystkich stron dokumentu.</p>",
+    "en": "<p class='meta'>Not all pages of the document were analyzed.</p>"
+  },
+  "main.export.summary": {
+    "pl": "<img src='data:image/png;base64,{arg0}' alt='wycinek podpisu'>",
+    "en": "<img src='data:image/png;base64,{arg0}' alt='signature crop'>"
+  },
+  "main.export.summary_322": {
+    "pl": "<img class='overview' src='data:image/jpeg;base64,{arg0}' alt='miniatura strony z zaznaczonym znaleziskiem' title='Miejsce znaleziska na stronie'>",
+    "en": "<img class='overview' src='data:image/jpeg;base64,{arg0}' alt='page thumbnail with highlighted finding' title='Finding location on the page'>"
+  },
+  "main.export.page_confidence": {
+    "pl": "<div class='finding'>{arg0}{arg1}<div class='meta'><b>{arg2}</b>, strona {arg3}, pewność {arg4}%{arg5}</div></div>",
+    "en": "<div class='finding'>{arg0}{arg1}<div class='meta'><b>{arg2}</b>, page {arg3}, confidence {arg4}%{arg5}</div></div>"
+  },
+  "main.export.no_result": {
+    "pl": "<td>BRAK WYNIKU</td>",
+    "en": "<td>NO RESULT</td>"
+  },
+  "main.export.inference_stotal_spages": {
+    "pl": "<td>{arg0}<br>Działanie: {arg1:.3f} s<br>Łącznie: {arg2:.3f} s<br>Strony: {arg3}/{arg4}</td>",
+    "en": "<td>{arg0}<br>Inference: {arg1:.3f} s<br>Total: {arg2:.3f} s<br>Pages: {arg3}/{arg4}</td>"
+  },
+  "main.export.human_review_required_hitl": {
+    "pl": "<p class='meta'><b>Wymaga sprawdzenia przez człowieka (HITL)</b><br>",
+    "en": "<p class='meta'><b>Human review required (HITL)</b><br>"
+  },
+  "main.export.page": {
+    "pl": "strona {arg0}: {arg1:.1f}%",
+    "en": "page {arg0}: {arg1:.1f}%"
+  },
+  "main.export.batch_interrupted": {
+    "pl": "<p class='meta error'><b>Partię przerwano:</b> ",
+    "en": "<p class='meta error'><b>Batch interrupted:</b> "
+  },
+  "main.export.signature_presence_probability": {
+    "pl": "<p class='meta'>Prawdopodobieństwo obecności podpisu: ",
+    "en": "<p class='meta'>Signature presence probability: "
+  },
+  "main.filing.move_infinitive": {
+    "pl": "przeniesienia",
+    "en": "move"
+  },
+  "main.filing.copy_infinitive": {
+    "pl": "skopiowania",
+    "en": "copy"
+  }
+}

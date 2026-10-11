@@ -8,6 +8,7 @@ import time
 import requests
 
 from signum.ai.base import AIConnectionError, AIResponseError, VisionModel
+from signum.i18n import tr
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
 DEFAULT_BASE_URL = "https://api.openai.com/v1"
@@ -67,11 +68,11 @@ class OpenAIVisionModel(VisionModel):
             response = self._post("/chat/completions", payload)
 
         if response.status_code != 200:
-            raise AIResponseError(f"API zwróciło HTTP {response.status_code}")
+            raise AIResponseError(tr("ai.api_http", status=response.status_code))
         try:
             return str(response.json()["choices"][0]["message"]["content"])
         except (ValueError, KeyError, IndexError, TypeError) as exc:
-            raise AIResponseError(f"Niepoprawna odpowiedź API: {exc}") from exc
+            raise AIResponseError(tr("ai.invalid_api_response", error=exc)) from exc
 
     def _post(self, endpoint: str, payload: dict) -> requests.Response:
         started = time.perf_counter()
@@ -84,13 +85,15 @@ class OpenAIVisionModel(VisionModel):
                 allow_redirects=False,
             )
         except requests.exceptions.RequestException as exc:
-            raise AIConnectionError(f"Brak połączenia z {self._base_url}: {exc}") from exc
+            raise AIConnectionError(
+                tr("ai.connection_failed", url=self._base_url, error=exc)
+            ) from exc
         finally:
             self.request_seconds += time.perf_counter() - started
 
     def check_connection(self) -> str:
         if not self._api_key and not is_loopback_endpoint(self._base_url):
-            raise AIResponseError("Nie podano klucza API")
+            raise AIResponseError(tr("ai.missing_api_key"))
         try:
             response = self._session.get(
                 f"{self._base_url}/models",
@@ -99,15 +102,14 @@ class OpenAIVisionModel(VisionModel):
                 allow_redirects=False,
             )
         except requests.exceptions.RequestException as exc:
-            raise AIConnectionError(f"Brak połączenia z {self._base_url}: {exc}") from exc
+            raise AIConnectionError(
+                tr("ai.connection_failed", url=self._base_url, error=exc)
+            ) from exc
         if response.status_code == 401:
-            raise AIResponseError("Klucz API odrzucony (HTTP 401)")
+            raise AIResponseError(tr("ai.api_key_rejected"))
         if response.status_code in {404, 405}:
             # Niektóre proxy nie wystawiają /models — to nie przesądza o błędzie.
-            return (
-                f"Endpoint {self._base_url} nie udostępnia listy modeli "
-                f"(HTTP {response.status_code}); dostępność analizy niepotwierdzona"
-            )
+            return tr("ai.models_unavailable", url=self._base_url, status=response.status_code)
         if response.status_code != 200:
-            raise AIResponseError(f"Sprawdzenie API nie powiodło się (HTTP {response.status_code})")
-        return f"Połączono z {self._base_url} — klucz API przyjęty"
+            raise AIResponseError(tr("ai.api_check_failed", status=response.status_code))
+        return tr("ai.api_connected", url=self._base_url)

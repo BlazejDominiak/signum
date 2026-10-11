@@ -23,6 +23,7 @@ from signum.core.classification import (
     run_classification,
 )
 from signum.core.classification_calibration import policy_for
+from signum.i18n import tr
 
 
 class ClassificationWorker(QThread):
@@ -66,7 +67,9 @@ class ClassificationWorker(QThread):
                     bridge = create_text_classifier(profile, self.config, self.cancel_event)
                     assert isinstance(bridge, JevK5TextClassifier)
                     if not bridge.available():
-                        raise ValueError(f"{profile.label}: sprawdź ścieżki lokalnego modelu.")
+                        raise ValueError(
+                            tr("classification.local_paths_error", model=profile.label)
+                        )
                     bridges.append(bridge)
 
             def prepare(text: str, question: dict[str, Any]) -> str:
@@ -88,8 +91,10 @@ class ClassificationWorker(QThread):
                 self.row_done.emit,
                 {p.id: p.label for p in selected},
                 lambda value: self.timing.emit(copy.deepcopy(value)),
-                policies={p.id: policy_for(p, make_question(self.categories, self.instructions))
-                          for p in selected},
+                policies={
+                    p.id: policy_for(p, make_question(self.categories, self.instructions))
+                    for p in selected
+                },
             )
         except Exception as exc:
             batch = ClassificationBatch(error=str(exc))
@@ -98,10 +103,14 @@ class ClassificationWorker(QThread):
                 bridge.close()
         batch.model_details = {
             name: {
-                "provider": profiles[name].provider, "model": profiles[name].model,
-                "api_format": profiles[name].api_format, "url": profiles[name].url,
+                "provider": profiles[name].provider,
+                "model": profiles[name].model,
+                "api_format": profiles[name].api_format,
+                "url": profiles[name].url,
                 "threshold_override": str(profiles[name].threshold),
                 "hitl_margin_override": str(profiles[name].hitl_margin),
-            } for name in self.models if name in profiles
+            }
+            for name in self.models
+            if name in profiles
         }
         self.batch_done.emit(batch)

@@ -5,6 +5,8 @@ from __future__ import annotations
 import ipaddress
 from urllib.parse import SplitResult, urlsplit, urlunsplit
 
+from signum.i18n import tr
+
 
 class EndpointValidationError(ValueError):
     """Adres usługi AI jest niepoprawny albo używa niebezpiecznego transportu."""
@@ -19,34 +21,43 @@ def normalize_ai_endpoint(value: str, default: str, service_name: str) -> str:
     """
     raw = (value or default).strip().rstrip("/")
     if len(raw) > 2048:
-        raise EndpointValidationError(f"Adres {service_name} jest zbyt długi.")
+        raise EndpointValidationError(
+            tr("core.network.the_address_is_too_long", service_name=service_name)
+        )
     if any(character.isspace() for character in raw) or "\\" in raw:
         raise EndpointValidationError(
-            f"Adres {service_name} nie może zawierać spacji ani znaków sterujących."
+            tr(
+                "core.network.the_address_cannot_contain_spaces_or_control",
+                service_name=service_name,
+            )
         )
     try:
         parsed = urlsplit(raw)
         host = parsed.hostname
         port = parsed.port  # wymusza walidację składni portu
     except ValueError as exc:
-        raise EndpointValidationError(f"Niepoprawny adres {service_name}: {exc}") from exc
+        raise EndpointValidationError(
+            tr("core.network.invalid_address", service_name=service_name, error=exc)
+        ) from exc
 
     if parsed.scheme not in {"http", "https"} or not host:
         raise EndpointValidationError(
-            f"Adres {service_name} musi być pełnym adresem HTTP lub HTTPS."
+            tr("core.network.the_address_must_be_a_complete_http", service_name=service_name)
         )
     if parsed.username is not None or parsed.password is not None:
         raise EndpointValidationError(
-            f"Adres {service_name} nie może zawierać nazwy użytkownika ani hasła."
+            tr("core.network.the_address_cannot_contain_a_username_or", service_name=service_name)
         )
     if parsed.query or parsed.fragment:
         raise EndpointValidationError(
-            f"Adres {service_name} nie może zawierać parametrów ani fragmentu."
+            tr(
+                "core.network.the_address_cannot_contain_query_parameters_or",
+                service_name=service_name,
+            )
         )
     if parsed.scheme == "http" and not _is_loopback_host(host):
         raise EndpointValidationError(
-            f"Zdalny adres {service_name} musi używać HTTPS, ponieważ otrzymuje "
-            "treść dokumentów i może otrzymywać klucz API."
+            tr("core.network.the_remote_address_must_use_https_because", service_name=service_name)
         )
 
     hostname = f"[{host}]" if ":" in host and not host.startswith("[") else host
@@ -69,9 +80,7 @@ def processing_is_local(provider: str, api_url: str, model: str = "") -> bool:
     """Przetwarzanie na tym komputerze rozpoznajemy po rzeczywistym adresie API."""
     if provider == "ollama" and model.lower().endswith("cloud"):
         return False
-    return provider in {"ollama", "openai", "anthropic", "vjev"} and (
-        is_loopback_endpoint(api_url)
-    )
+    return provider in {"ollama", "openai", "anthropic", "vjev"} and (is_loopback_endpoint(api_url))
 
 
 def _is_loopback_host(host: str) -> bool:

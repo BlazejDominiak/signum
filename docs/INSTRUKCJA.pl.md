@@ -6,7 +6,28 @@ modele lokalne lub obsługiwane API, edytować kategorie i instrukcje, porównyw
 wyniki modeli oraz ręcznie poprawiać etykiety przed porządkowaniem plików.
 
 [Opis projektu](../README.md) · [Historia zmian](../CHANGELOG.md) ·
-[Instalator Windows](../installer/output/Signum-Setup-1.1.9.exe)
+[Instalator Windows](../installer/output/Signum-Setup-1.2.0.exe)
+
+## Język interfejsu
+
+Signum obsługuje **polski i angielski**. W zakładce **Sprawdzanie podpisów** otwórz
+**Ustawienia AI… → Język / Language (restart)**, wybierz **Polski** albo **English**,
+zapisz i uruchom program ponownie. Ustawienie dotyczy obu modułów, okien dialogowych,
+komunikatów programu i etykiet raportów. CLI korzysta z zapisanego języka aplikacji.
+Przy pierwszej instalacji język wybierany jest w instalatorze; aktualizacja zachowuje
+dotychczasową preferencję.
+
+Zmiana języka nie przepisuje zapisanych kategorii, własnych promptów ani wyników.
+Angielskie kategorie przykładowe pojawiają się przy pustej konfiguracji lub po
+wybraniu **Przykładowe** w angielskim interfejsie (**Examples**). Domyślny prompt
+generatywnej analizy obrazów podąża za językiem aplikacji, gdy nie zapisano własnego.
+Treści dokumentów, odpowiedzi modeli i logi zewnętrznych procesów zachowują swój język.
+
+Angielski zestaw kategorii zmienia zadanie względem zmierzonej polskiej kalibracji.
+Bez dokładnie pasującego profilu wyniki kategoryzacji domyślnie wymagają HITL.
+Możesz świadomie włączyć **Własne progi** dla modelu; są to ustawienia użytkownika,
+a nie zmierzona kalibracja przetłumaczonego zadania. Dalsze kroki instrukcji używają
+polskich nazw przycisków.
 
 ## Dwa sposoby pracy
 
@@ -491,7 +512,7 @@ potwierdzenia. W trybie cichym podaj `/OLLAMAMODELDIR`, jeśli ścieżka nie by�
 Przykład instalacji bez okien (PowerShell):
 
 ```powershell
-.\Signum-Setup-1.1.9.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ACKNOWLEDGERISKS=1 /COMPONENTS=app,gemma_small /AIDIR="H:\Tools\SignumAI"
+.\Signum-Setup-1.2.0.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /ACKNOWLEDGERISKS=1 /COMPONENTS=app,gemma_small /AIDIR="H:\Tools\SignumAI"
 ```
 
 Parametr `/OLLAMAMODELDIR="pełna ścieżka"` wskazuje magazyn istniejącej usługi.

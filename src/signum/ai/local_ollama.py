@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 import requests
 
 from signum.ai.base import AIConnectionError
+from signum.i18n import tr
 
 _LOCK = threading.Lock()
 _PROCESSES: dict[str, subprocess.Popen[bytes]] = {}
@@ -31,7 +32,7 @@ def managed_model_directory(base_url: str) -> Path | None:
 def start_local_ollama(base_url: str, runtime_dir: str) -> None:
     url = urlsplit(base_url)
     if url.scheme != "http" or url.hostname not in {"localhost", "127.0.0.1"}:
-        raise AIConnectionError("Automatyczny start Ollamy wymaga lokalnego adresu HTTP.")
+        raise AIConnectionError(tr("ai.ollama_local_only"))
     root = Path(runtime_dir)
     executable = root / "ollama.exe"
     external = False
@@ -41,9 +42,9 @@ def start_local_ollama(base_url: str, runtime_dir: str) -> None:
             executable = Path(manifest["external_executable"])
             external = True
         except (OSError, ValueError, KeyError, TypeError) as exc:
-            raise AIConnectionError("Niepoprawna konfiguracja wykrytej Ollamy.") from exc
+            raise AIConnectionError(tr("ai.ollama_invalid_config")) from exc
     if not root.is_absolute() or not executable.is_absolute() or not executable.is_file():
-        raise AIConnectionError("Nie znaleziono przygotowanej Ollamy. Uruchom konfigurator AI.")
+        raise AIConnectionError(tr("ai.ollama_not_prepared"))
     origin = f"http://127.0.0.1:{url.port or 11434}"
     session = requests.Session()
     session.trust_env = False
@@ -52,27 +53,38 @@ def start_local_ollama(base_url: str, runtime_dir: str) -> None:
             response = session.get(f"{origin}/api/version", timeout=2)
             if response.status_code == 200:
                 return
-            raise AIConnectionError("Port Ollamy jest zajęty przez inną usługę.")
+            raise AIConnectionError(tr("ai.ollama_port_busy"))
         except requests.ConnectionError:
             pass
         process = _PROCESSES.get(origin)
         if process is None or process.poll() is not None:
             env = os.environ.copy()
-            for key in ("PYTHONHOME", "PYTHONPATH", "_PYI_APPLICATION_HOME_DIR",
-                        "_PYI_PARENT_PROCESS_LEVEL"):
+            for key in (
+                "PYTHONHOME",
+                "PYTHONPATH",
+                "_PYI_APPLICATION_HOME_DIR",
+                "_PYI_PARENT_PROCESS_LEVEL",
+            ):
                 env.pop(key, None)
-            env.update({
-                "OLLAMA_HOST": origin.removeprefix("http://"),
-                "OLLAMA_NO_CLOUD": "1",
-                "TEMP": str(root.parent / "temp"), "TMP": str(root.parent / "temp"),
-            })
+            env.update(
+                {
+                    "OLLAMA_HOST": origin.removeprefix("http://"),
+                    "OLLAMA_NO_CLOUD": "1",
+                    "TEMP": str(root.parent / "temp"),
+                    "TMP": str(root.parent / "temp"),
+                }
+            )
             if not external:
                 env["OLLAMA_MODELS"] = str(root.parent / "models" / "ollama")
             (root.parent / "temp").mkdir(parents=True, exist_ok=True)
             with (root / "server.log").open("ab") as log:
                 process = subprocess.Popen(
-                    [str(executable), "serve"], cwd=root, env=env,
-                    stdin=subprocess.DEVNULL, stdout=log, stderr=log,
+                    [str(executable), "serve"],
+                    cwd=root,
+                    env=env,
+                    stdin=subprocess.DEVNULL,
+                    stdout=log,
+                    stderr=log,
                     creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
                 )
             _PROCESSES[origin] = process
@@ -87,6 +99,6 @@ def start_local_ollama(base_url: str, runtime_dir: str) -> None:
             except requests.RequestException:
                 pass
             if process.poll() is not None:
-                raise AIConnectionError(f"Ollama nie wystartowała. Log: {root / 'server.log'}")
+                raise AIConnectionError(tr("ai.ollama_start_failed", path=root / "server.log"))
             time.sleep(0.25)
-    raise AIConnectionError("Przekroczono czas startu lokalnej Ollamy.")
+    raise AIConnectionError(tr("ai.ollama_start_timeout"))

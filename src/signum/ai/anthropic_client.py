@@ -8,6 +8,7 @@ import time
 import requests
 
 from signum.ai.base import AIConnectionError, AIResponseError, VisionModel
+from signum.i18n import tr
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
 API_URL = "https://api.anthropic.com/v1"
@@ -19,7 +20,10 @@ class AnthropicVisionModel(VisionModel):
     """Model Claude przez Messages API (obrazy jako bloki base64)."""
 
     def __init__(
-        self, api_key: str, model: str = DEFAULT_MODEL, timeout_s: int = 300,
+        self,
+        api_key: str,
+        model: str = DEFAULT_MODEL,
+        timeout_s: int = 300,
         base_url: str = API_URL,
     ) -> None:
         self._base_url = normalize_ai_endpoint(base_url, API_URL, "API Claude")
@@ -75,21 +79,21 @@ class AnthropicVisionModel(VisionModel):
                 allow_redirects=False,
             )
         except requests.exceptions.RequestException as exc:
-            raise AIConnectionError(f"Brak połączenia z Claude API: {exc}") from exc
+            raise AIConnectionError(tr("ai.claude_connection_failed", error=exc)) from exc
         finally:
             self.request_seconds += time.perf_counter() - started
         if response.status_code != 200:
-            raise AIResponseError(f"Claude API zwróciło HTTP {response.status_code}")
+            raise AIResponseError(tr("ai.claude_http", status=response.status_code))
         try:
             blocks = response.json()["content"]
             texts = [block["text"] for block in blocks if block.get("type") == "text"]
             return "\n".join(texts)
         except (ValueError, KeyError, TypeError) as exc:
-            raise AIResponseError(f"Niepoprawna odpowiedź Claude API: {exc}") from exc
+            raise AIResponseError(tr("ai.claude_invalid_response", error=exc)) from exc
 
     def check_connection(self) -> str:
         if not self._api_key and not is_loopback_endpoint(self._base_url):
-            raise AIResponseError("Nie podano klucza API")
+            raise AIResponseError(tr("ai.missing_api_key"))
         try:
             response = self._session.get(
                 f"{self._base_url}/models?limit=1",
@@ -98,9 +102,9 @@ class AnthropicVisionModel(VisionModel):
                 allow_redirects=False,
             )
         except requests.exceptions.RequestException as exc:
-            raise AIConnectionError(f"Brak połączenia z Claude API: {exc}") from exc
+            raise AIConnectionError(tr("ai.claude_connection_failed", error=exc)) from exc
         if response.status_code == 401:
-            raise AIResponseError("Klucz API odrzucony (HTTP 401)")
+            raise AIResponseError(tr("ai.api_key_rejected"))
         if response.status_code != 200:
-            raise AIResponseError(f"Claude API zwróciło HTTP {response.status_code}")
-        return f"Połączono z Claude API — model {self._model}"
+            raise AIResponseError(tr("ai.claude_http", status=response.status_code))
+        return tr("ai.claude_connected", model=self._model)

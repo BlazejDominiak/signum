@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
+from signum.i18n import tr
+
 
 class SignatureKind(StrEnum):
     """Rodzaj wykrytego podpisu."""
@@ -17,15 +19,8 @@ class SignatureKind(StrEnum):
 
     @property
     def label_pl(self) -> str:
-        return _KIND_LABELS[self]
-
-
-_KIND_LABELS = {
-    SignatureKind.HANDWRITTEN: "podpis odręczny",
-    SignatureKind.INITIALS: "parafka",
-    SignatureKind.STAMP: "pieczątka",
-    SignatureKind.DIGITAL: "podpis cyfrowy",
-}
+        """Localized display label (legacy property name kept for compatibility)."""
+        return tr(f"core.kind.{self.value}")
 
 
 class DocumentStatus(StrEnum):
@@ -82,8 +77,9 @@ class DocumentResult:
     @property
     def review_summary(self) -> str:
         return "\n".join(
-            f"Strona {page}: {reason}"
-            for page, reasons in self.page_review_reasons.items() for reason in reasons
+            tr("core.models.page", page=page, reason=reason)
+            for page, reasons in self.page_review_reasons.items()
+            for reason in reasons
         )
 
     @property
@@ -94,7 +90,8 @@ class DocumentResult:
     def analysis_complete(self) -> bool:
         return (
             self.status == DocumentStatus.OK
-            and self.page_count > 0 and self.pages_analyzed >= self.page_count
+            and self.page_count > 0
+            and self.pages_analyzed >= self.page_count
         )
 
     @property
@@ -114,17 +111,19 @@ class DocumentResult:
     def _signature_label(self) -> str:
         if self.status != DocumentStatus.OK:
             return {
-                DocumentStatus.ERROR: "BŁĄD", DocumentStatus.CANCELLED: "ANULOWANO",
-                DocumentStatus.PENDING: "OCZEKUJE",
+                DocumentStatus.ERROR: tr("core.models.error"),
+                DocumentStatus.CANCELLED: tr("core.models.cancelled"),
+                DocumentStatus.PENDING: tr("core.models.pending"),
             }[self.status]
         if self.is_signed:
             return (
-                "WIDOCZNY PODPIS" if self.page_signature_probabilities
-                else f"PODPISANY ({len(self.findings)})"
+                tr("core.models.visible_signature")
+                if self.page_signature_probabilities
+                else tr("core.models.signed", value0=len(self.findings))
             )
         if not self.analysis_complete:
-            return "BRAK W BADANEJ CZĘŚCI"
-        return "TYLKO PIECZĄTKA" if self.findings else "BRAK PODPISU"
+            return tr("core.models.none_in_analyzed_pages")
+        return tr("core.models.stamp_only") if self.findings else tr("core.models.no_signature")
 
     @property
     def kinds_summary(self) -> str:

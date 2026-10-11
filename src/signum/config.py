@@ -22,6 +22,7 @@ import keyring.errors
 import platformdirs
 
 from signum import APP_NAME
+from signum.i18n import tr
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,7 @@ def default_cache_directory() -> str:
 class AppConfig:
     """Wszystkie trwałe ustawienia aplikacji (bez sekretów)."""
 
+    language: str = "pl"
     provider: str = "ollama"
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "gemma4:12b"
@@ -147,10 +149,16 @@ class AppConfig:
             if type(value) is type(default):
                 kwargs[field.name] = value
         config = cls(**kwargs)
+        if config.language not in {"pl", "en"}:
+            config.language = defaults.language
         for name in (f.name for f in fields(cls) if isinstance(getattr(defaults, f.name), float)):
             value = raw.get(name, getattr(defaults, name))
-            if (isinstance(value, bool) or not isinstance(value, (int, float))
-                    or not math.isfinite(value) or not 0 <= value <= 1):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or not 0 <= value <= 1
+            ):
                 value = getattr(defaults, name)
             setattr(config, name, float(value))
         if config.vjev_model == "yah01/vjev-vision":
@@ -182,7 +190,8 @@ class AppConfig:
             "classification_jev_runtime",
             "classification_jev_packages",
             "classification_cache_dir",
-            "ai_directory", "ollama_models_directory",
+            "ai_directory",
+            "ollama_models_directory",
         ):
             value = getattr(config, name)
             if (value and not Path(value).anchor) or (
@@ -205,28 +214,37 @@ def signature_settings(config: AppConfig) -> str:
     """Snapshot of the effective settings used by one signature run."""
     additional = getattr(config, config.provider + "_additional_analysis", True)
     threshold_name = (
-        "ollama_full_threshold" if config.provider == "ollama" and additional
+        "ollama_full_threshold"
+        if config.provider == "ollama" and additional
         else config.provider + "_threshold"
     )
     values = [
-        ("próg decyzji", getattr(config, threshold_name)),
+        (tr("core.config.decision_threshold"), getattr(config, threshold_name)),
         ("HITL ±", getattr(config, config.provider + "_hitl_margin")),
     ]
     if config.provider == "vjev" or (config.provider == "ollama" and not additional):
-        values.append(("próg pieczątki", getattr(config, config.provider + "_stamp_threshold")))
+        values.append(
+            (
+                tr("core.config.stamp_threshold"),
+                getattr(config, config.provider + "_stamp_threshold"),
+            )
+        )
     if config.provider == "vjev" and additional:
-        values.extend((label, getattr(config, name)) for label, name in (
-            ("próg kategorii", "vjev_category_threshold"),
-            ("próg obszaru", "vjev_candidate_threshold"),
-            ("próg weryfikacji", "vjev_verify_threshold"),
-            ("próg pojedynczego podpisu", "vjev_single_threshold"),
-        ))
-    return (
-        f"Limit stron: {config.max_pages_per_doc}; "
-        f"rozmiar obrazu: {1120 if config.provider == 'vjev' else config.model_image_max_side}; "
-        f"dodatkowa analiza: {'tak' if additional else 'nie'}; "
-        + "; ".join(f"{label}: {value:.3f}" for label, value in values)
-    )
+        values.extend(
+            (label, getattr(config, name))
+            for label, name in (
+                (tr("core.config.category_threshold"), "vjev_category_threshold"),
+                (tr("core.config.region_threshold"), "vjev_candidate_threshold"),
+                (tr("core.config.verification_threshold"), "vjev_verify_threshold"),
+                (tr("core.config.single_signature_threshold"), "vjev_single_threshold"),
+            )
+        )
+    return tr(
+        "core.config.page_limit_image_size_additional_analysis",
+        value0=config.max_pages_per_doc,
+        value1=1120 if config.provider == "vjev" else config.model_image_max_side,
+        value2=tr("core.yes") if additional else tr("core.no"),
+    ) + "; ".join(f"{label}: {value:.3f}" for label, value in values)
 
 
 def get_api_key(provider: str) -> str | None:

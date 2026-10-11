@@ -1,0 +1,610 @@
+{
+  "settings.provider_ollama": {
+    "pl": "Ollama (lokalna lub zdalna)",
+    "en": "Ollama (local or remote)"
+  },
+  "settings.provider_api": {
+    "pl": "AI od dostawcy",
+    "en": "AI provider"
+  },
+  "settings.provider_jev": {
+    "pl": "vjev-vision (on-prem / API)",
+    "en": "vjev-vision (on-prem / API)"
+  },
+  "settings.ollama_install_help": {
+    "pl": "Otwórz Składniki AI, zaznacz Ollamę i wybrany model, następnie użyj Instaluj / napraw.",
+    "en": "Open AI components, select Ollama and a model, then choose Install / repair."
+  },
+  "settings.title": {
+    "pl": "Ustawienia AI",
+    "en": "AI settings"
+  },
+  "settings.components_button": {
+    "pl": "Składniki AI — instaluj / napraw…",
+    "en": "AI components — install / repair…"
+  },
+  "settings.connection": {
+    "pl": "Połączenie:",
+    "en": "Connection:"
+  },
+  "settings.chat_api": {
+    "pl": "Chat Completions (OpenAI-compatible)",
+    "en": "Chat Completions (OpenAI-compatible)"
+  },
+  "settings.messages_api": {
+    "pl": "Messages (Anthropic)",
+    "en": "Messages (Anthropic)"
+  },
+  "settings.api_format": {
+    "pl": "Format API:",
+    "en": "API format:"
+  },
+  "settings.test_connection": {
+    "pl": "Testuj połączenie",
+    "en": "Test connection"
+  },
+  "settings.save": {
+    "pl": "Zapisz",
+    "en": "Save"
+  },
+  "settings.cancel": {
+    "pl": "Anuluj",
+    "en": "Cancel"
+  },
+  "settings.api_address": {
+    "pl": "Adres API:",
+    "en": "API URL:"
+  },
+  "settings.refresh_models": {
+    "pl": "Odśwież listę",
+    "en": "Refresh list"
+  },
+  "settings.model": {
+    "pl": "Model:",
+    "en": "Model:"
+  },
+  "settings.additional_analysis": {
+    "pl": "Dodatkowa analiza",
+    "en": "Additional analysis"
+  },
+  "settings.additional_analysis_hint": {
+    "pl": "Opis dokumentu i wycinki oznaczeń. Po wyłączeniu: tylko obecność podpisu i pieczątki.",
+    "en": "Document description and mark crops. When off: signature and stamp presence only."
+  },
+  "settings.basic_thresholds": {
+    "pl": "Progi — podstawowa (0–1)",
+    "en": "Basic thresholds (0–1)"
+  },
+  "settings.extra_thresholds": {
+    "pl": "Progi — dodatkowa (0–1)",
+    "en": "Additional thresholds (0–1)"
+  },
+  "settings.thresholds": {
+    "pl": "Progi (0–1)",
+    "en": "Thresholds (0–1)"
+  },
+  "settings.signature_threshold": {
+    "pl": "Próg podpisu:",
+    "en": "Signature threshold:"
+  },
+  "settings.stamp_threshold": {
+    "pl": "Próg pieczątki:",
+    "en": "Stamp threshold:"
+  },
+  "settings.finding_threshold": {
+    "pl": "Próg znaleziska:",
+    "en": "Finding threshold:"
+  },
+  "settings.category_threshold": {
+    "pl": "Próg kategorii:",
+    "en": "Category threshold:"
+  },
+  "settings.region_threshold": {
+    "pl": "Próg obszaru:",
+    "en": "Region threshold:"
+  },
+  "settings.verification_threshold": {
+    "pl": "Próg weryfikacji:",
+    "en": "Verification threshold:"
+  },
+  "settings.single_threshold": {
+    "pl": "Próg pojedynczego podpisu:",
+    "en": "Single signature threshold:"
+  },
+  "settings.hitl": {
+    "pl": "HITL",
+    "en": "HITL"
+  },
+  "settings.hitl_margin": {
+    "pl": "Margines HITL (±):",
+    "en": "HITL margin (±):"
+  },
+  "settings.optional_key": {
+    "pl": "Klucz API (opcjonalny):",
+    "en": "API key (optional):"
+  },
+  "settings.api_key": {
+    "pl": "Klucz API:",
+    "en": "API key:"
+  },
+  "settings.vision_required": {
+    "pl": "Model musi obsługiwać obrazy (np. gemma4:12b, llava, qwen-vl).",
+    "en": "The model must support images (e.g. gemma4:12b, llava, qwen-vl)."
+  },
+  "settings.service_status": {
+    "pl": "Stan usługi:",
+    "en": "Service status:"
+  },
+  "settings.tokens": {
+    "pl": " tokenów",
+    "en": " tokens"
+  },
+  "settings.context_window": {
+    "pl": "Okno kontekstu (num_ctx):",
+    "en": "Context window (num_ctx):"
+  },
+  "settings.jev_directory": {
+    "pl": "Katalog lokalnego Jev:",
+    "en": "Local Jev directory:"
+  },
+  "settings.jev_extra_hint": {
+    "pl": "Eksperymentalny wybór kategorii dokumentu i przybliżone wycinki oznaczeń. Wydłuża analizę; podstawowa ocena obecności podpisu pozostaje bez zmian.",
+    "en": "Experimental document categorization and approximate mark crops. Slower analysis; the basic signature presence decision is unchanged."
+  },
+  "settings.stop_jev": {
+    "pl": "Zatrzymaj lokalny Jev / zwolnij GPU",
+    "en": "Stop local Jev / release GPU"
+  },
+  "settings.default_thresholds": {
+    "pl": "Domyślne progi",
+    "en": "Default thresholds"
+  },
+  "settings.processing": {
+    "pl": "Przetwarzanie",
+    "en": "Processing"
+  },
+  "settings.pages": {
+    "pl": " stron",
+    "en": " pages"
+  },
+  "settings.page_limit": {
+    "pl": "Limit stron na dokument:",
+    "en": "Page limit per document:"
+  },
+  "settings.image_size": {
+    "pl": "Rozmiar obrazu dla modelu:",
+    "en": "Model image size:"
+  },
+  "settings.response_timeout": {
+    "pl": "Limit czasu odpowiedzi:",
+    "en": "Response timeout:"
+  },
+  "settings.recursive": {
+    "pl": "Przeszukuj podfoldery przy dodawaniu folderu",
+    "en": "Include subfolders when adding a folder"
+  },
+  "settings.advanced_prompt": {
+    "pl": "Prompt programu — zaawansowane",
+    "en": "Application prompt — advanced"
+  },
+  "settings.restore_default": {
+    "pl": "Przywróć domyślny",
+    "en": "Restore default"
+  },
+  "settings.show": {
+    "pl": "Pokaż",
+    "en": "Show"
+  },
+  "settings.hide": {
+    "pl": "Ukryj",
+    "en": "Hide"
+  },
+  "settings.clear": {
+    "pl": "Wyczyść",
+    "en": "Clear"
+  },
+  "settings.ollama_name": {
+    "pl": "Ollamy",
+    "en": "Ollama"
+  },
+  "settings.jev_fixed_size": {
+    "pl": "Jev używa stałych widoków 1120 px zgodnie ze sprawdzoną regułą.",
+    "en": "Jev uses fixed 1120 px views under the validated policy."
+  },
+  "settings.page_instructions": {
+    "pl": "Instrukcje analizy strony.",
+    "en": "Page analysis instructions."
+  },
+  "settings.basic_prompt_hint": {
+    "pl": "Analiza podstawowa używa stałych pytań o podpis i pieczątkę. Zapisany tutaj prompt będzie używany po włączeniu dodatkowej analizy.",
+    "en": "Basic analysis uses fixed signature and stamp questions. This prompt is used when additional analysis is enabled."
+  },
+  "settings.checking_ollama": {
+    "pl": "Sprawdzanie Ollamy i listy modeli…",
+    "en": "Checking Ollama and available models…"
+  },
+  "settings.ollama_empty": {
+    "pl": "Ollama działa, ale nie ma pobranego żadnego modelu.",
+    "en": "Ollama is running, but no models have been downloaded."
+  },
+  "settings.download_model_hint": {
+    "pl": "Otwórz Składniki AI i wybierz model do pobrania, następnie odśwież listę.",
+    "en": "Open AI components and select a model to download, then refresh the list."
+  },
+  "settings.stopping_jev": {
+    "pl": "Zatrzymywanie lokalnego Jev…",
+    "en": "Stopping local Jev…"
+  },
+  "settings.loading_local": {
+    "pl": "Łączenie / ładowanie lokalnego modelu…",
+    "en": "Connecting / loading the local model…"
+  },
+  "settings.connecting": {
+    "pl": "Łączenie…",
+    "en": "Connecting…"
+  },
+  "settings.invalid_settings": {
+    "pl": "Niepoprawne ustawienia AI",
+    "en": "Invalid AI settings"
+  },
+  "settings.credential_store": {
+    "pl": "Magazyn poświadczeń",
+    "en": "Credential store"
+  },
+  "settings.credential_error": {
+    "pl": "Nie udało się zapisać klucza API w magazynie poświadczeń systemu.\nNie zapisano wszystkich kluczy. Sprawdź dostęp do magazynu i spróbuj ponownie.",
+    "en": "Could not save an API key in the system credential store.\nSome keys were not saved. Check access to the store and try again."
+  },
+  "settings.connection_in_progress": {
+    "pl": "Trwa sprawdzanie połączenia",
+    "en": "Connection test in progress"
+  },
+  "settings.wait_connection": {
+    "pl": "Zaczekaj na zakończenie bieżącego testu usługi AI, a następnie zamknij okno.",
+    "en": "Wait for the current AI service test to finish before closing this window."
+  },
+  "settings.online_title": {
+    "pl": "Uwaga: model online",
+    "en": "Notice: online model"
+  },
+  "settings.online_warning": {
+    "pl": "<b>Dane opuszczą ten komputer.</b><br><br>Wybrana konfiguracja nie jest lokalna — każda analizowana strona dokumentu będzie wysyłana przez sieć do zewnętrznej usługi AI (dostawcy chmurowego albo zdalnej Ollamy). Jeżeli dokumenty zawierają dane osobowe lub poufne, upewnij się, że masz do tego podstawę (np. zgodę administratora danych).",
+    "en": "<b>Data will leave this computer.</b><br><br>This configuration is not local. Every analyzed document page will be sent over the network to an external AI service (a cloud provider or remote Ollama). If documents contain personal or confidential data, make sure you are authorized to do so (e.g. by the data controller)."
+  },
+  "settings.accept_risk": {
+    "pl": "Rozumiem zagrożenie",
+    "en": "I understand the risk"
+  },
+  "settings.online_notice": {
+    "pl": "⚠ Model online — analizowane dokumenty będą wysyłane przez internet do zewnętrznego dostawcy.",
+    "en": "⚠ Online model — analyzed documents will be sent over the internet to an external provider."
+  },
+  "settings.components_title": {
+    "pl": "Składniki AI — instalacja i naprawa",
+    "en": "AI components — installation and repair"
+  },
+  "settings.components_intro": {
+    "pl": "Wybierz lokalne składniki do instalacji lub sprawdzenia.",
+    "en": "Select local components to install or check."
+  },
+  "settings.custom_model": {
+    "pl": "Inny model z biblioteki Ollamy, np. nazwa:tag",
+    "en": "Another model from the Ollama library, e.g. name:tag"
+  },
+  "settings.browse_models": {
+    "pl": "<a href=\"https://ollama.com/library\">Przeglądaj modele Ollamy</a>",
+    "en": "<a href=\"https://ollama.com/library\">Browse Ollama models</a>"
+  },
+  "settings.storage_folder": {
+    "pl": "Folder modeli, bibliotek i plików tymczasowych:",
+    "en": "Models, libraries and temporary files folder:"
+  },
+  "settings.choose_folder": {
+    "pl": "Wybierz folder…",
+    "en": "Choose folder…"
+  },
+  "settings.storage_hint": {
+    "pl": "Przeznacz 20 GB na Ollamę z modelem i po 35 GB na Jev / JevK5. Działająca Ollama zachowuje swój folder modeli.",
+    "en": "Allow 20 GB for Ollama with a model and 35 GB each for Jev / JevK5. A running Ollama keeps its existing model folder."
+  },
+  "settings.existing_ollama_folder": {
+    "pl": "Niestandardowy folder modeli istniejącej Ollamy",
+    "en": "Custom model folder for an existing Ollama installation"
+  },
+  "settings.installation_details": {
+    "pl": "Szczegóły instalacji",
+    "en": "Installation details"
+  },
+  "settings.check": {
+    "pl": "Sprawdź",
+    "en": "Check"
+  },
+  "settings.install_repair": {
+    "pl": "Instaluj / napraw",
+    "en": "Install / repair"
+  },
+  "settings.close": {
+    "pl": "Zamknij",
+    "en": "Close"
+  },
+  "settings.components_folder": {
+    "pl": "Folder składników AI",
+    "en": "AI components folder"
+  },
+  "settings.program_found": {
+    "pl": "Wykryto program — wymaga testu",
+    "en": "Program found — test required"
+  },
+  "settings.program_missing": {
+    "pl": "Nie wykryto programu; test sprawdzi działającą usługę",
+    "en": "Program not found; the test will check for a running service"
+  },
+  "settings.model_check": {
+    "pl": "Sprawdź dostępność i działanie modelu",
+    "en": "Check model availability and operation"
+  },
+  "settings.files_found": {
+    "pl": "Wykryto pliki — wymaga testu bibliotek i modelu",
+    "en": "Files found — library and model tests required"
+  },
+  "settings.installation_missing": {
+    "pl": "Niekompletna lub niewykryta instalacja — wybierz Instaluj / napraw",
+    "en": "Incomplete or missing installation — choose Install / repair"
+  },
+  "settings.select_components": {
+    "pl": "Zaznacz składniki do sprawdzenia lub instalacji.",
+    "en": "Select components to check or install."
+  },
+  "settings.cloud_model_hint": {
+    "pl": "Model chmurowy skonfiguruj w Ustawieniach AI; nie wymaga pobierania.",
+    "en": "Configure cloud models in AI settings; no download is needed."
+  },
+  "settings.components": {
+    "pl": "Składniki AI",
+    "en": "AI components"
+  },
+  "settings.test_ok": {
+    "pl": "Test działania: OK",
+    "en": "Operation test: OK"
+  },
+  "settings.not_ready": {
+    "pl": "Niegotowy — szczegóły w logu",
+    "en": "Not ready — see log for details"
+  },
+  "settings.tests_passed": {
+    "pl": "Testy zakończone poprawnie.",
+    "en": "Tests passed."
+  },
+  "settings.tests_incomplete": {
+    "pl": "Nie wszystkie składniki przeszły test. Szczegóły: ",
+    "en": "Some components failed the test. Details: "
+  },
+  "settings.unknown_component": {
+    "pl": "Nieznany składnik instalacji AI",
+    "en": "Unknown AI installation component"
+  },
+  "settings.absolute_ai_folder": {
+    "pl": "Katalog AI musi mieć pełną ścieżkę",
+    "en": "The AI directory must use an absolute path"
+  },
+  "settings.archive_escape": {
+    "pl": "Archiwum zawiera ścieżkę spoza katalogu instalacji",
+    "en": "The archive contains a path outside the installation directory"
+  },
+  "settings.setup_cancelled": {
+    "pl": "Przygotowanie AI anulowane. Pobrane pliki pozostają na dysku.",
+    "en": "AI setup cancelled. Downloaded files remain on disk."
+  },
+  "settings.stale_partial": {
+    "pl": "Nieaktualna część pliku — ponów pobieranie",
+    "en": "Outdated partial file — retry the download"
+  },
+  "settings.invalid_range": {
+    "pl": "Serwer zwrócił niepoprawny zakres pobierania",
+    "en": "The server returned an invalid download range"
+  },
+  "settings.incomplete_range": {
+    "pl": "Niepełny zakres odpowiedzi serwera",
+    "en": "Incomplete response range from the server"
+  },
+  "settings.source_changed": {
+    "pl": "Źródło pliku zmieniło się; ponów pobieranie od początku",
+    "en": "The file source has changed; restart the download"
+  },
+  "settings.setup_timeout": {
+    "pl": "Przekroczono czas przygotowania składnika",
+    "en": "Component setup timed out"
+  },
+  "settings.local_endpoint_required": {
+    "pl": "Przygotowanie Ollamy wymaga lokalnego adresu API",
+    "en": "Ollama setup requires a local API URL"
+  },
+  "settings.existing_ollama": {
+    "pl": "Korzystam z już działającej Ollamy i jej katalogu modeli.",
+    "en": "Using the running Ollama service and its model folder."
+  },
+  "settings.ollama_folder_unknown": {
+    "pl": "Ollama nie udostępnia ścieżki swojego magazynu. Wskaż folder modeli w Składniki AI → Szczegóły instalacji lub przez --ollama-model-directory.",
+    "en": "Ollama does not expose its storage path. Set its model folder in AI components → Installation details or with --ollama-model-directory."
+  },
+  "settings.absolute_ollama_folder": {
+    "pl": "Folder modeli Ollamy musi mieć pełną ścieżkę",
+    "en": "The Ollama model folder must use an absolute path"
+  },
+  "settings.download_ollama": {
+    "pl": "Pobieram Ollamę z oficjalnego wydania GitHub.",
+    "en": "Downloading Ollama from the official GitHub release."
+  },
+  "settings.ollama_hash_missing": {
+    "pl": "Wydanie Ollamy nie udostępnia sumy SHA-256",
+    "en": "The Ollama release does not provide a SHA-256 checksum"
+  },
+  "settings.unpack_ollama": {
+    "pl": "Rozpakowuję Ollamę i biblioteki obsługi GPU.",
+    "en": "Unpacking Ollama and GPU libraries."
+  },
+  "settings.invalid_model_path": {
+    "pl": "Niepoprawna ścieżka pliku modelu",
+    "en": "Invalid model file path"
+  },
+  "settings.test_jev": {
+    "pl": "Ładuję Jev i sprawdzam analizę obrazu.",
+    "en": "Loading Jev and testing image analysis."
+  },
+  "settings.jev_blank_failed": {
+    "pl": "Jev nie przeszedł sprawdzenia na pustym obrazie",
+    "en": "Jev failed the blank image test"
+  },
+  "settings.test_jevk5": {
+    "pl": "Ładuję JevK5 i sprawdzam odpowiedź modelu.",
+    "en": "Loading JevK5 and testing its response."
+  },
+  "settings.selected_tests_passed": {
+    "pl": "Wybrane składniki przeszły test działania.",
+    "en": "Selected components passed the operation test."
+  },
+  "settings.selected_ready": {
+    "pl": "Wybrane składniki działają.",
+    "en": "Selected components are ready."
+  },
+  "settings.stopping_setup": {
+    "pl": "Zatrzymuję przygotowanie. Poczekaj na zakończenie bieżącego kroku.",
+    "en": "Stopping setup. Wait for the current step to finish."
+  },
+  "settings.setup_title": {
+    "pl": "Signum — przygotowanie lokalnego AI",
+    "en": "Signum — local AI setup"
+  },
+  "settings.setup_heading": {
+    "pl": "Przygotowanie AI",
+    "en": "AI setup"
+  },
+  "settings.preparing": {
+    "pl": "Rozpoczynam przygotowanie…",
+    "en": "Preparing…"
+  },
+  "settings.details": {
+    "pl": "Szczegóły",
+    "en": "Details"
+  },
+  "settings.open_log": {
+    "pl": "Otwórz szczegółowy log",
+    "en": "Open log"
+  },
+  "settings.cancel_setup": {
+    "pl": "Anuluj przygotowanie",
+    "en": "Cancel setup"
+  },
+  "settings.retry": {
+    "pl": "Spróbuj ponownie",
+    "en": "Retry failed components"
+  },
+  "settings.setup_incomplete": {
+    "pl": "Nie udało się zakończyć. Zobacz szczegóły.",
+    "en": "Setup incomplete. See details."
+  },
+  "settings.retrying": {
+    "pl": "Ponawiam przygotowanie…",
+    "en": "Retrying…"
+  },
+  "settings.prompt_limit": {
+    "pl": "Prompt programu może mieć najwyżej {limit} znaków.",
+    "en": "The application prompt can contain at most {limit} characters."
+  },
+  "settings.models_found": {
+    "pl": "Ollama działa — znaleziono {count} modeli.",
+    "en": "Ollama is running — models found: {count}."
+  },
+  "settings.accept_risk_countdown": {
+    "pl": "Rozumiem zagrożenie ({seconds})",
+    "en": "I understand the risk ({seconds})"
+  },
+  "settings.space_required": {
+    "pl": "Na tym dysku potrzeba co najmniej {space} GB wolnego miejsca",
+    "en": "This drive needs at least {space} GB of free space"
+  },
+  "settings.incomplete_download": {
+    "pl": "Niepełne pobranie pliku {name}; ponów pobieranie",
+    "en": "Incomplete download of {name}; retry the download"
+  },
+  "settings.invalid_checksum": {
+    "pl": "Niepoprawna suma kontrolna pliku {name}",
+    "en": "Invalid checksum for {name}"
+  },
+  "settings.missing_model": {
+    "pl": "Brak modelu {model}. Użyj Instaluj / napraw.",
+    "en": "Model {model} is missing. Choose Install / repair."
+  },
+  "settings.downloading_model": {
+    "pl": "Pobieram {model}. Pobieranie może potrwać kilkanaście minut.",
+    "en": "Downloading {model}. This may take several minutes."
+  },
+  "settings.checking_model": {
+    "pl": "Sprawdzam model {model}.",
+    "en": "Checking model {model}."
+  },
+  "settings.blank_image_failed": {
+    "pl": "{model} wskazał podpis na pustym obrazie testowym",
+    "en": "{model} detected a signature in a blank test image"
+  },
+  "settings.fetch_model_files": {
+    "pl": "Sprawdzam i pobieram pliki modelu {repo}.",
+    "en": "Checking and downloading model files for {repo}."
+  },
+  "settings.weights_hash_missing": {
+    "pl": "Brak sumy SHA-256 dla wag {name}; pobieranie wstrzymane.",
+    "en": "No SHA-256 checksum for weights {name}; download stopped."
+  },
+  "settings.jev_needs_setup": {
+    "pl": "Jev wymaga przygotowania: {error}",
+    "en": "Jev needs setup: {error}"
+  },
+  "settings.jevk5_needs_setup": {
+    "pl": "JevK5 wymaga przygotowania: {error}",
+    "en": "JevK5 needs setup: {error}"
+  },
+  "settings.component_test_passed": {
+    "pl": "{kind}: test zakończony poprawnie.",
+    "en": "{kind}: test passed."
+  },
+  "settings.result_write_failed": {
+    "pl": "Nie zapisano wyniku przygotowania: {error}",
+    "en": "Could not save the setup result: {error}"
+  },
+  "settings.folder_value": {
+    "pl": "Folder: {path}",
+    "en": "Folder: {path}"
+  },
+  "settings.language": {
+    "pl": "Język / Language (restart):",
+    "en": "Language / Język (restart):"
+  },
+  "settings.ollama_folder": {
+    "pl": "Folder modeli Ollamy: {path}",
+    "en": "Ollama model folder: {path}"
+  },
+  "settings.language_polish": {
+    "pl": "Polski",
+    "en": "Polski"
+  },
+  "settings.language_english": {
+    "pl": "English",
+    "en": "English"
+  },
+  "settings.libraries_failed": {
+    "pl": "Instalacja bibliotek nie powiodła się. Log: {path}\n{detail}",
+    "en": "Library installation failed. Log: {path}\n{detail}"
+  },
+  "settings.model_space_required": {
+    "pl": "Za mało miejsca w {path}: potrzeba {space} GB",
+    "en": "Not enough space in {path}: {space} GB required"
+  },
+  "settings.prepare_libraries": {
+    "pl": "Przygotowuję Python i biblioteki: {kind}.",
+    "en": "Preparing Python and libraries: {kind}."
+  },
+  "settings.sources": {
+    "pl": "Źródła i licencje: <a href=\"https://github.com/ollama/ollama\">Ollama</a> · <a href=\"https://ollama.com/library/gemma4\">Gemma</a> · <a href=\"https://huggingface.co/yah01/vjev-vision\">Jev</a> · <a href=\"https://huggingface.co/alibiserikbay/JevK5\">JevK5</a> · <a href=\"https://www.python.org/downloads/\">Python</a> · <a href=\"https://pytorch.org/\">PyTorch</a> · <a href=\"https://github.com/huggingface/transformers\">Transformers</a>",
+    "en": "Sources and licenses: <a href=\"https://github.com/ollama/ollama\">Ollama</a> · <a href=\"https://ollama.com/library/gemma4\">Gemma</a> · <a href=\"https://huggingface.co/yah01/vjev-vision\">Jev</a> · <a href=\"https://huggingface.co/alibiserikbay/JevK5\">JevK5</a> · <a href=\"https://www.python.org/downloads/\">Python</a> · <a href=\"https://pytorch.org/\">PyTorch</a> · <a href=\"https://github.com/huggingface/transformers\">Transformers</a>"
+  }
+}

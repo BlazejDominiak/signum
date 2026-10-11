@@ -1,14 +1,19 @@
 """Threshold decisions and human review based on numeric model outputs."""
+
 from __future__ import annotations
 
 import math
 from typing import Any
 
+from signum.i18n import tr
+
 MAX_CLASSIFICATION_LABELS = 3
 
 
 def select_labels(
-    scores: dict[str, float], threshold: float, limit: int = MAX_CLASSIFICATION_LABELS,
+    scores: dict[str, float],
+    threshold: float,
+    limit: int = MAX_CLASSIFICATION_LABELS,
 ) -> list[str]:
     """Highest qualifying scores first; category IDs break ties deterministically."""
     return sorted(
@@ -18,12 +23,15 @@ def select_labels(
 
 
 def uncertain_labels(
-    scores: dict[str, float], threshold: float, margin: float,
+    scores: dict[str, float],
+    threshold: float,
+    margin: float,
     limit: int = MAX_CLASSIFICATION_LABELS,
 ) -> list[str]:
     selected = select_labels(scores, threshold, limit)
     return [
-        key for key in scores
+        key
+        for key in scores
         if (key in selected or len(selected) < limit)
         and near_threshold(scores[key], threshold, margin)
     ]
@@ -31,9 +39,9 @@ def uncertain_labels(
 
 def probability(value: Any) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError("Brak poprawnego wyniku modelu w zakresie 0–1.")
+        raise ValueError(tr("core.decision.no_valid_model_score_in_the_0"))
     if not math.isfinite(value) or not 0 <= value <= 1:
-        raise ValueError("Wynik modelu musi być skończoną liczbą w zakresie 0–1.")
+        raise ValueError(tr("core.decision.the_model_score_must_be_a_finite"))
     return float(value)
 
 
@@ -45,9 +53,12 @@ def near_threshold(score: float, threshold: float, margin: float) -> bool:
 
 
 def review_reason(label: str, score: float, threshold: float, margin: float) -> str:
-    return (
-        f"HITL — sprawdź: {label}; wynik {score:.3f}, próg {threshold:.3f}, "
-        f"margines ±{margin:.3f}."
+    return tr(
+        "core.decision.hitl_review_score_threshold_margin",
+        label=label,
+        score=score,
+        threshold=threshold,
+        margin=margin,
     )
 
 
@@ -59,7 +70,8 @@ def label_questions(question: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "type": "noul",
             "instructions": (
                 question["instructions"]
-                + "\nAvailable categories:\n" + catalog
+                + "\nAvailable categories:\n"
+                + catalog
                 + "\nEvaluate this label independently. Other labels may also apply. "
                 "The document belongs to this category: " + description
             ),

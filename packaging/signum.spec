@@ -49,6 +49,7 @@ a = Analysis(
     pathex=[str(ROOT / "src")],
     binaries=[],
     datas=[
+        (str(ROOT / "src/signum/locales"), "signum/locales"),
         (str(ROOT / "src/signum/core/classification_profiles.json"), "signum/core"),
         (str(ROOT / "src/signum/ai/runtime_probe.py"), "signum/ai"),
         (str(ROOT / "src" / "signum" / "ai" / "vjev_bootstrap.py"), "signum/ai"),

@@ -40,13 +40,13 @@ from PySide6.QtWidgets import (
 from signum.ai.model_profiles import ModelProfile, dump_profiles, load_profiles
 from signum.config import AppConfig
 from signum.core.classification import (
-    DEFAULT_CATEGORIES,
     DEFAULT_INSTRUCTIONS,
     LEGACY_DEFAULT_INSTRUCTIONS,
     LEGACY_ENGLISH_INSTRUCTIONS,
     ClassificationBatch,
     ClassificationRow,
     confirm_categories,
+    example_categories,
     make_question,
     write_classification_report,
 )
@@ -61,6 +61,7 @@ from signum.core.decision import MAX_CLASSIFICATION_LABELS
 from signum.core.discovery import collect_documents
 from signum.core.file_identity import fingerprint
 from signum.core.filing import FilingMode, FilingResult
+from signum.i18n import tr
 from signum.local_components import repair_instructions
 from signum.ui.batch_risk_dialog import BatchRiskDialog
 from signum.ui.classification_worker import ClassificationWorker
@@ -88,7 +89,7 @@ class ModelMetricCard(QWidget):
         layout.addWidget(_label(title, "heading"))
         layout.addWidget(_label(subtitle))
         self.value = _label("—", "metricValue")
-        self.caption = _label("Czeka na pomiar")
+        self.caption = _label(tr("classification.waiting_measurement"))
         self.detail = _label(" ")
         for label in (self.value, self.caption, self.detail):
             layout.addWidget(label)
@@ -99,17 +100,16 @@ class ModelMetricCard(QWidget):
         self.style().polish(self)
 
 
-
 class LabelReviewDialog(QDialog):
     def __init__(self, row: ClassificationRow, labels: list[str], parent: QWidget) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Sprawdź etykiety dokumentu")
+        self.setWindowTitle(tr("classification.review_title"))
         self.resize(560, 520)
         layout = QVBoxLayout(self)
         layout.addWidget(_label(row.path.name, "heading"))
-        detail = "\n".join(row.review_reasons) or "Wybierz wszystkie pasujące etykiety."
+        detail = "\n".join(row.review_reasons) or tr("classification.review_hint")
         if row.score_source == "declared":
-            detail += "\nOceny oznaczają deklarowaną pewność modelu."
+            detail += tr("classification.declared_hint")
         hint = _label(detail)
         hint.setWordWrap(True)
         layout.addWidget(hint)
@@ -118,17 +118,21 @@ class LabelReviewDialog(QDialog):
             score = row.label_scores.get(name)
             item = QListWidgetItem(name + (f" — {score:.3f}" if score is not None else ""))
             item.setData(Qt.ItemDataRole.UserRole, name)
-            item.setCheckState(Qt.CheckState.Checked if name in row.selected_categories
-                               else Qt.CheckState.Unchecked)
+            item.setCheckState(
+                Qt.CheckState.Checked
+                if name in row.selected_categories
+                else Qt.CheckState.Unchecked
+            )
             self.labels.addItem(item)
         layout.addWidget(self.labels)
         self.selection_hint = _label("")
         layout.addWidget(self.selection_hint)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save
-                                   | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
         self.save_button = buttons.button(QDialogButtonBox.StandardButton.Save)
-        self.save_button.setText("Zapisz sprawdzone etykiety")
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Anuluj")
+        self.save_button.setText(tr("classification.save_review"))
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("classification.cancel"))
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -140,15 +144,21 @@ class LabelReviewDialog(QDialog):
         allowed = count <= MAX_CLASSIFICATION_LABELS
         self.save_button.setEnabled(allowed)
         self.selection_hint.setText(
-            f"Wybrano {count}/{MAX_CLASSIFICATION_LABELS}. "
-            + ("Możesz też pozostawić listę pustą." if allowed
-               else "Odznacz nadmiarowe etykiety, aby zapisać wynik.")
+            tr("classification.selection_count", count=count, limit=MAX_CLASSIFICATION_LABELS)
+            + (
+                tr("classification.selection_empty")
+                if allowed
+                else tr("classification.selection_limit")
+            )
         )
 
     def selected_labels(self) -> list[str]:
-        return [self.labels.item(i).data(Qt.ItemDataRole.UserRole)
-                for i in range(self.labels.count())
-                if self.labels.item(i).checkState() == Qt.CheckState.Checked]
+        return [
+            self.labels.item(i).data(Qt.ItemDataRole.UserRole)
+            for i in range(self.labels.count())
+            if self.labels.item(i).checkState() == Qt.CheckState.Checked
+        ]
+
 
 class ClassificationPanel(QWidget):
     busy_changed = Signal(bool)
@@ -197,66 +207,67 @@ class ClassificationPanel(QWidget):
         top = QHBoxLayout(file_bar)
         top.setContentsMargins(4, 7, 4, 7)
         top.setSpacing(4)
-        self.add_button = QPushButton("Dodaj PDF-y…")
+        self.add_button = QPushButton(tr("classification.add_pdfs"))
         self.add_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_FileIcon))
         self.add_button.clicked.connect(self._add_dialog)
-        self.folder_button = QPushButton("Dodaj folder…")
+        self.folder_button = QPushButton(tr("classification.add_folder"))
         self.folder_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DirOpenIcon))
         self.folder_button.clicked.connect(self._folder_dialog)
-        self.copy_button = QPushButton("Skopiuj do folderów…")
+        self.copy_button = QPushButton(tr("classification.copy_folders"))
         self.copy_button.clicked.connect(lambda: self._file_collection("copy"))
-        self.move_button = QPushButton("Przenieś do folderów…")
+        self.move_button = QPushButton(tr("classification.move_folders"))
         self.move_button.clicked.connect(lambda: self._file_collection("move"))
         self.copy_button.setEnabled(False)
         self.move_button.setEnabled(False)
-        self.sample_button = QPushButton("Losuj 100 z folderu…")
+        self.sample_button = QPushButton(tr("classification.sample_folder"))
         self.sample_button.clicked.connect(self._sample_dialog)
-        self.benchmark_button = QPushButton("Zestaw lokalny…")
+        self.benchmark_button = QPushButton(tr("classification.local_set"))
         self.benchmark_button.clicked.connect(self._benchmark_dialog)
         # Benchmark inputs remain available, without occupying the main command surface.
         self.sample_button.hide()
         self.benchmark_button.hide()
-        self.more_button = QPushButton("Więcej")
+        self.more_button = QPushButton(tr("classification.more"))
         more = QMenu(self.more_button)
-        more.addAction("Losuj 100 z folderu…", self._sample_dialog)
-        more.addAction("Otwórz zestaw lokalny…", self._benchmark_dialog)
-        more.addAction("Dziennik operacji", lambda: QDesktopServices.openUrl(
-            QUrl.fromLocalFile(str(journal_path()))
-        ))
+        more.addAction(tr("classification.sample_folder"), self._sample_dialog)
+        more.addAction(tr("classification.open_set"), self._benchmark_dialog)
+        more.addAction(
+            tr("classification.operation_log"),
+            lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(journal_path()))),
+        )
         self.more_button.setMenu(more)
-        self.clear_button = QPushButton("Wyczyść listę")
+        self.clear_button = QPushButton(tr("classification.clear_list"))
         self.clear_button.setProperty("role", "quiet")
         self.clear_button.clicked.connect(self.clear)
         for button in (self.add_button, self.folder_button, self.copy_button, self.move_button):
             top.addWidget(button)
         top.addStretch(1)
-        self.file_count = _label("0 PDF")
+        self.file_count = _label(tr("classification.empty_count"))
         top.addWidget(self.file_count)
         top.addWidget(self.clear_button)
         top.addWidget(self.more_button)
         layout.addWidget(file_bar)
 
         model_row = QHBoxLayout()
-        model_row.addWidget(_label("Model:"))
+        model_row.addWidget(_label(tr("classification.model")))
         self.model = QComboBox()
         self.model.setMinimumWidth(180)
         self.model.currentIndexChanged.connect(self._model_changed)
         model_row.addWidget(self.model, 1)
-        self.connections_button = QPushButton("Ustawienia AI…")
+        self.connections_button = QPushButton(tr("classification.ai_settings_action"))
         self.connections_button.clicked.connect(self._connections)
-        self.components_button = QPushButton("Składniki AI…")
+        self.components_button = QPushButton(tr("classification.ai_components_action"))
         self.components_button.clicked.connect(self._components)
         model_row.addWidget(self.connections_button)
         model_row.addWidget(self.components_button)
         self.repeats = QSpinBox()
         self.repeats.setRange(1, 10)
         self.repeats.setValue(1)
-        model_row.addWidget(_label("Przejścia:"))
+        model_row.addWidget(_label(tr("classification.runs")))
         model_row.addWidget(self.repeats)
-        self.cancel_button = QPushButton("Anuluj")
+        self.cancel_button = QPushButton(tr("classification.cancel"))
         self.cancel_button.setEnabled(False)
         self.cancel_button.clicked.connect(self.cancel)
-        self.start_button = QPushButton("Kategoryzuj")
+        self.start_button = QPushButton(tr("classification.categorize"))
         self.start_button.setProperty("role", "primary")
         self.start_button.clicked.connect(self.start)
         model_row.addWidget(self.cancel_button)
@@ -273,19 +284,21 @@ class ClassificationPanel(QWidget):
         edit_layout.setSpacing(6)
         self.categories = QTableWidget(12, 2)
         heading = QHBoxLayout()
-        heading.addWidget(_label("Etykiety · maks. 3", "heading"), 1)
-        descriptions = QPushButton("Opisy")
+        heading.addWidget(_label(tr("classification.labels_heading"), "heading"), 1)
+        descriptions = QPushButton(tr("classification.descriptions"))
         descriptions.setProperty("role", "quiet")
         descriptions.setCheckable(True)
         descriptions.toggled.connect(lambda shown: self.categories.setColumnHidden(1, not shown))
         heading.addWidget(descriptions)
-        self.examples_button = QPushButton("Przykładowe")
+        self.examples_button = QPushButton(tr("classification.examples"))
         self.examples_button.setProperty("role", "quiet")
         self.examples_button.clicked.connect(self._restore_examples)
         heading.addWidget(self.examples_button)
         edit_layout.addLayout(heading)
-        self.categories.setHorizontalHeaderLabels(["Etykieta", "Opis"])
-        self.categories.setToolTip("Od 2 do 12 etykiet. Dwukrotne kliknięcie lub F2: edycja.")
+        self.categories.setHorizontalHeaderLabels(
+            [tr("classification.label"), tr("classification.description")]
+        )
+        self.categories.setToolTip(tr("classification.labels_tooltip"))
         self.categories.verticalHeader().hide()
         self.categories.verticalHeader().setDefaultSectionSize(30)
         self.categories.setShowGrid(False)
@@ -295,7 +308,7 @@ class ClassificationPanel(QWidget):
         self.categories.setColumnHidden(1, True)
         self.categories.itemChanged.connect(self._category_edited)
         edit_layout.addWidget(self.categories, 1)
-        self.prompt_toggle = QPushButton("Instrukcja klasyfikacji")
+        self.prompt_toggle = QPushButton(tr("classification.instructions"))
         self.prompt_toggle.setProperty("role", "quiet")
         self.prompt_toggle.setCheckable(True)
         self.prompt_toggle.toggled.connect(self._toggle_prompt)
@@ -314,18 +327,18 @@ class ClassificationPanel(QWidget):
         results_layout.setContentsMargins(8, 8, 8, 8)
         results_layout.setSpacing(6)
         result_heading = QHBoxLayout()
-        result_heading.addWidget(_label("Dokumenty", "heading"), 1)
+        result_heading.addWidget(_label(tr("classification.documents"), "heading"), 1)
         self.table: QTableWidget
-        self.correct_button = QPushButton("Sprawdź etykiety…")
+        self.correct_button = QPushButton(tr("classification.review_labels"))
         self.correct_button.setEnabled(False)
         self.correct_button.clicked.connect(lambda: self._correct_category(self.table.currentRow()))
         result_heading.addWidget(self.correct_button)
-        self.measurements_button = QPushButton("Pomiary")
+        self.measurements_button = QPushButton(tr("classification.measurements"))
         self.measurements_button.setProperty("role", "quiet")
         self.measurements_button.setCheckable(True)
         self.measurements_button.toggled.connect(self._toggle_measurements)
         result_heading.addWidget(self.measurements_button)
-        self.export_button = QPushButton("Zapisz wyniki…")
+        self.export_button = QPushButton(tr("classification.save_results"))
         self.export_button.setProperty("role", "quiet")
         self.export_button.setEnabled(False)
         self.export_button.clicked.connect(self._export)
@@ -344,7 +357,15 @@ class ClassificationPanel(QWidget):
         results_layout.addWidget(self.metrics_scroll)
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
-            ["Plik", "Model / próba", "Etykiety", "Działanie", "Limit API", "Oceny", "Status"]
+            [
+                tr("classification.file"),
+                tr("classification.model_run"),
+                tr("classification.labels"),
+                tr("classification.processing"),
+                tr("classification.api_wait"),
+                tr("classification.scores"),
+                tr("classification.status"),
+            ]
         )
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -368,7 +389,7 @@ class ClassificationPanel(QWidget):
         empty = QWidget()
         empty_layout = QVBoxLayout(empty)
         empty_layout.addStretch()
-        empty_label = _label("Przeciągnij tutaj pliki PDF")
+        empty_label = _label(tr("classification.drop_files"))
         empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         empty_layout.addWidget(empty_label)
         empty_layout.addStretch()
@@ -387,7 +408,7 @@ class ClassificationPanel(QWidget):
         self.progress.setRange(0, 1)
         self.progress.setValue(0)
         layout.addWidget(self.progress)
-        self.status = QLabel("Gotowy")
+        self.status = QLabel(tr("classification.ready"))
         self.status.setTextFormat(Qt.TextFormat.PlainText)
         self.status.setWordWrap(True)
         self.status.setMaximumHeight(36)
@@ -421,7 +442,6 @@ class ClassificationPanel(QWidget):
     def _toggle_prompt(self, expanded: bool) -> None:
         self.prompt.setVisible(expanded)
 
-
     def _category_edited(self, item: QTableWidgetItem) -> None:
         self.categories.blockSignals(True)
         item.setToolTip(item.text())
@@ -432,7 +452,7 @@ class ClassificationPanel(QWidget):
 
     def _load_preferences(self) -> None:
         config = AppConfig.load()
-        categories = list(DEFAULT_CATEGORIES)
+        categories = list(example_categories())
         try:
             raw = json.loads(config.classification_categories)
             if (
@@ -449,9 +469,9 @@ class ClassificationPanel(QWidget):
         self._fill_categories(categories)
         prompt = config.classification_prompt
         self.prompt.setPlainText(
-            DEFAULT_INSTRUCTIONS if prompt in (
-                "", LEGACY_DEFAULT_INSTRUCTIONS, LEGACY_ENGLISH_INSTRUCTIONS
-            ) else prompt
+            DEFAULT_INSTRUCTIONS
+            if prompt in ("", LEGACY_DEFAULT_INSTRUCTIONS, LEGACY_ENGLISH_INSTRUCTIONS)
+            else prompt
         )
         self.profiles = load_profiles(config)
         self._populate_models(config.classification_selection)
@@ -483,7 +503,7 @@ class ClassificationPanel(QWidget):
         return values
 
     def _restore_examples(self) -> None:
-        self._fill_categories(list(DEFAULT_CATEGORIES))
+        self._fill_categories(list(example_categories()))
         self.prompt.setPlainText(DEFAULT_INSTRUCTIONS)
         self.save_preferences()
 
@@ -504,7 +524,7 @@ class ClassificationPanel(QWidget):
         try:
             config.save()
         except OSError as exc:
-            self.status.setText(f"Nie udało się zapisać ustawień: {exc}")
+            self.status.setText(tr("classification.save_settings_failed", error=exc))
         else:
             self.settings_changed.emit()
 
@@ -512,7 +532,7 @@ class ClassificationPanel(QWidget):
         self.model.blockSignals(True)
         self.model.clear()
         enabled = sum(p.enabled for p in self.profiles)
-        self.model.addItem(f"Porównaj zaznaczone modele ({enabled})", "selected")
+        self.model.addItem(tr("classification.compare_selected", count=enabled), "selected")
         for p in self.profiles:
             self.model.addItem(p.label, p.id)
         self.model.setCurrentIndex(max(0, self.model.findData(selection)))
@@ -525,9 +545,9 @@ class ClassificationPanel(QWidget):
             subtitle = (
                 "Ollama"
                 if profile.provider == "ollama"
-                else "Lokalny runtime"
+                else tr("classification.local_runtime")
                 if profile.provider == "jevk5"
-                else "AI od dostawcy"
+                else tr("classification.ai_provider")
             )
             card = ModelMetricCard(profile.label, subtitle)
             card.setMinimumWidth(210)
@@ -543,18 +563,21 @@ class ClassificationPanel(QWidget):
 
     def _model_changed(self) -> None:
         self.start_button.setText(
-            "Porównaj modele" if len(self._selected_profiles()) > 1 else "Kategoryzuj"
+            tr("classification.compare_models")
+            if len(self._selected_profiles()) > 1
+            else tr("classification.categorize")
         )
         self._refresh_summary()
         self._schedule_save()
 
     def _open_document(self, row: int, column: int = 0) -> None:
+        item = self.table.item(row, 0)
+        result = item.data(Qt.ItemDataRole.UserRole + 1) if item is not None else None
         if column == 6:
             status = self.table.item(row, column)
-            if status is not None and status.text().startswith("Błąd"):
-                QMessageBox.warning(self, "Błąd modelu — jak naprawić", status.toolTip())
+            if status is not None and isinstance(result, ClassificationRow) and result.error:
+                QMessageBox.warning(self, tr("classification.model_error"), status.toolTip())
                 return
-        item = self.table.item(row, 0)
         if item is None:
             return
         path = item.data(Qt.ItemDataRole.UserRole)
@@ -563,7 +586,9 @@ class ClassificationPanel(QWidget):
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(path)) and not QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(Path(path).parent))
         ):
-            QMessageBox.warning(self, "Otwieranie PDF", "Nie można otworzyć pliku ani folderu.")
+            QMessageBox.warning(
+                self, tr("classification.opening_pdf"), tr("classification.open_failed")
+            )
 
     def _file_menu(self, point: QPoint) -> None:
         item = self.table.itemAt(point)
@@ -576,12 +601,14 @@ class ClassificationPanel(QWidget):
         if not path:
             return
         menu = QMenu(self)
-        menu.addAction("Otwórz PDF", lambda: self._open_document(item.row()))
+        menu.addAction(tr("classification.open_pdf"), lambda: self._open_document(item.row()))
         menu.addAction(
-            "Otwórz folder",
+            tr("classification.open_folder"),
             lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(str(Path(path).parent))),
         )
-        action = menu.addAction("Zmień etykietę…", lambda: self._correct_category(item.row()))
+        action = menu.addAction(
+            tr("classification.change_label"), lambda: self._correct_category(item.row())
+        )
         action.setEnabled(not self.is_busy())
         menu.exec(self.table.viewport().mapToGlobal(point))
 
@@ -601,29 +628,31 @@ class ClassificationPanel(QWidget):
         self._persist_collection()
 
     def _add_dialog(self) -> None:
-        paths, _ = QFileDialog.getOpenFileNames(self, "Wybierz PDF-y", "", "PDF (*.pdf)")
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, tr("classification.select_pdfs"), "", tr("classification.pdf_filter")
+        )
         self.add_files([Path(path) for path in paths])
 
     def _folder_dialog(self) -> None:
-        path = QFileDialog.getExistingDirectory(self, "Folder z PDF-ami")
+        path = QFileDialog.getExistingDirectory(self, tr("classification.pdf_folder"))
         if path:
             self.add_files([Path(path)])
 
     def _sample_dialog(self) -> None:
-        path = QFileDialog.getExistingDirectory(self, "Wylosuj 100 PDF-ów z folderu")
+        path = QFileDialog.getExistingDirectory(self, tr("classification.sample_title"))
         if path:
             found = [p for p in collect_documents([Path(path)]) if p.suffix.lower() == ".pdf"]
             self.clear()
             self.add_files(random.SystemRandom().sample(found, min(100, len(found))))
             if len(found) < 100:
-                self.status.setText(f"Folder zawiera {len(found)} PDF-ów; dodano wszystkie.")
+                self.status.setText(tr("classification.sample_all", count=len(found)))
 
     def _benchmark_dialog(self) -> None:
         selected, _ = QFileDialog.getOpenFileName(
             self,
-            "Wybierz protocol.json zapisanego testu",
+            tr("classification.protocol_title"),
             "",
-            "Protokół JSON (*.json)",
+            tr("classification.protocol_filter"),
         )
         if not selected:
             return
@@ -632,15 +661,13 @@ class ClassificationPanel(QWidget):
             data = json.loads(default.read_text(encoding="utf-8"))
             paths = [Path(doc["path"]) for doc in data["documents"]]
             if not all(path.is_file() for path in paths):
-                raise ValueError("Część PDF-ów z protokołu nie jest dostępna.")
+                raise ValueError(tr("classification.protocol_missing"))
         except (OSError, ValueError, KeyError, TypeError) as exc:
-            QMessageBox.warning(self, "Zestaw testowy", str(exc))
+            QMessageBox.warning(self, tr("classification.test_set"), str(exc))
             return
         self.clear()
         self.add_files(paths)
-        self.status.setText(
-            "Wczytano PDF-y testowe. Użyte zostaną kategorie i prompt z tego ekranu."
-        )
+        self.status.setText(tr("classification.test_loaded"))
 
     def clear(self) -> None:
         if self.is_busy():
@@ -650,7 +677,7 @@ class ClassificationPanel(QWidget):
         self.rows.clear()
         self.batch = None
         self.table.setRowCount(0)
-        self.file_count.setText("0 PDF")
+        self.file_count.setText(tr("classification.empty_count"))
         self.result_stack.setCurrentIndex(0)
         self._run_category_colors.clear()
         self._reset_progress()
@@ -667,23 +694,29 @@ class ClassificationPanel(QWidget):
         self.progress.setValue(0)
         self.table.setColumnHidden(4, True)
         self.elapsed.clear()
-        self.status.setText("Dodaj dokumenty" if not self.files else "Czeka na analizę")
+        self.status.setText(
+            tr("classification.add_documents")
+            if not self.files
+            else tr("classification.waiting_analysis")
+        )
 
     def start(self) -> None:
         if self.is_busy():
             return
         try:
             if not self.files:
-                raise ValueError("Najpierw dodaj dokumenty PDF.")
+                raise ValueError(tr("classification.no_documents"))
             categories = self.category_values()
             prompt = self.prompt.toPlainText()
             make_question(categories, prompt)
         except ValueError as exc:
-            QMessageBox.warning(self, "Kategoryzowanie", str(exc))
+            QMessageBox.warning(self, tr("classification.categorization"), str(exc))
             return
         selected = self._selected_profiles()
         if not selected:
-            QMessageBox.warning(self, "Ustawienia AI", "Dodaj i zaznacz przynajmniej jeden model.")
+            QMessageBox.warning(
+                self, tr("classification.ai_settings"), tr("classification.no_models")
+            )
             return
         config = AppConfig.load()
         dialog = BatchRiskDialog(
@@ -747,8 +780,11 @@ class ClassificationPanel(QWidget):
             item = self.table.item(i, 0)
             if item is not None:
                 flags = item.flags()
-                item.setFlags(flags & ~Qt.ItemFlag.ItemIsUserCheckable if busy
-                              else flags | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setFlags(
+                    flags & ~Qt.ItemFlag.ItemIsUserCheckable
+                    if busy
+                    else flags | Qt.ItemFlag.ItemIsUserCheckable
+                )
         self._update_correction_action()
         self.cancel_button.setEnabled(busy)
         self.export_button.setEnabled(not busy and self.batch is not None)
@@ -761,7 +797,7 @@ class ClassificationPanel(QWidget):
         if self.worker is not None:
             self.worker.cancel()
             self.cancel_button.setEnabled(False)
-            self.status.setText("Anulowanie — czekam na zakończenie bieżącego żądania.")
+            self.status.setText(tr("classification.cancelling"))
 
     def _row_done(self, row: ClassificationRow) -> None:
         self.rows.append(row)
@@ -770,14 +806,27 @@ class ClassificationPanel(QWidget):
         values = [
             row.path.name,
             f"{self._model_label(row.model)} · {row.repeat + 1}",
-            row.category or ("Brak etykiet" if not row.error else ""),
+            row.category or (tr("classification.no_labels") if not row.error else ""),
             f"{row.elapsed_s:.3f} s",
             f"{row.wait_s:.1f} s",
-            (f"{len(row.label_scores)} ocen" if row.label_scores else
-             f"{row.confidence:.1%}" if row.confidence is not None else "—"),
-            "Błąd · HITL" if row.error and row.hitl else
-            "Błąd" if row.error else ("HITL" if row.hitl else
-                                   "Sprawdzone" if row.category_source == "user" else "OK"),
+            (
+                tr("classification.score_count", count=len(row.label_scores))
+                if row.label_scores
+                else f"{row.confidence:.1%}"
+                if row.confidence is not None
+                else "—"
+            ),
+            tr("classification.error_hitl")
+            if row.error and row.hitl
+            else tr("classification.error")
+            if row.error
+            else (
+                tr("classification.hitl")
+                if row.hitl
+                else tr("classification.reviewed")
+                if row.category_source == "user"
+                else tr("classification.ok")
+            ),
         ]
         if not self._run_category_colors:
             self._run_category_colors = {
@@ -786,8 +835,13 @@ class ClassificationPanel(QWidget):
         for col, value in enumerate(values):
             item = QTableWidgetItem(value)
             item.setToolTip(
-                f"{value}\n{row.path}\n{row.characters} znaków tekstu"
-                + (" (tekst skrócony)" if row.truncated else "")
+                tr(
+                    "classification.row_tooltip",
+                    value=value,
+                    path=row.path,
+                    characters=row.characters,
+                )
+                + (tr("classification.truncated") if row.truncated else "")
                 + (
                     "\n"
                     + repair_instructions(
@@ -803,25 +857,44 @@ class ClassificationPanel(QWidget):
                 scores = "\n".join(
                     f"{name}: {score:.3f}" for name, score in row.label_scores.items()
                 )
-                calibration = (f"Próg: {row.threshold:.3f}; HITL ±{row.hitl_margin:.3f}"
-                               if row.threshold is not None else "Brak kalibracji")
-                source = ("Oceny: deklarowana pewność modelu"
-                          if row.score_source == "declared" else "Oceny decyzyjne modelu")
-                item.setToolTip(item.toolTip() + "\n" + source + "\n" + calibration
-                                + "\n" + scores + "\n" + detail)
+                calibration = (
+                    tr(
+                        "classification.calibration",
+                        threshold=row.threshold,
+                        margin=row.hitl_margin,
+                    )
+                    if row.threshold is not None
+                    else tr("classification.no_calibration")
+                )
+                source = (
+                    tr("classification.declared_scores")
+                    if row.score_source == "declared"
+                    else tr("classification.decision_scores")
+                )
+                item.setToolTip(
+                    item.toolTip()
+                    + "\n"
+                    + source
+                    + "\n"
+                    + calibration
+                    + "\n"
+                    + scores
+                    + "\n"
+                    + detail
+                )
             if col == 0:
                 item.setData(Qt.ItemDataRole.UserRole, str(row.path))
                 item.setData(Qt.ItemDataRole.UserRole + 1, row)
                 item.setCheckState(
                     Qt.CheckState.Unchecked if row.excluded else Qt.CheckState.Checked
                 )
-                item.setToolTip(str(row.path) + "\nZaznaczenie: uwzględnij w porządkowaniu")
+                item.setToolTip(str(row.path) + tr("classification.include_tooltip"))
             if col == 2:
                 item.setData(Qt.ItemDataRole.UserRole, self._run_category_colors.get(row.category))
             elif col == 6:
-                item.setForeground(QColor(
-                    "#B33B4A" if row.error else "#A86500" if row.hitl else "#14755C"
-                ))
+                item.setForeground(
+                    QColor("#B33B4A" if row.error else "#A86500" if row.hitl else "#14755C")
+                )
             elif col in (3, 4, 5):
                 item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.table.setItem(index, col, item)
@@ -848,7 +921,11 @@ class ClassificationPanel(QWidget):
             card.set_active(bool(rows) or model in selected)
             if not rows and (timings is None or model not in timings.models):
                 card.value.setText("—")
-                card.caption.setText("Czeka na pomiar" if model in selected else "Niewybrany")
+                card.caption.setText(
+                    tr("classification.waiting_measurement")
+                    if model in selected
+                    else tr("classification.not_selected")
+                )
                 card.detail.setText(" ")
                 continue
             seconds = sum(r.elapsed_s for r in rows)
@@ -860,12 +937,17 @@ class ClassificationPanel(QWidget):
                 timings.model_seconds.get(model, load + seconds) if timings else load + seconds
             )
             card.value.setText(f"{total:.2f} s")
-            card.caption.setText("Łącznie")
+            card.caption.setText(tr("classification.total"))
             profile = next((p for p in self.profiles if p.id == model), None)
             can_measure_load = profile and profile.local and profile.provider in {"ollama", "jevk5"}
             load_text = f"{load:.2f} s" if can_measure_load else "—"
             card.detail.setText(
-                f"Tekst: {prep:.2f} s\nŁadowanie: {load_text}\nDziałanie: {seconds:.2f} s"
+                tr(
+                    "classification.metric_detail",
+                    preparation=prep,
+                    loading=load_text,
+                    processing=seconds,
+                )
             )
         if timings is not None:
             self._show_timing(timings)
@@ -873,10 +955,13 @@ class ClassificationPanel(QWidget):
     def _show_timing(self, batch: ClassificationBatch) -> None:
         model_s = sum(r.elapsed_s for r in self.rows)
         self.elapsed.setText(
-            f"Tekst: {batch.preparation_s:.2f} s   ·   "
-            f"Ładowanie: {sum(batch.setup_seconds.values()):.2f} s   ·   "
-            f"Działanie: {model_s:.2f} s   ·   "
-            f"Łącznie: {batch.duration_s:.2f} s"
+            tr(
+                "classification.timing",
+                preparation=batch.preparation_s,
+                loading=sum(batch.setup_seconds.values()),
+                processing=model_s,
+                total=batch.duration_s,
+            )
         )
 
     def _timing_updated(self, batch: ClassificationBatch) -> None:
@@ -898,18 +983,20 @@ class ClassificationPanel(QWidget):
         self._refresh_summary()
         errors = sum(bool(row.error) for row in batch.rows)
         self.status.setText(
-            batch.error or (
-                "Anulowano." if batch.cancelled
-                else f"Gotowe. Błędy: {errors}. HITL: {sum(r.hitl for r in batch.rows)}."
+            batch.error
+            or (
+                tr("classification.cancelled")
+                if batch.cancelled
+                else tr("classification.done", errors=errors, hitl=sum(r.hitl for r in batch.rows))
             )
         )
         self.status.setToolTip(self.status.text())
         if batch.error:
-            QMessageBox.warning(self, "Kategoryzowanie", repair_instructions(batch.error))
-        elif errors:
-            self.status.setText(
-                self.status.text() + " Kliknij dwukrotnie Błąd, aby zobaczyć instrukcję naprawy."
+            QMessageBox.warning(
+                self, tr("classification.categorization"), repair_instructions(batch.error)
             )
+        elif errors:
+            self.status.setText(self.status.text() + tr("classification.error_hint"))
 
     def _finished(self) -> None:
         worker = self.worker
@@ -926,9 +1013,9 @@ class ClassificationPanel(QWidget):
             return
         path, selected = QFileDialog.getSaveFileName(
             self,
-            "Zapisz kategorie i pomiary",
-            "kategoryzowanie.csv",
-            "Tabela CSV (*.csv);;Pełny raport JSON (*.json)",
+            tr("classification.export_title"),
+            tr("classification.export_filename"),
+            tr("classification.export_filter"),
         )
         if path:
             target = Path(path)
@@ -937,9 +1024,9 @@ class ClassificationPanel(QWidget):
             try:
                 write_classification_report(target, self.batch)
             except OSError as exc:
-                QMessageBox.warning(self, "Eksport", str(exc))
+                QMessageBox.warning(self, tr("classification.export"), str(exc))
             else:
-                self.status.setText(f"Zapisano {target}")
+                self.status.setText(tr("classification.saved", path=target))
 
     def _connections(self) -> None:
         dialog = ModelsDialog(AppConfig.load(), self.profiles, self)
@@ -953,9 +1040,13 @@ class ClassificationPanel(QWidget):
         self._render_collection()
 
     def _update_filing_actions(self) -> None:
-        enabled = not self.is_busy() and self.batch is not None and any(
-            row.selected_categories and not row.error and not row.excluded and not row.hitl
-            for row in self.batch.rows
+        enabled = (
+            not self.is_busy()
+            and self.batch is not None
+            and any(
+                row.selected_categories and not row.error and not row.excluded and not row.hitl
+                for row in self.batch.rows
+            )
         )
         self.copy_button.setEnabled(enabled)
         self.move_button.setEnabled(enabled)
@@ -1002,10 +1093,16 @@ class ClassificationPanel(QWidget):
                         if cell:
                             cell.setToolTip(cell.toolTip().replace(str(old), str(target)))
             self.files_moved.emit(moved)
-        verb = "Przeniesiono" if mode == "move" else "Skopiowano"
-        self.status.setText(f"{verb}: {len(result.completed)} · Błędy: {len(result.errors)}")
+        verb = tr("classification.moved") if mode == "move" else tr("classification.copied")
+        self.status.setText(
+            tr(
+                "classification.filing_done",
+                action=verb,
+                completed=len(result.completed),
+                errors=len(result.errors),
+            )
+        )
         self._persist_collection()
-
 
     def _render_collection(self) -> None:
         self._restoring = True
@@ -1024,9 +1121,9 @@ class ClassificationPanel(QWidget):
             item.setToolTip(str(path))
             item.setData(Qt.ItemDataRole.UserRole, str(path))
             self.table.setItem(index, 0, item)
-            self.table.setItem(index, 6, QTableWidgetItem("Oczekuje"))
+            self.table.setItem(index, 6, QTableWidgetItem(tr("classification.pending")))
         self._restoring = False
-        self.file_count.setText(f"{len(self.files)} PDF")
+        self.file_count.setText(tr("classification.file_count", count=len(self.files)))
         self.result_stack.setCurrentIndex(1 if self.files else 0)
         self.export_button.setEnabled(self.batch is not None and not self.is_busy())
         self._update_filing_actions()
@@ -1067,15 +1164,24 @@ class ClassificationPanel(QWidget):
         if self._restoring or self._checkpoint_disabled:
             return
         self._checkpoint_timer.stop()
-        batch = self.batch or self._timing_batch or ClassificationBatch(
-            categories=self.category_values(), instructions=self.prompt.toPlainText(),
+        batch = (
+            self.batch
+            or self._timing_batch
+            or ClassificationBatch(
+                categories=self.category_values(),
+                instructions=self.prompt.toPlainText(),
+            )
         )
-        snapshot = replace(batch, rows=list(self.rows), documents=[],
-                           cancelled=batch.cancelled or (self.is_busy() and self.batch is None))
+        snapshot = replace(
+            batch,
+            rows=list(self.rows),
+            documents=[],
+            cancelled=batch.cancelled or (self.is_busy() and self.batch is None),
+        )
         try:
             save_collection(self.files, snapshot, self._session_path)
         except (OSError, ValueError) as exc:
-            self.status.setText(f"Nie zapisano kolekcji: {exc}")
+            self.status.setText(tr("classification.save_collection_failed", error=exc))
 
     def _restore_collection(self) -> None:
         try:
@@ -1086,7 +1192,7 @@ class ClassificationPanel(QWidget):
                 shutil.copy2(self._session_path, backup)
             except OSError:
                 self._checkpoint_disabled = True
-            self.status.setText(f"Nie odczytano kolekcji: {exc}")
+            self.status.setText(tr("classification.load_collection_failed", error=exc))
             return
         if saved is None:
             return
@@ -1102,13 +1208,16 @@ class ClassificationPanel(QWidget):
                 self.categories.setItem(index, 1, QTableWidgetItem(detail))
         if self.batch.instructions:
             self.prompt.setPlainText(
-                DEFAULT_INSTRUCTIONS if self.batch.instructions in (
-                    LEGACY_DEFAULT_INSTRUCTIONS, LEGACY_ENGLISH_INSTRUCTIONS
-                ) else self.batch.instructions
+                DEFAULT_INSTRUCTIONS
+                if self.batch.instructions
+                in (LEGACY_DEFAULT_INSTRUCTIONS, LEGACY_ENGLISH_INSTRUCTIONS)
+                else self.batch.instructions
             )
         self._render_collection()
         if self.files:
-            self.status.setText("Przywrócono kolekcję" + (" · odświeżono oznaczenia HITL"
-                                                       if refreshed else ""))
+            self.status.setText(
+                tr("classification.restored")
+                + (tr("classification.restored_hitl") if refreshed else "")
+            )
         if refreshed:
             self._persist_collection()

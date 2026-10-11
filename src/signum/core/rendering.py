@@ -19,6 +19,7 @@ import pypdfium2 as pdfium
 from PIL import Image, ImageOps
 
 from signum.core.discovery import PDF_EXTENSIONS
+from signum.i18n import tr
 
 RENDER_SCALE = 150 / 72  # rendering PDF w ~150 DPI
 MAX_WORKING_SIDE = 2400  # px — limit pamięci dla obrazu roboczego
@@ -75,8 +76,11 @@ def open_pages(path: Path, max_pages: int) -> Iterator[tuple[Iterator[PageImage]
             size = path.stat().st_size
             if size > MAX_INPUT_FILE_BYTES:
                 raise DocumentReadError(
-                    f"Plik ma {size / (1024 * 1024):.1f} MB; limit bezpieczeństwa wynosi "
-                    f"{MAX_INPUT_FILE_BYTES // (1024 * 1024)} MB"
+                    tr(
+                        "core.rendering.file_size_is_mb_the_safety_limit",
+                        value0=size / (1024 * 1024),
+                        value1=MAX_INPUT_FILE_BYTES // (1024 * 1024),
+                    )
                 )
             limit = max(1, min(int(max_pages), 500))
             if is_pdf(path):
@@ -91,7 +95,7 @@ def open_pages(path: Path, max_pages: int) -> Iterator[tuple[Iterator[PageImage]
                 total = getattr(source, "n_frames", 1)
                 pages = _iter_image_pages(source, min(total, limit))
         except Exception as exc:
-            raise DocumentReadError(f"Nie można odczytać pliku: {exc}") from exc
+            raise DocumentReadError(tr("core.rendering.could_not_read_the_file", exc=exc)) from exc
         resources.callback(pages.close)
         yield pages, total
 
@@ -102,13 +106,17 @@ def render_pdf_page(path: Path, page_number: int) -> PageImage:
     try:
         pdf = pdfium.PdfDocument(str(path))
     except Exception as exc:
-        raise DocumentReadError(f"Nie można otworzyć PDF: {exc}") from exc
+        raise DocumentReadError(tr("core.rendering.could_not_open_the_pdf", exc=exc)) from exc
     try:
         if not 1 <= page_number <= len(pdf):
-            raise DocumentReadError(f"Strona {page_number} poza zakresem")
+            raise DocumentReadError(
+                tr("core.rendering.page_is_out_of_range", page_number=page_number)
+            )
         return _render_page(pdf, page_number)
     except Exception as exc:
-        raise DocumentReadError(f"Nie można odczytać strony {page_number}: {exc}") from exc
+        raise DocumentReadError(
+            tr("core.rendering.could_not_read_page", page_number=page_number, exc=exc)
+        ) from exc
     finally:
         pdf.close()
 
@@ -118,7 +126,9 @@ def _iter_pdf_pages(pdf: pdfium.PdfDocument, count: int) -> Generator[PageImage,
         try:
             page = _render_page(pdf, number)
         except Exception as exc:
-            raise DocumentReadError(f"Nie można odczytać strony {number}: {exc}") from exc
+            raise DocumentReadError(
+                tr("core.rendering.could_not_read_page_33", number=number, exc=exc)
+            ) from exc
         try:
             yield page
         finally:
@@ -141,7 +151,7 @@ def _render_open_page(page: pdfium.PdfPage, page_number: int) -> PageImage:
         or width_pt <= 0
         or height_pt <= 0
     ):
-        raise DocumentReadError("PDF zawiera niepoprawny rozmiar strony")
+        raise DocumentReadError(tr("core.rendering.pdf_contains_an_invalid_page_size"))
     scale = RENDER_SCALE
     longest = max(width_pt, height_pt) * scale
     if longest > MAX_WORKING_SIDE:
@@ -152,8 +162,11 @@ def _render_open_page(page: pdfium.PdfPage, page_number: int) -> PageImage:
     finally:
         bitmap.close()
     return PageImage(
-        number=page_number, image=image, page_size_pt=(width_pt, height_pt),
-        page_bbox_pt=page.get_bbox(), rotation=page.get_rotation(),
+        number=page_number,
+        image=image,
+        page_size_pt=(width_pt, height_pt),
+        page_bbox_pt=page.get_bbox(),
+        rotation=page.get_rotation(),
     )
 
 
@@ -167,7 +180,9 @@ def _iter_image_pages(source: Image.Image, count: int) -> Generator[PageImage, N
             if image is not rgb:
                 rgb.close()
         except Exception as exc:
-            raise DocumentReadError(f"Nie można odczytać obrazu {frame + 1}: {exc}") from exc
+            raise DocumentReadError(
+                tr("core.rendering.could_not_read_image", value0=frame + 1, exc=exc)
+            ) from exc
         try:
             yield PageImage(number=frame + 1, image=image)
         finally:

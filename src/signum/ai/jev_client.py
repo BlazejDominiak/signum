@@ -33,6 +33,7 @@ from signum.ai.local_vjev import start_local_vjev, stop_local_vjev
 from signum.core.decision import near_threshold, probability, review_reason
 from signum.core.models import SignatureKind
 from signum.core.rendering import to_model_jpeg
+from signum.i18n import tr
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
 DEFAULT_URL = "http://localhost:8800/v1"
@@ -82,7 +83,7 @@ class JevVisionModel(VisionModel):
 
     @property
     def name(self) -> str:
-        suffix = " (dodatkowa analiza)" if self._additional_analysis else ""
+        suffix = tr("ai.additional_suffix") if self._additional_analysis else ""
         return f"vjev-vision: {self._model}{suffix}"
 
     def _request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
@@ -96,26 +97,23 @@ class JevVisionModel(VisionModel):
                 **kwargs,
             )
         except requests.exceptions.RequestException as exc:
-            raise AIConnectionError(
-                f"Serwer vjev nie odpowiada pod {self._base_url}. "
-                "Lokalny model musi być uruchomiony przed analizą."
-            ) from exc
+            raise AIConnectionError(tr("ai.vjev_connection_failed", url=self._base_url)) from exc
         finally:
             self.request_seconds += time.perf_counter() - started
         if response.status_code != 200:
             hint = {
-                401: "Klucz API odrzucony",
-                403: "Brak uprawnień do modelu",
-                429: "Limit zapytań lub dostępnej przepustowości",
-                422: "Sprawdź model wizyjny i zgodność serwera z API Jev",
-            }.get(response.status_code, "Usługa Jev odrzuciła zapytanie")
+                401: tr("ai.jev_key_rejected"),
+                403: tr("ai.jev_forbidden"),
+                429: tr("ai.jev_capacity"),
+                422: tr("ai.jev_compatibility"),
+            }.get(response.status_code, tr("ai.jev_request_rejected"))
             raise AIResponseError(f"{hint} (HTTP {response.status_code})")
         try:
             data = response.json()
         except ValueError as exc:
-            raise AIResponseError("API Jev nie zwróciło poprawnego JSON") from exc
+            raise AIResponseError(tr("ai.jev_invalid_json")) from exc
         if not isinstance(data, dict):
-            raise AIResponseError("API Jev nie zwróciło obiektu JSON")
+            raise AIResponseError(tr("ai.jev_missing_object"))
         return data
 
     def _decide(
@@ -145,7 +143,7 @@ class JevVisionModel(VisionModel):
 
     def _generate(self, image_jpeg: bytes, prompt: str) -> str:
         # Ten dostawca nie generuje tekstu — analyze_page parsuje decyzje bezpośrednio.
-        raise NotImplementedError("Jev używa analyze_page i odpowiedzi typowanych")
+        raise NotImplementedError(tr("ai.jev_typed_responses"))
 
     def analyze_page(self, image_jpeg: bytes, prompt: str | None = None) -> PageAnalysis:
         """Protokół pojedynczego JPEG-u, zachowany dla testu usługi i starego benchmarku."""
@@ -171,11 +169,18 @@ class JevVisionModel(VisionModel):
                 )
             )
         basic = parse_signature_views(
-            responses, self._hitl_margin, self._threshold, self._stamp_threshold,
+            responses,
+            self._hitl_margin,
+            self._threshold,
+            self._stamp_threshold,
         )
         if self._additional_analysis:
             return enrich_analysis(
-                image, basic, self._decide, check_cancelled, **self._additional_thresholds,
+                image,
+                basic,
+                self._decide,
+                check_cancelled,
+                **self._additional_thresholds,
             )
         return basic
 
@@ -193,17 +198,17 @@ class JevVisionModel(VisionModel):
             data = self._request("GET", "models")
         models = data.get("models")
         if not isinstance(models, list) or not all(isinstance(item, dict) for item in models):
-            raise AIResponseError("API Jev zwróciło niepoprawną listę modeli")
+            raise AIResponseError(tr("ai.jev_invalid_models"))
         selected = next((item for item in models if item.get("id") == self._model), None)
         if selected is None:
-            raise AIResponseError(f"Model {self._model!r} nie jest dostępny pod tym adresem API")
+            raise AIResponseError(tr("ai.jev_model_missing", model=self._model))
         if selected.get("vision") is False or selected.get("stub") is True:
-            raise AIResponseError("Wybrany model nie analizuje obrazów lub działa jako stub")
+            raise AIResponseError(tr("ai.jev_no_vision"))
         # Mały, syntetyczny obraz weryfikuje rzeczywisty kontrakt wizyjny i uprawnienia.
         buffer = io.BytesIO()
         Image.new("RGB", (64, 64), "white").save(buffer, format="JPEG")
         self.analyze_page(buffer.getvalue())
-        return f"Połączono z {self.name} — test obrazu zakończony"
+        return tr("ai.jev_connected", model=self.name)
 
     def stop_local(self) -> str:
         return stop_local_vjev(self._base_url, self._runtime_dir)
@@ -219,26 +224,28 @@ class JevVisionModel(VisionModel):
 def _parse_decisions(data: dict[str, Any], hitl_margin: float = 0.10) -> PageAnalysis:
     answers = data.get("answers")
     if not isinstance(answers, dict):
-        raise AIResponseError("Brak obiektu answers w odpowiedzi Jev")
+        raise AIResponseError(tr("ai.jev_missing_answers"))
     signatures = []
     reasons = []
     for kind in (SignatureKind.HANDWRITTEN, SignatureKind.INITIALS, SignatureKind.STAMP):
         answer = answers.get(kind.value)
         if not isinstance(answer, dict) or answer.get("type") != "noul":
-            raise AIResponseError(f"Brak poprawnej decyzji {kind.value} w odpowiedzi Jev")
+            raise AIResponseError(tr("ai.jev_invalid_decision", kind=kind.value))
         score = answer.get("noul")
         if isinstance(score, bool) or not isinstance(score, (int, float)):
-            raise AIResponseError(f"Niepoprawna ocena {kind.value} w odpowiedzi Jev")
+            raise AIResponseError(tr("ai.jev_invalid_score", kind=kind.value))
         if not math.isfinite(score) or not 0 <= score <= 1:
-            raise AIResponseError(f"Niepoprawna ocena {kind.value} w odpowiedzi Jev")
+            raise AIResponseError(tr("ai.jev_invalid_score", kind=kind.value))
         if kind != SignatureKind.STAMP and near_threshold(score, DETECTION_THRESHOLD, hitl_margin):
             reasons.append(review_reason(kind.label_pl, score, DETECTION_THRESHOLD, hitl_margin))
         if score >= DETECTION_THRESHOLD:
             signatures.append(VisualSignature(kind, round(score * 100), None))
     document = answers.get("document_type")
     if not isinstance(document, dict) or document.get("type") != "choice":
-        raise AIResponseError("Brak poprawnego rodzaju dokumentu w odpowiedzi Jev")
+        raise AIResponseError(tr("ai.jev_missing_document_type"))
     choice = document.get("choice")
     if not isinstance(choice, str) or choice not in DOCUMENT_TYPES:
-        raise AIResponseError("Nieznany rodzaj dokumentu w odpowiedzi Jev")
-    return PageAnalysis(DOCUMENT_TYPES[choice][1], tuple(signatures), review_reasons=tuple(reasons))
+        raise AIResponseError(tr("ai.jev_unknown_document_type"))
+    label_key = DOCUMENT_TYPES[choice][1]
+    description = tr(label_key) if label_key else ""
+    return PageAnalysis(description, tuple(signatures), review_reasons=tuple(reasons))

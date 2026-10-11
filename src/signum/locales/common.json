@@ -1,0 +1,166 @@
+{
+  "core.kind.handwritten": {
+    "pl": "podpis odręczny",
+    "en": "handwritten signature"
+  },
+  "core.kind.initials": {
+    "pl": "parafka",
+    "en": "initials"
+  },
+  "core.kind.stamp": {
+    "pl": "pieczątka",
+    "en": "stamp"
+  },
+  "core.kind.digital": {
+    "pl": "podpis cyfrowy",
+    "en": "digital signature"
+  },
+  "core.models.visible_signature": {
+    "pl": "WIDOCZNY PODPIS",
+    "en": "VISIBLE SIGNATURE"
+  },
+  "core.models.no_signature": {
+    "pl": "BRAK PODPISU",
+    "en": "NO SIGNATURE"
+  },
+  "core.components.third_party_notice": {
+    "pl": "Ollama, modele, biblioteki i Python są składnikami zewnętrznymi, które należy pobierać ze sprawdzonych źródeł; autor Signum nie bierze za nie odpowiedzialności.",
+    "en": "Ollama, models, libraries and Python are external components that must be downloaded from trusted sources; the author of Signum accepts no responsibility for them."
+  },
+  "core.components.ollama": {
+    "pl": "Ollama — obsługa modeli lokalnych",
+    "en": "Ollama — local model service"
+  },
+  "core.components.ollama.small": {
+    "pl": "Gemma 4 E2B — podpisy i kategoryzacja (ok. 4,6 GB; zalecane 8 GB VRAM)",
+    "en": "Gemma 4 E2B — signatures and classification (~4.6 GB; 8 GB VRAM recommended)"
+  },
+  "core.components.ollama.large": {
+    "pl": "Gemma 4 12B — podpisy i kategoryzacja (ok. 8 GB; zalecane 16 GB VRAM)",
+    "en": "Gemma 4 12B — signatures and classification (~8 GB; 16 GB VRAM recommended)"
+  },
+  "core.components.jev": {
+    "pl": "Jev — podpisy (Python + biblioteki + model; NVIDIA 16 GB; ok. 15 GB)",
+    "en": "Jev — signatures (Python + libraries + model; NVIDIA 16 GB; ~15 GB)"
+  },
+  "core.components.jevk5": {
+    "pl": "JevK5 — kategoryzacja (Python + biblioteki + model; NVIDIA 16 GB; ok. 15 GB)",
+    "en": "JevK5 — classification (Python + libraries + model; NVIDIA 16 GB; ~15 GB)"
+  },
+  "core.new_model": {
+    "pl": "Nowy model",
+    "en": "New model"
+  },
+  "core.digital.timestamp": {
+    "pl": "znacznik czasu (ETSI.RFC3161)",
+    "en": "timestamp (ETSI.RFC3161)"
+  },
+  "core.digital.signature_subtype": {
+    "pl": "podpis cyfrowy ({subtype})",
+    "en": "digital signature ({subtype})"
+  },
+  "core.network.invalid_address": {
+    "pl": "Niepoprawny adres {service_name}: {error}",
+    "en": "Invalid {service_name} address: {error}"
+  },
+  "core.yes": {
+    "pl": "tak",
+    "en": "yes"
+  },
+  "core.no": {
+    "pl": "nie",
+    "en": "no"
+  },
+  "app.already_running": {
+    "pl": "Signum jest już uruchomione w tej sesji użytkownika.",
+    "en": "Signum is already running in this user session."
+  },
+  "core.check_cancelled": {
+    "pl": "Sprawdzanie anulowane.",
+    "en": "Check cancelled."
+  },
+  "core.unknown_operation": {
+    "pl": "Nieznana operacja na plikach.",
+    "en": "Unknown file operation."
+  },
+  "core.unknown_label": {
+    "pl": "Nieznana etykieta",
+    "en": "Unknown label"
+  },
+  "core.moved": {
+    "pl": "Przeniesiono",
+    "en": "Moved"
+  },
+  "core.copied": {
+    "pl": "Skopiowano",
+    "en": "Copied"
+  },
+  "core.collection.invalid_row": {
+    "pl": "Niepoprawny wiersz kolekcji",
+    "en": "Invalid collection row"
+  },
+  "core.collection.invalid_result": {
+    "pl": "Niepoprawny wynik kolekcji",
+    "en": "Invalid collection result"
+  },
+  "core.collection.invalid_timing": {
+    "pl": "Niepoprawne czasy kolekcji",
+    "en": "Invalid collection timing"
+  },
+  "core.collection.invalid_scores": {
+    "pl": "Niepoprawne oceny etykiet",
+    "en": "Invalid label scores"
+  },
+  "core.collection.invalid_hitl": {
+    "pl": "Niepoprawne oznaczenie HITL",
+    "en": "Invalid HITL flag"
+  },
+  "core.collection.invalid_names": {
+    "pl": "Niepoprawne nazwy modeli",
+    "en": "Invalid model names"
+  },
+  "core.collection.invalid_prompt": {
+    "pl": "Niepoprawny prompt kolekcji",
+    "en": "Invalid collection prompt"
+  },
+  "core.collection.invalid_file": {
+    "pl": "Niepoprawny zapis kolekcji",
+    "en": "Invalid collection file"
+  },
+  "cli.paths": {
+    "pl": "pliki i/lub foldery do analizy",
+    "en": "files and/or folders to analyze"
+  },
+  "cli.file": {
+    "pl": "PLIK",
+    "en": "FILE"
+  },
+  "cli.html": {
+    "pl": "zapisz raport HTML",
+    "en": "save an HTML report"
+  },
+  "cli.csv": {
+    "pl": "zapisz raport CSV",
+    "en": "save a CSV report"
+  },
+  "cli.model": {
+    "pl": "nazwa modelu (nadpisuje ustawienia)",
+    "en": "model name (overrides settings)"
+  },
+  "cli.pages": {
+    "pl": "limit stron na dokument",
+    "en": "page limit per document"
+  },
+  "cli.local_ai": {
+    "pl": "lokalny model AI pod adresem loopback",
+    "en": "local AI model at a loopback address"
+  },
+  "core.preparing_text": {
+    "pl": "Przygotowanie tekstu {number}/{total}: {name}",
+    "en": "Preparing text {number}/{total}: {name}"
+  },
+  "cli.local_requirements": {
+    "pl": "Wersja instalowana zawiera Pythona, ale lokalny tryb wymaga uruchomionej Ollamy i pobranego modelu.",
+    "en": "The installed version includes Python, but local mode requires Ollama running and a downloaded model."
+  }
+}

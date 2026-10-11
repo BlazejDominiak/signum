@@ -4,6 +4,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/), wersjonowanie: [SemVer]
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-10-11
+
+### Added
+- Interfejs polski i angielski w obu modułach, dialogach, komunikatach i etykietach
+  raportów; wspólne katalogi tłumaczeń JSON z nazwanymi parametrami.
+- Zapisany wybór języka w ustawieniach AI, stosowany po ponownym uruchomieniu
+  programu oraz przez CLI. Nowa instalacja przejmuje język instalatora.
+- Angielski domyślny prompt generatywnej analizy obrazów i angielskie przykładowe
+  kategorie dla pustej lub przywróconej konfiguracji.
+
+### Changed
+- Zmiana języka zachowuje istniejące kategorie, własne prompty, wyniki i korekty;
+  treści użytkownika, odpowiedzi modeli i zewnętrzne logi nie są tłumaczone wstecz.
+- Angielski zestaw kategorii podlega kontroli zgodności z profilem kalibracji:
+  brak dokładnego dopasowania oznacza domyślny HITL, chyba że użytkownik ustawi
+  własne progi. Zmierzona polska kalibracja nie jest przypisywana tłumaczeniu.
+- Instalator w repozytorium zaktualizowany do wersji 1.2.0.
+
 ## [1.1.9] — 2026-10-11
 
 ### Added

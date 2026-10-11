@@ -16,6 +16,7 @@ from typing import Any
 
 from signum.ai.base import AIResponseError, PageAnalysis, VisualSignature
 from signum.core.models import SignatureKind
+from signum.i18n import tr
 
 _VISUAL_KINDS = {
     "handwritten": SignatureKind.HANDWRITTEN,
@@ -66,7 +67,7 @@ def extract_first_json_object(text: str) -> dict[str, Any]:
                         return parsed
                     break
         start = text.find("{", start + 1)
-    raise AIResponseError("Odpowiedź modelu nie zawiera poprawnego obiektu JSON")
+    raise AIResponseError(tr("ai.invalid_json"))
 
 
 def parse_page_analysis(raw: str) -> PageAnalysis:
@@ -77,13 +78,13 @@ def parse_page_analysis(raw: str) -> PageAnalysis:
     signatures: list[VisualSignature] = []
     raw_signatures = data.get("signatures")
     if not isinstance(raw_signatures, list):
-        raise AIResponseError("Odpowiedź modelu nie zawiera listy signatures")
+        raise AIResponseError(tr("ai.missing_signatures"))
     for entry in raw_signatures:
         parsed = _parse_signature(entry)
         if parsed is not None:
             signatures.append(parsed)
     if raw_signatures and not signatures:
-        raise AIResponseError("Lista signatures nie zawiera poprawnych wpisów")
+        raise AIResponseError(tr("ai.invalid_signatures"))
     return PageAnalysis(description=description, signatures=tuple(signatures))
 
 

@@ -1,0 +1,598 @@
+{
+  "core.network.the_address_is_too_long": {
+    "pl": "Adres {service_name} jest zbyt długi.",
+    "en": "The {service_name} address is too long."
+  },
+  "core.network.the_address_cannot_contain_spaces_or_control": {
+    "pl": "Adres {service_name} nie może zawierać spacji ani znaków sterujących.",
+    "en": "The {service_name} address cannot contain spaces or control characters."
+  },
+  "core.network.the_address_must_be_a_complete_http": {
+    "pl": "Adres {service_name} musi być pełnym adresem HTTP lub HTTPS.",
+    "en": "The {service_name} address must be a complete HTTP or HTTPS URL."
+  },
+  "core.network.the_address_cannot_contain_a_username_or": {
+    "pl": "Adres {service_name} nie może zawierać nazwy użytkownika ani hasła.",
+    "en": "The {service_name} address cannot contain a username or password."
+  },
+  "core.network.the_address_cannot_contain_query_parameters_or": {
+    "pl": "Adres {service_name} nie może zawierać parametrów ani fragmentu.",
+    "en": "The {service_name} address cannot contain query parameters or a fragment."
+  },
+  "core.network.the_remote_address_must_use_https_because": {
+    "pl": "Zdalny adres {service_name} musi używać HTTPS, ponieważ otrzymuje treść dokumentów i może otrzymywać klucz API.",
+    "en": "The remote {service_name} address must use HTTPS because it receives document contents and may receive an API key."
+  },
+  "core.decision.no_valid_model_score_in_the_0": {
+    "pl": "Brak poprawnego wyniku modelu w zakresie 0–1.",
+    "en": "No valid model score in the 0–1 range."
+  },
+  "core.decision.the_model_score_must_be_a_finite": {
+    "pl": "Wynik modelu musi być skończoną liczbą w zakresie 0–1.",
+    "en": "The model score must be a finite number in the 0–1 range."
+  },
+  "core.decision.hitl_review_score_threshold_margin": {
+    "pl": "HITL — sprawdź: {label}; wynik {score:.3f}, próg {threshold:.3f}, margines ±{margin:.3f}.",
+    "en": "HITL — review: {label}; score {score:.3f}, threshold {threshold:.3f}, margin ±{margin:.3f}."
+  },
+  "core.models.page": {
+    "pl": "Strona {page}: {reason}",
+    "en": "Page {page}: {reason}"
+  },
+  "core.models.error": {
+    "pl": "BŁĄD",
+    "en": "ERROR"
+  },
+  "core.models.cancelled": {
+    "pl": "ANULOWANO",
+    "en": "CANCELLED"
+  },
+  "core.models.pending": {
+    "pl": "OCZEKUJE",
+    "en": "PENDING"
+  },
+  "core.models.signed": {
+    "pl": "PODPISANY ({value0})",
+    "en": "SIGNED ({value0})"
+  },
+  "core.models.none_in_analyzed_pages": {
+    "pl": "BRAK W BADANEJ CZĘŚCI",
+    "en": "NONE IN ANALYZED PAGES"
+  },
+  "core.models.stamp_only": {
+    "pl": "TYLKO PIECZĄTKA",
+    "en": "STAMP ONLY"
+  },
+  "core.digital.certification_signature_docmdp": {
+    "pl": "podpis certyfikujący (DocMDP)",
+    "en": "certification signature (DocMDP)"
+  },
+  "core.digital.signed_by": {
+    "pl": "podpisał(a): {value0}",
+    "en": "signed by: {value0}"
+  },
+  "core.digital.date": {
+    "pl": "data: {value0}",
+    "en": "date: {value0}"
+  },
+  "core.digital.reason": {
+    "pl": "powód: {value0}",
+    "en": "reason: {value0}"
+  },
+  "core.digital.encrypted_pdf_structure_analysis_skipped": {
+    "pl": "PDF zaszyfrowany — pominięto analizę struktury",
+    "en": "Encrypted PDF — structure analysis skipped"
+  },
+  "core.digital.could_not_analyze_the_pdf_structure": {
+    "pl": "Nie udało się przeanalizować struktury PDF: {exc}",
+    "en": "Could not analyze the PDF structure: {exc}"
+  },
+  "core.digital.usage_rights_signature_ur3": {
+    "pl": "podpis praw użycia (UR3)",
+    "en": "usage rights signature (UR3)"
+  },
+  "core.digital.analysis_of_an_excessively_complex_pdf_field": {
+    "pl": "ograniczono analizę nadmiernie złożonej hierarchii pól PDF",
+    "en": "analysis of an excessively complex PDF field hierarchy was limited"
+  },
+  "core.digital.digital_signature_unspecified_subtype": {
+    "pl": "podpis cyfrowy (nieokreślony podtyp)",
+    "en": "digital signature (unspecified subtype)"
+  },
+  "core.rendering.file_size_is_mb_the_safety_limit": {
+    "pl": "Plik ma {value0:.1f} MB; limit bezpieczeństwa wynosi {value1} MB",
+    "en": "File size is {value0:.1f} MB; the safety limit is {value1} MB"
+  },
+  "core.rendering.could_not_read_the_file": {
+    "pl": "Nie można odczytać pliku: {exc}",
+    "en": "Could not read the file: {exc}"
+  },
+  "core.rendering.could_not_open_the_pdf": {
+    "pl": "Nie można otworzyć PDF: {exc}",
+    "en": "Could not open the PDF: {exc}"
+  },
+  "core.rendering.page_is_out_of_range": {
+    "pl": "Strona {page_number} poza zakresem",
+    "en": "Page {page_number} is out of range"
+  },
+  "core.rendering.could_not_read_page": {
+    "pl": "Nie można odczytać strony {page_number}: {exc}",
+    "en": "Could not read page {page_number}: {exc}"
+  },
+  "core.rendering.could_not_read_page_33": {
+    "pl": "Nie można odczytać strony {number}: {exc}",
+    "en": "Could not read page {number}: {exc}"
+  },
+  "core.rendering.pdf_contains_an_invalid_page_size": {
+    "pl": "PDF zawiera niepoprawny rozmiar strony",
+    "en": "PDF contains an invalid page size"
+  },
+  "core.rendering.could_not_read_image": {
+    "pl": "Nie można odczytać obrazu {value0}: {exc}",
+    "en": "Could not read image {value0}: {exc}"
+  },
+  "core.pipeline.unknown_model_error": {
+    "pl": "Nieznany błąd modelu",
+    "en": "Unknown model error"
+  },
+  "core.classification.enter_2_to_12_categories_empty_rows": {
+    "pl": "Wpisz od 2 do 12 kategorii. Puste wiersze są pomijane.",
+    "en": "Enter 2 to 12 categories. Empty rows are ignored."
+  },
+  "core.classification.category_names_must_be_unique": {
+    "pl": "Nazwy kategorii nie mogą się powtarzać.",
+    "en": "Category names must be unique."
+  },
+  "core.classification.category_name_max_120_characters_description_max": {
+    "pl": "Nazwa kategorii: maks. 120 znaków; opis: maks. 600 znaków.",
+    "en": "Category name: max. 120 characters; description: max. 600 characters."
+  },
+  "core.classification.the_prompt_must_contain_1_to_4000": {
+    "pl": "Prompt musi zawierać od 1 do 4000 znaków.",
+    "en": "The prompt must contain 1 to 4000 characters."
+  },
+  "core.classification.pdf_exceeds_the_250_mb_limit": {
+    "pl": "PDF przekracza limit 250 MB",
+    "en": "PDF exceeds the 250 MB limit"
+  },
+  "core.classification.pdf_changed_while_reading_run_the_analysis": {
+    "pl": "PDF zmienił się podczas odczytu. Powtórz analizę.",
+    "en": "PDF changed while reading. Run the analysis again."
+  },
+  "core.classification.no_pdf_text_layer_this_mode_does": {
+    "pl": "Brak warstwy tekstowej PDF — ten tryb nie wykonuje OCR.",
+    "en": "No PDF text layer — this mode does not perform OCR."
+  },
+  "core.classification.unreadable_pdf_text_layer_ocr_or_manual": {
+    "pl": "Nieczytelna warstwa tekstowa PDF — potrzebny OCR lub ręczny odczyt.",
+    "en": "Unreadable PDF text layer — OCR or manual reading is needed."
+  },
+  "core.classification.only_a_signature_annotation_was_read_no": {
+    "pl": "Odczytano tylko adnotację podpisu — brak treści do klasyfikacji.",
+    "en": "Only a signature annotation was read — no content to classify."
+  },
+  "core.classification.could_not_read_the_pdf": {
+    "pl": "Nie można odczytać PDF: {exc}",
+    "en": "Could not read the PDF: {exc}"
+  },
+  "core.classification.select_models_and_the_number_of_repetitions": {
+    "pl": "Wybierz modele i liczbę powtórzeń.",
+    "en": "Select models and the number of repetitions."
+  },
+  "core.classification.the_prompt_and_categories_leave_no_room": {
+    "pl": "Prompt i kategorie nie pozostawiają miejsca na tekst PDF.",
+    "en": "The prompt and categories leave no room for PDF text."
+  },
+  "core.classification.connecting": {
+    "pl": "Połączenie: {value0}…",
+    "en": "Connecting: {value0}…"
+  },
+  "core.classification.loading": {
+    "pl": "Ładowanie: {value0}…",
+    "en": "Loading: {value0}…"
+  },
+  "core.classification.pass": {
+    "pl": "{value0} · {value1}/{value2} · przejście {value3}/{repeats} · {value5}",
+    "en": "{value0} · {value1}/{value2} · pass {value3}/{repeats} · {value5}"
+  },
+  "core.classification.hitl_open_the_document_and_review_its": {
+    "pl": "HITL — otwórz dokument i sprawdź jego treść: ",
+    "en": "HITL — open the document and review its contents: "
+  },
+  "core.classification.cancelled": {
+    "pl": "Anulowano.",
+    "en": "Cancelled."
+  },
+  "core.classification.the_model_did_not_return_scores_for": {
+    "pl": "Model nie zwrócił ocen wszystkich etykiet z podanej listy.",
+    "en": "The model did not return scores for all labels in the list."
+  },
+  "core.classification.invalid_label_score_source": {
+    "pl": "Niepoprawne źródło ocen etykiet.",
+    "en": "Invalid label score source."
+  },
+  "core.classification.hitl_no_calibration_for_this_model_prompt": {
+    "pl": "HITL — brak kalibracji dla tego modelu, promptu i zestawu etykiet. Sprawdź oceny i wybierz etykiety ręcznie.",
+    "en": "HITL — no calibration for this model, prompt and label set. Review the scores and select labels manually."
+  },
+  "core.classification.hitl_review_too_few_examples_of_this": {
+    "pl": "HITL — sprawdź: {value0}; zbyt mało przykładów tej kategorii w kalibracji.",
+    "en": "HITL — review: {value0}; too few examples of this category in calibration."
+  },
+  "core.classification.the_model_did_not_return_a_valid": {
+    "pl": "Model nie zwrócił poprawnej listy etykiet.",
+    "en": "The model did not return a valid label list."
+  },
+  "core.classification.hitl_review_labels_the_model_does_not": {
+    "pl": "HITL — sprawdź etykiety: model nie udostępnia liczbowych ocen decyzji.",
+    "en": "HITL — review labels: the model does not provide numeric decision scores."
+  },
+  "core.classification.you_can_assign_up_to_labels": {
+    "pl": "Możesz przypisać maksymalnie {MAX_CLASSIFICATION_LABELS} etykiety.",
+    "en": "You can assign up to {MAX_CLASSIFICATION_LABELS} labels."
+  },
+  "core.classification.labels_must_be_unique": {
+    "pl": "Etykiety nie mogą się powtarzać.",
+    "en": "Labels must be unique."
+  },
+  "core.collection_session.collection_file_is_too_large": {
+    "pl": "Zapis kolekcji jest zbyt duży",
+    "en": "Collection file is too large"
+  },
+  "core.collection_session.unsupported_collection_version": {
+    "pl": "Nieobsługiwana wersja kolekcji",
+    "en": "Unsupported collection version"
+  },
+  "core.collection_session.collection_contains_a_relative_path": {
+    "pl": "Kolekcja zawiera niepełną ścieżkę",
+    "en": "Collection contains a relative path"
+  },
+  "core.collection_session.invalid_file_identity": {
+    "pl": "Niepoprawna tożsamość pliku",
+    "en": "Invalid file identity"
+  },
+  "core.collection_session.invalid_model_or_trial_number": {
+    "pl": "Niepoprawny model lub numer próby",
+    "en": "Invalid model or trial number"
+  },
+  "core.collection_session.invalid_classification_confidence": {
+    "pl": "Niepoprawna pewność klasyfikacji",
+    "en": "Invalid classification confidence"
+  },
+  "core.collection_session.invalid_list_of_labels_or_hitl_reasons": {
+    "pl": "Niepoprawna lista etykiet lub powodów HITL",
+    "en": "Invalid list of labels or HITL reasons"
+  },
+  "core.collection_session.duplicate_collection_labels": {
+    "pl": "Powtórzone etykiety kolekcji",
+    "en": "Duplicate collection labels"
+  },
+  "core.collection_session.invalid_label_score_source": {
+    "pl": "Niepoprawne źródło ocen etykiet",
+    "en": "Invalid label score source"
+  },
+  "core.filing.the_category_folder_points_outside_the_destination": {
+    "pl": "Folder kategorii prowadzi poza folder docelowy lub jest dowiązaniem.",
+    "en": "The category folder points outside the destination folder or is a link."
+  },
+  "core.filing.the_category_folder_is_a_link": {
+    "pl": "Folder kategorii jest dowiązaniem.",
+    "en": "The category folder is a link."
+  },
+  "core.filing.a_file_already_uses_the_category_folder": {
+    "pl": "Nazwa folderu kategorii jest zajęta przez plik.",
+    "en": "A file already uses the category folder name."
+  },
+  "core.filing.select_an_existing_destination_folder": {
+    "pl": "Wybierz istniejący folder docelowy.",
+    "en": "Select an existing destination folder."
+  },
+  "core.filing.no_unambiguous_result": {
+    "pl": "Brak jednoznacznego wyniku",
+    "en": "No unambiguous result"
+  },
+  "core.filing.hitl_review_labels_before_organizing": {
+    "pl": "HITL — sprawdź etykiety przed porządkowaniem",
+    "en": "HITL — review labels before organizing"
+  },
+  "core.filing.multiple_labels_copy_to_all_categories_or": {
+    "pl": "Wiele etykiet — użyj kopiowania do wszystkich kategorii albo wybierz jedną",
+    "en": "Multiple labels — copy to all categories or select one"
+  },
+  "core.filing.excluded_from_organizing": {
+    "pl": "Wyłączony z porządkowania",
+    "en": "Excluded from organizing"
+  },
+  "core.filing.missing_file_identity_run_the_analysis_again": {
+    "pl": "Brak tożsamości pliku — powtórz analizę",
+    "en": "Missing file identity — run the analysis again"
+  },
+  "core.filing.file_unavailable_or_a_link": {
+    "pl": "Plik niedostępny lub dowiązanie",
+    "en": "File unavailable or a link"
+  },
+  "core.filing.pdf_has_changed_since_classification_run_the": {
+    "pl": "PDF zmienił się od klasyfikacji — powtórz analizę",
+    "en": "PDF has changed since classification — run the analysis again"
+  },
+  "core.filing.already_in_the_destination_folder": {
+    "pl": "Już w folderze docelowym",
+    "en": "Already in the destination folder"
+  },
+  "core.filing.the_destination_folder_has_moved": {
+    "pl": "Folder docelowy zmienił położenie.",
+    "en": "The destination folder has moved."
+  },
+  "core.filing.the_source_file_has_changed_since_the": {
+    "pl": "Plik źródłowy zmienił się od przygotowania podglądu.",
+    "en": "The source file has changed since the preview was prepared."
+  },
+  "core.filing.copy_verification_failed_the_source_is_unchanged": {
+    "pl": "Weryfikacja kopii nie powiodła się; źródło pozostaje bez zmian.",
+    "en": "Copy verification failed; the source is unchanged."
+  },
+  "core.filing.the_source_file_changed_while_moving": {
+    "pl": "Plik źródłowy zmienił się podczas przenoszenia.",
+    "en": "The source file changed while moving."
+  },
+  "core.filing.operation_completed_journal_error": {
+    "pl": "Operacja wykonana; błąd dziennika: {exc}",
+    "en": "Operation completed; journal error: {exc}"
+  },
+  "core.model_profiles.select_a_connection_type": {
+    "pl": "Wybierz rodzaj połączenia.",
+    "en": "Select a connection type."
+  },
+  "core.model_profiles.prepare_jevk5_ai_components_jevk5_install_repair": {
+    "pl": "Przygotuj JevK5: Składniki AI → JevK5 → Instaluj / napraw.",
+    "en": "Prepare JevK5: AI components → JevK5 → Install / repair."
+  },
+  "core.model_profiles.enter_a_model_name": {
+    "pl": "Wpisz nazwę modelu.",
+    "en": "Enter a model name."
+  },
+  "core.model_profiles.enter_the_api_address": {
+    "pl": "Wpisz adres API.",
+    "en": "Enter the API address."
+  },
+  "core.model_profiles.select_an_api_format": {
+    "pl": "Wybierz format API.",
+    "en": "Select an API format."
+  },
+  "core.model_profiles.invalid_model_list": {
+    "pl": "Nieprawidłowa lista modeli.",
+    "en": "Invalid model list."
+  },
+  "core.model_profiles.invalid_model_configuration": {
+    "pl": "Nieprawidłowa konfiguracja modelu.",
+    "en": "Invalid model configuration."
+  },
+  "core.model_profiles.invalid_model_configuration_fields": {
+    "pl": "Nieprawidłowe pola konfiguracji modelu.",
+    "en": "Invalid model configuration fields."
+  },
+  "core.model_profiles.duplicate_model_ids": {
+    "pl": "Powtórzone identyfikatory modeli.",
+    "en": "Duplicate model IDs."
+  },
+  "core.local_components.open_the_document_in_a_pdf_reader": {
+    "pl": "Otwórz dokument w czytniku PDF; użyj poprawnej, niezaszyfrowanej kopii pliku.",
+    "en": "Open the document in a PDF reader; use a valid, unencrypted copy."
+  },
+  "core.local_components.close_other_programs_using_the_gpu_and": {
+    "pl": "Zamknij inne programy korzystające z GPU i spróbuj ponownie. Jeśli pamięci nadal brakuje, wybierz mniejszy model w Ustawieniach AI.",
+    "en": "Close other programs using the GPU and try again. If memory is still insufficient, select a smaller model in AI settings."
+  },
+  "core.local_components.install_the_latest_graphics_driver_from_https": {
+    "pl": "Zainstaluj aktualny sterownik karty ze strony https://www.nvidia.com/Download/ i uruchom komputer ponownie. Jev i JevK5 wymagają NVIDIA z 16 GB VRAM; na innym sprzęcie wybierz model w Ollamie lub AI od dostawcy.",
+    "en": "Install the latest graphics driver from https://www.nvidia.com/Download/ and restart the computer. Jev and JevK5 require NVIDIA with 16 GB VRAM; on other hardware, select an Ollama model or an AI provider."
+  },
+  "core.local_components.install_microsoft_visual_c_redistributable_x64_from": {
+    "pl": "Zainstaluj Microsoft Visual C++ Redistributable x64 z https://aka.ms/vc14/vc_redist.x64.exe, uruchom komputer ponownie, a następnie sprawdź składnik ponownie.",
+    "en": "Install Microsoft Visual C++ Redistributable x64 from https://aka.ms/vc14/vc_redist.x64.exe, restart the computer, then check the component again."
+  },
+  "core.local_components.select_a_model_that_supports_images_in": {
+    "pl": "W Ustawieniach AI wybierz model obsługujący obrazy. Modele wyłącznie tekstowe można testować w kategoryzacji.",
+    "en": "Select a model that supports images in AI settings. Text-only models can be tested in classification."
+  },
+  "core.local_components.check_the_api_format_and_prompt_in": {
+    "pl": "Sprawdź format API i prompt w Ustawieniach AI. Jeśli test nadal się nie udaje, wybierz model tekstowy, który obsługuje odpowiedzi JSON.",
+    "en": "Check the API format and prompt in AI settings. If the test still fails, select a text model that supports JSON responses."
+  },
+  "core.local_components.check_the_connection_and_computer_load_increase": {
+    "pl": "Sprawdź połączenie i obciążenie komputera. Zwiększ limit czasu w Ustawieniach AI lub wybierz mniejszy model, następnie ponów Testuj połączenie.",
+    "en": "Check the connection and computer load. Increase the timeout in AI settings or select a smaller model, then run Test connection again."
+  },
+  "core.local_components.check_the_api_key_permissions_and_service": {
+    "pl": "W Ustawieniach AI sprawdź klucz API, uprawnienia i adres usługi; użyj Testuj połączenie.",
+    "en": "Check the API key, permissions and service address in AI settings; use Test connection."
+  },
+  "core.local_components.wait_a_moment_and_check_your_ai": {
+    "pl": "Odczekaj chwilę i sprawdź limit konta u dostawcy AI, następnie ponów test.",
+    "en": "Wait a moment and check your AI provider account limits, then retry the test."
+  },
+  "core.local_components.select_a_drive_with_more_free_space": {
+    "pl": "W Składnikach AI wybierz dysk z większą ilością wolnego miejsca i ponów instalację.",
+    "en": "Select a drive with more free space in AI components and retry the installation."
+  },
+  "core.local_components.select_a_writable_folder_of_your_own": {
+    "pl": "Wybierz własny, zapisywalny folder w Składnikach AI i ponów instalację.",
+    "en": "Select a writable folder of your own in AI components and retry the installation."
+  },
+  "core.local_components.check_the_internet_connection_system_date_and": {
+    "pl": "Sprawdź połączenie z internetem, datę systemową i ustawienia proxy. Ponów instalację w Składnikach AI; nie wyłączaj weryfikacji certyfikatów.",
+    "en": "Check the internet connection, system date and proxy settings. Retry the installation in AI components; do not disable certificate verification."
+  },
+  "core.local_components.check_the_address_api_format_model_name": {
+    "pl": "W Ustawieniach AI sprawdź adres, format API, nazwę modelu i klucz; użyj Testuj połączenie. Sprawdź również dostępność usługi u dostawcy.",
+    "en": "Check the address, API format, model name and key in AI settings; use Test connection. Also check service availability with the provider."
+  },
+  "core.local_components.open_ai_components_select_the_failing_component": {
+    "pl": "Otwórz Składniki AI, zaznacz niedziałający składnik i wybierz Sprawdź. Jeśli test się nie powiedzie, wybierz Instaluj / napraw. Po zakończeniu użyj Testuj połączenie w Ustawieniach AI.",
+    "en": "Open AI components, select the failing component and choose Check. If the test fails, choose Install / repair. When finished, use Test connection in AI settings."
+  },
+  "core.local_components.how_to_fix": {
+    "pl": "\n\nJak naprawić: ",
+    "en": "\n\nHow to fix: "
+  },
+  "core.local_components.missing_jevk5_library_directory": {
+    "pl": "Brak katalogu bibliotek JevK5.",
+    "en": "Missing JevK5 library directory."
+  },
+  "core.local_components.missing_jevk5_components": {
+    "pl": "Brak składników JevK5: ",
+    "en": "Missing JevK5 components: "
+  },
+  "core.local_components.component_python_was_not_found_use_install": {
+    "pl": "Nie znaleziono Pythona składnika. Użyj Instaluj / napraw.",
+    "en": "Component Python was not found. Use Install / repair."
+  },
+  "core.local_components.libraries_did_not_respond_within_120_seconds": {
+    "pl": "Biblioteki nie odpowiedziały w ciągu 120 sekund.",
+    "en": "Libraries did not respond within 120 seconds."
+  },
+  "core.local_components.could_not_start_libraries": {
+    "pl": "Nie można uruchomić bibliotek: ",
+    "en": "Could not start libraries: "
+  },
+  "core.local_components.nvidia_driver_not_detected_jev_and_jevk5": {
+    "pl": "Nie wykryto sterownika NVIDIA. Jev i JevK5 wymagają NVIDIA z 16 GB VRAM.",
+    "en": "NVIDIA driver not detected. Jev and JevK5 require NVIDIA with 16 GB VRAM."
+  },
+  "core.local_components.could_not_check_the_nvidia_gpu_update": {
+    "pl": "Nie można sprawdzić karty NVIDIA; zaktualizuj sterownik.",
+    "en": "Could not check the NVIDIA GPU; update the driver."
+  },
+  "core.local_components.this_package_requires_nvidia_with_at_least": {
+    "pl": "Ten pakiet wymaga NVIDIA z co najmniej 16 GB pamięci GPU.",
+    "en": "This package requires NVIDIA with at least 16 GB GPU memory."
+  },
+  "core.config.decision_threshold": {
+    "pl": "próg decyzji",
+    "en": "decision threshold"
+  },
+  "core.config.stamp_threshold": {
+    "pl": "próg pieczątki",
+    "en": "stamp threshold"
+  },
+  "core.config.category_threshold": {
+    "pl": "próg kategorii",
+    "en": "category threshold"
+  },
+  "core.config.region_threshold": {
+    "pl": "próg obszaru",
+    "en": "region threshold"
+  },
+  "core.config.verification_threshold": {
+    "pl": "próg weryfikacji",
+    "en": "verification threshold"
+  },
+  "core.config.single_signature_threshold": {
+    "pl": "próg pojedynczego podpisu",
+    "en": "single signature threshold"
+  },
+  "core.config.page_limit_image_size_additional_analysis": {
+    "pl": "Limit stron: {value0}; rozmiar obrazu: {value1}; dodatkowa analiza: {value2}; ",
+    "en": "Page limit: {value0}; image size: {value1}; additional analysis: {value2}; "
+  },
+  "core.cli.detects_signatures_handwritten_initials_stamps_digital_in": {
+    "pl": "Wykrywa podpisy (odręczne, parafki, pieczątki, cyfrowe) w dokumentach PDF i skanach.",
+    "en": "Detects signatures (handwritten, initials, stamps, digital) in PDF documents and scans."
+  },
+  "core.cli.do_not_scan_subfolders": {
+    "pl": "nie schodź do podfolderów",
+    "en": "do not scan subfolders"
+  },
+  "core.cli.descriptions_categories_and_crops_for_ollama_or": {
+    "pl": "opis/kategorie i wycinki dla Ollamy lub Jev; --no-additional-analysis wyłącza",
+    "en": "descriptions/categories and crops for Ollama or Jev; --no-additional-analysis disables"
+  },
+  "core.cli.acknowledge_permissions_processing_method_and_the_need": {
+    "pl": "potwierdź uprawnienia, sposób przetwarzania i obowiązek weryfikacji",
+    "en": "acknowledge permissions, processing method and the need for review"
+  },
+  "core.cli.the_additional_analysis_option_supports_ollama_and": {
+    "pl": "Przełącznik dodatkowej analizy obsługuje Ollamę i Jev.",
+    "en": "The additional analysis option supports Ollama and Jev."
+  },
+  "core.cli.no_supported_documents_found_pdf_jpg_png": {
+    "pl": "Nie znaleziono obsługiwanych dokumentów (PDF/JPG/PNG/TIFF/BMP/WEBP).",
+    "en": "No supported documents found (PDF/JPG/PNG/TIFF/BMP/WEBP)."
+  },
+  "core.cli.to_start_the_analysis_repeat_the_command": {
+    "pl": "Aby uruchomić analizę, ponów polecenie z --acknowledge-risks.",
+    "en": "To start the analysis, repeat the command with --acknowledge-risks."
+  },
+  "core.cli.ai_service_unavailable": {
+    "pl": "Usługa AI niedostępna: {exc}",
+    "en": "AI service unavailable: {exc}"
+  },
+  "core.cli.model": {
+    "pl": "Model: {value0}",
+    "en": "Model: {value0}"
+  },
+  "core.cli.connection": {
+    "pl": "Połączenie: {connection}",
+    "en": "Connection: {connection}"
+  },
+  "core.cli.files_to_analyze": {
+    "pl": "Plików do analizy: {value0}\n",
+    "en": "Files to analyze: {value0}\n"
+  },
+  "core.cli.html_report": {
+    "pl": "Raport HTML: {value0}",
+    "en": "HTML report: {value0}"
+  },
+  "core.cli.csv_report": {
+    "pl": "Raport CSV: {value0}",
+    "en": "CSV report: {value0}"
+  },
+  "core.cli.error": {
+    "pl": "BŁĄD: {value0}",
+    "en": "ERROR: {value0}"
+  },
+  "core.cli.signed_max_confidence": {
+    "pl": "„{value0}” — PODPISANY: {value1} (max pewność {value2}%)",
+    "en": "“{value0}” — SIGNED: {value1} (max confidence {value2}%)"
+  },
+  "core.cli.processed_files_in_s_signed_errors": {
+    "pl": "Przetworzono {value0} plików w {value1:.0f} s — z podpisami: {value2}, błędy: {value3}",
+    "en": "Processed {value0} files in {value1:.0f} s — signed: {value2}, errors: {value3}"
+  },
+  "core.cli.batch_aborted": {
+    "pl": "PARTIĘ PRZERWANO: {value0}",
+    "en": "BATCH ABORTED: {value0}"
+  },
+  "core.cli.external_ai_service_page_images_will_leave": {
+    "pl": "zewnętrzna usługa AI; obrazy stron opuszczą komputer",
+    "en": "external AI service; page images will leave the computer"
+  },
+  "core.cli.pre_analysis_notice": {
+    "pl": "OSTRZEŻENIE PRZED ANALIZĄ",
+    "en": "PRE-ANALYSIS NOTICE"
+  },
+  "core.cli.number_of_documents": {
+    "pl": "- Liczba dokumentów: {file_count}.",
+    "en": "- Number of documents: {file_count}."
+  },
+  "core.cli.processing_method": {
+    "pl": "- Sposób przetwarzania: {transport}.",
+    "en": "- Processing method: {transport}."
+  },
+  "core.cli.you_must_have_the_right_to_process": {
+    "pl": "- Musisz mieć prawo do przetwarzania dokumentów.",
+    "en": "- You must have the right to process the documents."
+  },
+  "core.cli.ai_results_may_be_incorrect_and_require": {
+    "pl": "- Wyniki AI mogą być błędne i wymagają ręcznej weryfikacji.",
+    "en": "- AI results may be incorrect and require manual review."
+  },
+  "core.cli.reports_contain_names_and_data_from_documents": {
+    "pl": "- Raporty zawierają nazwy i dane z dokumentów; HTML osadza również obrazy.",
+    "en": "- Reports contain names and data from documents; HTML also embeds images."
+  },
+  "core.cli.value_must_be_in_the_1_500": {
+    "pl": "wartość musi mieścić się w zakresie 1–500",
+    "en": "value must be in the 1–500 range"
+  }
+}

@@ -1,0 +1,634 @@
+{
+  "ai.missing_decisions": {
+    "pl": "Model nie zwrócił odpowiedzi w formacie Decisions.",
+    "en": "The model did not return a Decisions response."
+  },
+  "ai.missing_test_response": {
+    "pl": "Model nie zwrócił treści odpowiedzi na test połączenia.",
+    "en": "The model returned no content for the connection test."
+  },
+  "ai.missing_venice_key": {
+    "pl": "Brak klucza Venice. Uzupełnij połączenie lub wybierz plik .env.",
+    "en": "Venice key missing. Complete the connection settings or select an .env file."
+  },
+  "ai.incomplete_jev_scores": {
+    "pl": "Brak kompletu ocen etykiet JEV.",
+    "en": "Incomplete JEV label scores."
+  },
+  "ai.invalid_jev_score": {
+    "pl": "Niepoprawna ocena etykiety JEV.",
+    "en": "Invalid JEV label score."
+  },
+  "ai.api_rate_limit": {
+    "pl": "API: przekroczono limit żądań.",
+    "en": "API request limit exceeded."
+  },
+  "ai.unfinished_response": {
+    "pl": "Model nie dokończył odpowiedzi.",
+    "en": "The model did not finish its response."
+  },
+  "ai.context_limit": {
+    "pl": "Tekst zbliża się do granicy kontekstu modelu; skróć dokument lub prompt.",
+    "en": "The text is approaching the model's context limit; shorten the document or prompt."
+  },
+  "ai.missing_label_scores": {
+    "pl": "Model nie zwrócił ocen wszystkich etykiet z podanej listy.",
+    "en": "The model did not score every label in the list."
+  },
+  "ai.local_jevk5_error": {
+    "pl": "Błąd lokalnego JevK5",
+    "en": "Local JevK5 error"
+  },
+  "ai.jevk5_timeout": {
+    "pl": "JevK5: przekroczono czas oczekiwania na odpowiedź.",
+    "en": "JevK5: response timeout."
+  },
+  "ai.incomplete_jevk5_scores": {
+    "pl": "Brak kompletu ocen etykiet JevK5.",
+    "en": "Incomplete JevK5 label scores."
+  },
+  "ai.invalid_jevk5_score": {
+    "pl": "Niepoprawna ocena etykiety JevK5.",
+    "en": "Invalid JevK5 label score."
+  },
+  "ai.prompt_too_long": {
+    "pl": "Skróć prompt lub opisy kategorii, aby zmieścić tekst dokumentu.",
+    "en": "Shorten the prompt or category descriptions to leave room for the document text."
+  },
+  "ai.invalid_json": {
+    "pl": "Odpowiedź modelu nie zawiera poprawnego obiektu JSON",
+    "en": "The model response does not contain a valid JSON object"
+  },
+  "ai.missing_signatures": {
+    "pl": "Odpowiedź modelu nie zawiera listy signatures",
+    "en": "The model response does not contain a signatures list"
+  },
+  "ai.invalid_signatures": {
+    "pl": "Lista signatures nie zawiera poprawnych wpisów",
+    "en": "The signatures list contains no valid entries"
+  },
+  "ai.missing_api_key": {
+    "pl": "Nie podano klucza API",
+    "en": "No API key provided"
+  },
+  "ai.api_key_rejected": {
+    "pl": "Klucz API odrzucony (HTTP 401)",
+    "en": "API key rejected (HTTP 401)"
+  },
+  "ai.additional_analysis": {
+    "pl": "dodatkowa analiza",
+    "en": "additional analysis"
+  },
+  "ai.basic_analysis": {
+    "pl": "analiza podstawowa",
+    "en": "basic analysis"
+  },
+  "ai.ollama_missing_signatures": {
+    "pl": "Brak listy podpisów w odpowiedzi Ollamy",
+    "en": "The Ollama response contains no signatures list"
+  },
+  "ai.ollama_retry_end": {
+    "pl": "Nieosiągalny koniec ponowienia Ollamy",
+    "en": "Unreachable end of Ollama retry"
+  },
+  "ai.ollama_invalid_load_time": {
+    "pl": "Niepoprawny czas ładowania w odpowiedzi Ollamy",
+    "en": "Invalid loading time in the Ollama response"
+  },
+  "ai.response_limit": {
+    "pl": "Model osiągnął limit odpowiedzi przed zakończeniem analizy",
+    "en": "The model reached the response limit before completing the analysis"
+  },
+  "ai.empty_response": {
+    "pl": "Model zwrócił pustą odpowiedź końcową",
+    "en": "The model returned an empty final response"
+  },
+  "ai.invalid_version": {
+    "pl": "niepoprawna odpowiedź endpointu /api/version",
+    "en": "invalid response from the /api/version endpoint"
+  },
+  "ai.none": {
+    "pl": "(brak)",
+    "en": "(none)"
+  },
+  "ai.ollama_invalid_models": {
+    "pl": "Ollama zwróciła niepoprawną listę modeli",
+    "en": "Ollama returned an invalid model list"
+  },
+  "ai.jev_releasing": {
+    "pl": "Jev nadal zwalnia pamięć GPU.",
+    "en": "Jev is still releasing GPU memory."
+  },
+  "ai.jev_local_only": {
+    "pl": "Automatyczny start Jev obsługuje tylko lokalny adres HTTP.",
+    "en": "Automatic Jev startup only supports a local HTTP URL."
+  },
+  "ai.jev_v1_url": {
+    "pl": "Lokalny serwer Jev wymaga adresu zakończonego /v1.",
+    "en": "The local Jev server requires a URL ending in /v1."
+  },
+  "ai.runtime_absolute_paths": {
+    "pl": "Ścieżki runtime muszą być bezwzględne",
+    "en": "Runtime paths must be absolute"
+  },
+  "ai.missing_runtime": {
+    "pl": "Brak interpretera lub pakietu vjev",
+    "en": "Interpreter or vjev package missing"
+  },
+  "ai.incomplete_weights": {
+    "pl": "Pobieranie wag nie zostało zakończone",
+    "en": "Model weight download is incomplete"
+  },
+  "ai.jev_not_responding": {
+    "pl": "Lokalny serwer Jev nie odpowiada; sprawdź zajętość portu.",
+    "en": "The local Jev server is not responding; check whether its port is in use."
+  },
+  "ai.jev_not_managed": {
+    "pl": "Brak lokalnego serwera Jev uruchomionego przez Signum.",
+    "en": "No local Jev server started by Signum was found."
+  },
+  "ai.jev_stop_unmanaged": {
+    "pl": "Ten serwer Jev nie może być zatrzymany przez Signum.",
+    "en": "This Jev server cannot be stopped by Signum."
+  },
+  "ai.jev_stopped": {
+    "pl": "Lokalny Jev zatrzymany — pamięć GPU zwolniona.",
+    "en": "Local Jev stopped — GPU memory released."
+  },
+  "ai.jev_stop_failed": {
+    "pl": "Nie udało się zatrzymać lokalnego Jev.",
+    "en": "Unable to stop local Jev."
+  },
+  "ai.jev_stop_timeout": {
+    "pl": "Zatrzymywanie Jev trwa zbyt długo. Sprawdź server.log.",
+    "en": "Jev is taking too long to stop. Check server.log."
+  },
+  "ai.ollama_local_only": {
+    "pl": "Automatyczny start Ollamy wymaga lokalnego adresu HTTP.",
+    "en": "Automatic Ollama startup requires a local HTTP URL."
+  },
+  "ai.ollama_invalid_config": {
+    "pl": "Niepoprawna konfiguracja wykrytej Ollamy.",
+    "en": "Invalid configuration for the detected Ollama installation."
+  },
+  "ai.ollama_not_prepared": {
+    "pl": "Nie znaleziono przygotowanej Ollamy. Uruchom konfigurator AI.",
+    "en": "No configured Ollama installation found. Run AI setup."
+  },
+  "ai.ollama_port_busy": {
+    "pl": "Port Ollamy jest zajęty przez inną usługę.",
+    "en": "The Ollama port is occupied by another service."
+  },
+  "ai.ollama_start_timeout": {
+    "pl": "Przekroczono czas startu lokalnej Ollamy.",
+    "en": "Local Ollama startup timed out."
+  },
+  "ai.jev_invalid_presence": {
+    "pl": "Jev zwrócił niepoprawną ocenę obecności podpisu.",
+    "en": "Jev returned an invalid signature presence score."
+  },
+  "ai.jev_score_out_of_range": {
+    "pl": "Jev zwrócił ocenę poza zakresem 0–1.",
+    "en": "Jev returned a score outside the 0–1 range."
+  },
+  "ai.jev_missing_response": {
+    "pl": "Brak odpowiedzi klasyfikatora podpisów Jev.",
+    "en": "No response from the Jev signature classifier."
+  },
+  "ai.jev_missing_probabilities": {
+    "pl": "Brak prawdopodobieństw pytania binarnego Jev.",
+    "en": "Missing probabilities for a binary Jev question."
+  },
+  "ai.jev_inconsistent_probabilities": {
+    "pl": "Niespójne prawdopodobieństwa odpowiedzi Jev.",
+    "en": "Inconsistent Jev response probabilities."
+  },
+  "ai.jev_incomplete_views": {
+    "pl": "Brak kompletu pięciu widoków Jev; wynik nie jest brakiem podpisu.",
+    "en": "The five Jev views are incomplete; this does not mean no signature was found."
+  },
+  "ai.signature_presence": {
+    "pl": "obecność podpisu/parafki",
+    "en": "signature/initials presence"
+  },
+  "ai.additional_suffix": {
+    "pl": " (dodatkowa analiza)",
+    "en": " (additional analysis)"
+  },
+  "ai.jev_key_rejected": {
+    "pl": "Klucz API odrzucony",
+    "en": "API key rejected"
+  },
+  "ai.jev_forbidden": {
+    "pl": "Brak uprawnień do modelu",
+    "en": "No permission to access the model"
+  },
+  "ai.jev_capacity": {
+    "pl": "Limit zapytań lub dostępnej przepustowości",
+    "en": "Request or capacity limit reached"
+  },
+  "ai.jev_compatibility": {
+    "pl": "Sprawdź model wizyjny i zgodność serwera z API Jev",
+    "en": "Check the vision model and the server's Jev API compatibility"
+  },
+  "ai.jev_request_rejected": {
+    "pl": "Usługa Jev odrzuciła zapytanie",
+    "en": "The Jev service rejected the request"
+  },
+  "ai.jev_invalid_json": {
+    "pl": "API Jev nie zwróciło poprawnego JSON",
+    "en": "The Jev API did not return valid JSON"
+  },
+  "ai.jev_missing_object": {
+    "pl": "API Jev nie zwróciło obiektu JSON",
+    "en": "The Jev API did not return a JSON object"
+  },
+  "ai.jev_typed_responses": {
+    "pl": "Jev używa analyze_page i odpowiedzi typowanych",
+    "en": "Jev uses analyze_page and typed responses"
+  },
+  "ai.jev_invalid_models": {
+    "pl": "API Jev zwróciło niepoprawną listę modeli",
+    "en": "The Jev API returned an invalid model list"
+  },
+  "ai.jev_no_vision": {
+    "pl": "Wybrany model nie analizuje obrazów lub działa jako stub",
+    "en": "The selected model does not analyze images or is a stub"
+  },
+  "ai.jev_missing_answers": {
+    "pl": "Brak obiektu answers w odpowiedzi Jev",
+    "en": "The Jev response contains no answers object"
+  },
+  "ai.jev_missing_document_type": {
+    "pl": "Brak poprawnego rodzaju dokumentu w odpowiedzi Jev",
+    "en": "The Jev response contains no valid document type"
+  },
+  "ai.jev_unknown_document_type": {
+    "pl": "Nieznany rodzaj dokumentu w odpowiedzi Jev",
+    "en": "Unknown document type in the Jev response"
+  },
+  "ai.jev_missing_additional": {
+    "pl": "Brak odpowiedzi dodatkowej analizy Jev.",
+    "en": "No Jev additional analysis response."
+  },
+  "ai.unrecognized_type": {
+    "pl": "Rodzaj nierozpoznany",
+    "en": "Unrecognized type"
+  },
+  "ai.approximate_region": {
+    "pl": "Przybliżony obszar oznaczenia (dodatkowa analiza).",
+    "en": "Approximate mark location (additional analysis)."
+  },
+  "ai.multiple_signature_region": {
+    "pl": "Przybliżony obszar; może obejmować kilka podpisów.",
+    "en": "Approximate area; may contain multiple signatures."
+  },
+  "ai.stop_unsupported": {
+    "pl": "Ten dostawca nie obsługuje zatrzymywania lokalnego modelu.",
+    "en": "This provider does not support stopping a local model."
+  },
+  "ai.unknown_provider": {
+    "pl": "Nieznany dostawca AI: {provider!r}",
+    "en": "Unknown AI provider: {provider!r}"
+  },
+  "ai.api_http_period": {
+    "pl": "API zwróciło HTTP {status}.",
+    "en": "The API returned HTTP {status}."
+  },
+  "ai.api_wait": {
+    "pl": "Limit API: oczekiwanie {seconds:.0f} s.",
+    "en": "API limit: waiting {seconds:.0f} s."
+  },
+  "ai.ollama_http_period": {
+    "pl": "Ollama zwróciła HTTP {status}.",
+    "en": "Ollama returned HTTP {status}."
+  },
+  "ai.jevk5_exited": {
+    "pl": "JevK5 zakończył pracę. Log: {path}\n{detail}",
+    "en": "JevK5 stopped. Log: {path}\n{detail}"
+  },
+  "ai.api_http": {
+    "pl": "API zwróciło HTTP {status}",
+    "en": "The API returned HTTP {status}"
+  },
+  "ai.invalid_api_response": {
+    "pl": "Niepoprawna odpowiedź API: {error}",
+    "en": "Invalid API response: {error}"
+  },
+  "ai.connection_failed": {
+    "pl": "Brak połączenia z {url}: {error}",
+    "en": "Unable to connect to {url}: {error}"
+  },
+  "ai.models_unavailable": {
+    "pl": "Endpoint {url} nie udostępnia listy modeli (HTTP {status}); dostępność analizy niepotwierdzona",
+    "en": "Endpoint {url} does not provide a model list (HTTP {status}); analysis availability is unconfirmed"
+  },
+  "ai.api_check_failed": {
+    "pl": "Sprawdzenie API nie powiodło się (HTTP {status})",
+    "en": "API check failed (HTTP {status})"
+  },
+  "ai.api_connected": {
+    "pl": "Połączono z {url} — klucz API przyjęty",
+    "en": "Connected to {url} — API key accepted"
+  },
+  "ai.ollama_incomplete_analysis": {
+    "pl": "Ollama ({model}) nie zwróciła pełnego wyniku analizy także po ponowieniu: {error}. Nie można na tej podstawie ocenić obecności podpisu.",
+    "en": "Ollama ({model}) did not return a complete analysis after retrying: {error}. Signature presence cannot be determined from this response."
+  },
+  "ai.ollama_connection_failed": {
+    "pl": "Brak połączenia z Ollamą pod {url}: {error}",
+    "en": "Unable to connect to Ollama at {url}: {error}"
+  },
+  "ai.ollama_http": {
+    "pl": "Ollama zwróciła HTTP {status}",
+    "en": "Ollama returned HTTP {status}"
+  },
+  "ai.ollama_invalid_response": {
+    "pl": "Niepoprawna odpowiedź Ollamy: {error}",
+    "en": "Invalid Ollama response: {error}"
+  },
+  "ai.ollama_model_missing": {
+    "pl": "Model {model!r} nie jest zainstalowany w Ollamie. Dostępne: {available}. Pobierz go poleceniem: ollama pull {command_model}",
+    "en": "Model {model!r} is not installed in Ollama. Available: {available}. Download it with: ollama pull {command_model}"
+  },
+  "ai.ollama_connected": {
+    "pl": "Ollama {version} — model {model} dostępny",
+    "en": "Ollama {version} — model {model} available"
+  },
+  "ai.model_load_failed": {
+    "pl": "Nie udało się załadować modelu {model}: {error}",
+    "en": "Unable to load model {model}: {error}"
+  },
+  "ai.jev_not_prepared": {
+    "pl": "Lokalny Jev nie jest przygotowany w {path}. Otwórz Składniki AI, zaznacz Jev i wybierz Instaluj / napraw.",
+    "en": "Local Jev is not configured in {path}. Open AI components, select Jev, and choose Install / repair."
+  },
+  "ai.jev_port_busy": {
+    "pl": "Port Jev jest zajęty przez inną usługę (HTTP {status}).",
+    "en": "The Jev port is occupied by another service (HTTP {status})."
+  },
+  "ai.jev_start_failed": {
+    "pl": "Nie udało się uruchomić Jev. Log: {path}",
+    "en": "Unable to start Jev. Log: {path}"
+  },
+  "ai.jev_start_exited": {
+    "pl": "Lokalny Jev zakończył start z błędem. Log: {path}",
+    "en": "Local Jev startup failed. Log: {path}"
+  },
+  "ai.jev_start_timeout": {
+    "pl": "Trwa ładowanie lokalnego Jev; przekroczono {seconds} s. Spróbuj ponownie lub sprawdź log: {path}",
+    "en": "Local Jev is still loading after {seconds} s. Try again or check the log: {path}"
+  },
+  "ai.ollama_start_failed": {
+    "pl": "Ollama nie wystartowała. Log: {path}",
+    "en": "Ollama did not start. Log: {path}"
+  },
+  "ai.jev_invalid_response": {
+    "pl": "Brak poprawnej odpowiedzi Jev: {field}.",
+    "en": "Missing or invalid Jev response: {field}."
+  },
+  "ai.vjev_connection_failed": {
+    "pl": "Serwer vjev nie odpowiada pod {url}. Lokalny model musi być uruchomiony przed analizą.",
+    "en": "The vjev server is not responding at {url}. The local model must be running before analysis."
+  },
+  "ai.jev_model_missing": {
+    "pl": "Model {model!r} nie jest dostępny pod tym adresem API",
+    "en": "Model {model!r} is not available at this API URL"
+  },
+  "ai.jev_connected": {
+    "pl": "Połączono z {model} — test obrazu zakończony",
+    "en": "Connected to {model} — image test complete"
+  },
+  "ai.jev_invalid_decision": {
+    "pl": "Brak poprawnej decyzji {kind} w odpowiedzi Jev",
+    "en": "Missing or invalid {kind} decision in the Jev response"
+  },
+  "ai.jev_invalid_score": {
+    "pl": "Niepoprawna ocena {kind} w odpowiedzi Jev",
+    "en": "Invalid {kind} score in the Jev response"
+  },
+  "ai.additional_invalid_response": {
+    "pl": "Brak poprawnej odpowiedzi dodatkowej analizy: {field}",
+    "en": "Missing or invalid additional analysis response: {field}"
+  },
+  "ai.additional_invalid_score": {
+    "pl": "Niepoprawna ocena dodatkowej analizy: {field}",
+    "en": "Invalid additional analysis score: {field}"
+  },
+  "ai.invalid_presence_score": {
+    "pl": "Niepoprawna ocena obecności: {field}",
+    "en": "Invalid presence score: {field}"
+  },
+  "ai.claude_connection_failed": {
+    "pl": "Brak połączenia z Claude API: {error}",
+    "en": "Unable to connect to Claude API: {error}"
+  },
+  "ai.claude_http": {
+    "pl": "Claude API zwróciło HTTP {status}",
+    "en": "Claude API returned HTTP {status}"
+  },
+  "ai.claude_invalid_response": {
+    "pl": "Niepoprawna odpowiedź Claude API: {error}",
+    "en": "Invalid Claude API response: {error}"
+  },
+  "ai.claude_connected": {
+    "pl": "Połączono z Claude API — model {model}",
+    "en": "Connected to Claude API — model {model}"
+  },
+  "ai.category.contract": {
+    "pl": "Umowa",
+    "en": "Contract"
+  },
+  "ai.category.amendment": {
+    "pl": "Aneks",
+    "en": "Amendment"
+  },
+  "ai.category.consent": {
+    "pl": "Zgoda",
+    "en": "Consent"
+  },
+  "ai.category.application": {
+    "pl": "Wniosek",
+    "en": "Application"
+  },
+  "ai.category.declaration": {
+    "pl": "Oświadczenie",
+    "en": "Declaration"
+  },
+  "ai.category.report": {
+    "pl": "Raport",
+    "en": "Report"
+  },
+  "ai.category.minutes": {
+    "pl": "Protokół",
+    "en": "Minutes"
+  },
+  "ai.category.invoice": {
+    "pl": "Faktura",
+    "en": "Invoice"
+  },
+  "ai.category.receipt": {
+    "pl": "Potwierdzenie płatności",
+    "en": "Payment confirmation"
+  },
+  "ai.category.order": {
+    "pl": "Zamówienie",
+    "en": "Order"
+  },
+  "ai.category.offer": {
+    "pl": "Oferta",
+    "en": "Offer"
+  },
+  "ai.category.letter": {
+    "pl": "Pismo",
+    "en": "Letter"
+  },
+  "ai.category.decision": {
+    "pl": "Decyzja",
+    "en": "Decision"
+  },
+  "ai.category.certificate": {
+    "pl": "Zaświadczenie",
+    "en": "Certificate"
+  },
+  "ai.category.power_of_attorney": {
+    "pl": "Pełnomocnictwo",
+    "en": "Power of attorney"
+  },
+  "ai.category.regulations": {
+    "pl": "Regulamin",
+    "en": "Regulations"
+  },
+  "ai.category.instructions": {
+    "pl": "Instrukcja",
+    "en": "Instructions"
+  },
+  "ai.category.resolution": {
+    "pl": "Uchwała",
+    "en": "Resolution"
+  },
+  "ai.category.complaint": {
+    "pl": "Reklamacja",
+    "en": "Complaint"
+  },
+  "ai.category.appeal": {
+    "pl": "Odwołanie",
+    "en": "Appeal"
+  },
+  "ai.category.notice": {
+    "pl": "Zawiadomienie",
+    "en": "Notice"
+  },
+  "ai.category.questionnaire": {
+    "pl": "Kwestionariusz",
+    "en": "Questionnaire"
+  },
+  "ai.category.register": {
+    "pl": "Rejestr lub lista",
+    "en": "Register or list"
+  },
+  "ai.category.delivery": {
+    "pl": "Dokument odbioru",
+    "en": "Handover document"
+  },
+  "ai.category.medical": {
+    "pl": "Dokumentacja medyczna",
+    "en": "Medical documentation"
+  },
+  "ai.category.education": {
+    "pl": "Edukacja i kursy",
+    "en": "Education and courses"
+  },
+  "ai.category.employment": {
+    "pl": "Sprawy pracownicze",
+    "en": "Employment"
+  },
+  "ai.category.accounting": {
+    "pl": "Księgowość",
+    "en": "Accounting"
+  },
+  "ai.category.tax": {
+    "pl": "Sprawy podatkowe",
+    "en": "Tax affairs"
+  },
+  "ai.category.banking": {
+    "pl": "Bankowość",
+    "en": "Banking"
+  },
+  "ai.category.insurance": {
+    "pl": "Ubezpieczenia",
+    "en": "Insurance"
+  },
+  "ai.category.property": {
+    "pl": "Nieruchomości",
+    "en": "Real estate"
+  },
+  "ai.category.construction": {
+    "pl": "Budownictwo",
+    "en": "Construction"
+  },
+  "ai.category.procurement": {
+    "pl": "Zamówienia publiczne",
+    "en": "Public procurement"
+  },
+  "ai.category.legal": {
+    "pl": "Postępowanie sądowe",
+    "en": "Legal proceedings"
+  },
+  "ai.category.administration": {
+    "pl": "Administracja",
+    "en": "Administration"
+  },
+  "ai.category.transport": {
+    "pl": "Transport i logistyka",
+    "en": "Transport and logistics"
+  },
+  "ai.category.technical": {
+    "pl": "Dokumentacja techniczna",
+    "en": "Technical documentation"
+  },
+  "ai.category.research": {
+    "pl": "Badania naukowe",
+    "en": "Scientific research"
+  },
+  "ai.category.grant": {
+    "pl": "Dotacje i finansowanie",
+    "en": "Grants and funding"
+  },
+  "ai.category.privacy": {
+    "pl": "Ochrona danych",
+    "en": "Data protection"
+  },
+  "ai.category.safety": {
+    "pl": "BHP i bezpieczeństwo",
+    "en": "Occupational health and safety"
+  },
+  "ai.category.environment": {
+    "pl": "Ochrona środowiska",
+    "en": "Environmental protection"
+  },
+  "ai.category.social": {
+    "pl": "Pomoc społeczna",
+    "en": "Social welfare"
+  },
+  "ai.category.travel": {
+    "pl": "Podróże",
+    "en": "Travel"
+  },
+  "ai.category.it": {
+    "pl": "Usługi IT",
+    "en": "IT services"
+  },
+  "ai.category.association": {
+    "pl": "Organizacje społeczne",
+    "en": "Non-profit organizations"
+  },
+  "ai.category.form": {
+    "pl": "Formularz",
+    "en": "Form"
+  },
+  "ai.category.other": {
+    "pl": "Inny dokument",
+    "en": "Other document"
+  }
+}

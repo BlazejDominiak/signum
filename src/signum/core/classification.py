@@ -23,6 +23,7 @@ from signum.core.decision import (
     uncertain_labels,
 )
 from signum.core.file_identity import Fingerprint, fingerprint
+from signum.i18n import get_language, tr
 
 LEGACY_DEFAULT_INSTRUCTIONS = (
     "Wybierz dokładnie jedną kategorię najlepiej opisującą główny rodzaj dokumentu. "
@@ -66,6 +67,16 @@ MODEL_LABELS = {
 }
 
 
+def example_categories() -> tuple[tuple[str, str], ...]:
+    """Language-specific examples; stored user tasks are never rewritten."""
+    if get_language() == "pl":
+        return DEFAULT_CATEGORIES
+    return tuple(
+        (tr(f"examples.category.{index}.name"), tr(f"examples.category.{index}.detail"))
+        for index in range(len(DEFAULT_CATEGORIES))
+    )
+
+
 class ClassificationCancelledError(Exception):
     pass
 
@@ -78,13 +89,13 @@ def check_cancel(cancel: threading.Event) -> None:
 def make_question(categories: list[tuple[str, str]], instructions: str) -> dict[str, Any]:
     categories = [(name.strip(), detail.strip()) for name, detail in categories if name.strip()]
     if not 2 <= len(categories) <= 12:
-        raise ValueError("Wpisz od 2 do 12 kategorii. Puste wiersze są pomijane.")
+        raise ValueError(tr("core.classification.enter_2_to_12_categories_empty_rows"))
     if len({name.casefold() for name, _ in categories}) != len(categories):
-        raise ValueError("Nazwy kategorii nie mogą się powtarzać.")
+        raise ValueError(tr("core.classification.category_names_must_be_unique"))
     if any(len(name) > 120 or len(detail) > 600 for name, detail in categories):
-        raise ValueError("Nazwa kategorii: maks. 120 znaków; opis: maks. 600 znaków.")
+        raise ValueError(tr("core.classification.category_name_max_120_characters_description_max"))
     if not instructions.strip() or len(instructions) > 4000:
-        raise ValueError("Prompt musi zawierać od 1 do 4000 znaków.")
+        raise ValueError(tr("core.classification.the_prompt_must_contain_1_to_4000"))
     return {
         "type": "multilabel",
         "instructions": instructions.strip(),
@@ -148,7 +159,6 @@ class ClassificationRow:
         return self.assigned_categories or ([self.category] if self.category else [])
 
 
-
 @dataclass
 class ClassificationBatch:
     rows: list[ClassificationRow] = field(default_factory=list)
@@ -179,7 +189,7 @@ def extract_document(path: Path, cancel: threading.Event) -> TextDocument:
     try:
         doc.source_fingerprint = fingerprint(path)
         if path.stat().st_size > 250 * 1024 * 1024:
-            raise ValueError("PDF przekracza limit 250 MB")
+            raise ValueError(tr("core.classification.pdf_exceeds_the_250_mb_limit"))
         with path.open("rb") as handle:
             digest = hashlib.sha256()
             while chunk := handle.read(1024 * 1024):
@@ -199,18 +209,19 @@ def extract_document(path: Path, cancel: threading.Event) -> TextDocument:
                     break
             doc.text = re.sub(r"\s+", " ", " ".join(chunks)).strip()[:12000]
         if fingerprint(path) != doc.source_fingerprint:
-            raise ValueError("PDF zmienił się podczas odczytu. Powtórz analizę.")
+            raise ValueError(tr("core.classification.pdf_changed_while_reading_run_the_analysis"))
         if not doc.text:
-            doc.error = "Brak warstwy tekstowej PDF — ten tryb nie wykonuje OCR."
-        elif sum(ord(c) < 32 and not c.isspace() for c in doc.text) > len(doc.text) * .05:
-            doc.error = "Nieczytelna warstwa tekstowa PDF — potrzebny OCR lub ręczny odczyt."
-        elif len(doc.text) < 150 and re.search(r"digitally signed|podpisano cyfrowo",
-                                             doc.text, re.IGNORECASE):
-            doc.error = "Odczytano tylko adnotację podpisu — brak treści do klasyfikacji."
+            doc.error = tr("core.classification.no_pdf_text_layer_this_mode_does")
+        elif sum(ord(c) < 32 and not c.isspace() for c in doc.text) > len(doc.text) * 0.05:
+            doc.error = tr("core.classification.unreadable_pdf_text_layer_ocr_or_manual")
+        elif len(doc.text) < 150 and re.search(
+            r"digitally signed|podpisano cyfrowo", doc.text, re.IGNORECASE
+        ):
+            doc.error = tr("core.classification.only_a_signature_annotation_was_read_no")
     except ClassificationCancelledError:
         raise
     except Exception as exc:
-        doc.error = f"Nie można odczytać PDF: {exc}"
+        doc.error = tr("core.classification.could_not_read_the_pdf", exc=exc)
     return doc
 
 
@@ -234,8 +245,12 @@ def run_classification(
     """Prepare once; time loading separately, without warmup calls to external APIs."""
     titles = model_labels or MODEL_LABELS
     batch = ClassificationBatch(
-        categories=categories, instructions=instructions, models=models, repeats=repeats,
-        threshold=threshold, hitl_margin=hitl_margin,
+        categories=categories,
+        instructions=instructions,
+        models=models,
+        repeats=repeats,
+        threshold=threshold,
+        hitl_margin=hitl_margin,
         model_labels={name: titles.get(name, name) for name in models},
     )
     started = time.perf_counter()
@@ -247,16 +262,18 @@ def run_classification(
         names = [name.strip() for name, _ in categories if name.strip()]
         labels = dict(zip(question["criteria"], names, strict=True))
         if repeats not in range(1, 11) or not models or len(set(models)) != len(models):
-            raise ValueError("Wybierz modele i liczbę powtórzeń.")
+            raise ValueError(tr("core.classification.select_models_and_the_number_of_repetitions"))
         marked_question = question
         for i, path in enumerate(files):
             check_cancel(cancel)
-            progress(f"Przygotowanie tekstu {i + 1}/{len(files)}: {path.name}")
+            progress(tr("core.preparing_text", number=i + 1, total=len(files), name=path.name))
             doc = extract_document(path, cancel)
             if not doc.error:
                 limited = prepare_text(doc.text, marked_question)
                 if not limited.strip():
-                    raise ValueError("Prompt i kategorie nie pozostawiają miejsca na tekst PDF.")
+                    raise ValueError(
+                        tr("core.classification.the_prompt_and_categories_leave_no_room")
+                    )
                 doc.truncated |= len(limited) < len(doc.text)
                 doc.text = limited
             batch.documents.append(doc)
@@ -270,19 +287,27 @@ def run_classification(
             setup_error = ""
             try:
                 if any(not doc.error for doc in batch.documents):
-                    progress(f"Połączenie: {titles.get(model_name, model_name)}…")
+                    progress(
+                        tr(
+                            "core.classification.connecting",
+                            value0=titles.get(model_name, model_name),
+                        )
+                    )
                     try:
                         client = factory(model_name)
                         prepare_model = getattr(client, "prepare_model", None)
                         if prepare_model is not None and getattr(client, "can_load", True):
-                            progress(f"Ładowanie: {titles.get(model_name, model_name)}…")
+                            progress(
+                                tr(
+                                    "core.classification.loading",
+                                    value0=titles.get(model_name, model_name),
+                                )
+                            )
                             setup_start = time.perf_counter()
                             try:
                                 prepare_model()
                             finally:
-                                batch.setup_seconds[model_name] = (
-                                    time.perf_counter() - setup_start
-                                )
+                                batch.setup_seconds[model_name] = time.perf_counter() - setup_start
                     except ClassificationCancelledError:
                         raise
                     except Exception as exc:
@@ -294,13 +319,24 @@ def run_classification(
                     for index, doc in enumerate(batch.documents):
                         check_cancel(cancel)
                         progress(
-                            f"{titles.get(model_name, model_name)} · {index + 1}/{len(files)} · "
-                            f"przejście {repeat + 1}/{repeats} · {doc.path.name}"
+                            tr(
+                                "core.classification.pass",
+                                value0=titles.get(model_name, model_name),
+                                value1=index + 1,
+                                value2=len(files),
+                                value3=repeat + 1,
+                                repeats=repeats,
+                                value5=doc.path.name,
+                            )
                         )
                         row = ClassificationRow(
-                            doc.path, model_name, repeat,
-                            error=doc.error or setup_error, text_sha256=doc.text_sha256,
-                            characters=len(doc.text), truncated=doc.truncated,
+                            doc.path,
+                            model_name,
+                            repeat,
+                            error=doc.error or setup_error,
+                            text_sha256=doc.text_sha256,
+                            characters=len(doc.text),
+                            truncated=doc.truncated,
                             source_sha256=doc.source_sha256,
                             source_fingerprint=doc.source_fingerprint,
                             threshold=policy.get("threshold", threshold),
@@ -311,8 +347,10 @@ def run_classification(
                         )
                         if doc.error:
                             row.hitl = True
-                            row.review_reasons = ["HITL — otwórz dokument i sprawdź jego treść: "
-                                                  + doc.error]
+                            row.review_reasons = [
+                                tr("core.classification.hitl_open_the_document_and_review_its")
+                                + doc.error
+                            ]
                         if not row.error and client is not None:
                             tick = time.perf_counter()
                             try:
@@ -320,15 +358,15 @@ def run_classification(
                                 apply_classification(row, result, labels)
                                 row.wait_s = float(result.get("wait_s", 0))
                             except ClassificationCancelledError:
-                                row.error = "Anulowano."
+                                row.error = tr("core.classification.cancelled")
                                 raise
                             except Exception as exc:
                                 row.error = str(exc)
                             finally:
                                 wall = time.perf_counter() - tick
-                                row.loading_s = min(wall, max(
-                                    0.0, float(getattr(client, "loading_s", 0))
-                                ))
+                                row.loading_s = min(
+                                    wall, max(0.0, float(getattr(client, "loading_s", 0)))
+                                )
                                 row.elapsed_s = wall - row.loading_s
                                 batch.setup_seconds[model_name] = (
                                     batch.setup_seconds.get(model_name, 0) + row.loading_s
@@ -356,25 +394,25 @@ def run_classification(
     return batch
 
 
-
 def apply_classification(
-    row: ClassificationRow, result: dict[str, Any], labels: dict[str, str],
+    row: ClassificationRow,
+    result: dict[str, Any],
+    labels: dict[str, str],
 ) -> None:
     """Validate the complete answer before publishing any accepted labels."""
     if "label_scores" in result:
         scores = result["label_scores"]
         if not isinstance(scores, dict) or set(scores) != set(labels):
-            raise ValueError("Model nie zwrócił ocen wszystkich etykiet z podanej listy.")
+            raise ValueError(tr("core.classification.the_model_did_not_return_scores_for"))
         scores = {key: probability(value) for key, value in scores.items()}
         score_source = result.get("score_source", "decision")
         if score_source not in {"decision", "declared"}:
-            raise ValueError("Niepoprawne źródło ocen etykiet.")
+            raise ValueError(tr("core.classification.invalid_label_score_source"))
         row.score_source = score_source
         selected = []
         reasons = []
         if row.threshold is None:
-            reasons.append("HITL — brak kalibracji dla tego modelu, promptu i zestawu etykiet. "
-                           "Sprawdź oceny i wybierz etykiety ręcznie.")
+            reasons.append(tr("core.classification.hitl_no_calibration_for_this_model_prompt"))
         else:
             threshold = probability(row.threshold)
             selected = select_labels(scores, threshold)
@@ -383,8 +421,9 @@ def apply_classification(
                 for key in uncertain_labels(scores, threshold, row.hitl_margin)
             ]
             reasons.extend(
-                f"HITL — sprawdź: {labels[key]}; zbyt mało przykładów tej kategorii w kalibracji."
-                for key in selected if labels[key] in row.review_labels
+                tr("core.classification.hitl_review_too_few_examples_of_this", value0=labels[key])
+                for key in selected
+                if labels[key] in row.review_labels
             )
         row.label_scores = {labels[key]: scores[key] for key in labels}
         # A single confidence is misleading for a set of independent labels.
@@ -393,14 +432,16 @@ def apply_classification(
         choices = result.get("choices")
         if choices is None and isinstance(result.get("choice"), str):
             choices = [result["choice"]]
-        if (not isinstance(choices, list)
-                or any(not isinstance(key, str) or key not in labels for key in choices)
-                or len(set(choices)) != len(choices)):
-            raise ValueError("Model nie zwrócił poprawnej listy etykiet.")
+        if (
+            not isinstance(choices, list)
+            or any(not isinstance(key, str) or key not in labels for key in choices)
+            or len(set(choices)) != len(choices)
+        ):
+            raise ValueError(tr("core.classification.the_model_did_not_return_a_valid"))
         selected = choices[:MAX_CLASSIFICATION_LABELS]
         row.label_scores = {}
         row.score_source = ""
-        reasons = ["HITL — sprawdź etykiety: model nie udostępnia liczbowych ocen decyzji."]
+        reasons = [tr("core.classification.hitl_review_labels_the_model_does_not")]
     if row.calibration_warning:
         reasons.append(row.calibration_warning)
     row.assigned_categories = [labels[key] for key in selected]
@@ -411,9 +452,14 @@ def apply_classification(
 
 def confirm_categories(row: ClassificationRow, selected: list[str]) -> None:
     if len(selected) > MAX_CLASSIFICATION_LABELS:
-        raise ValueError(f"Możesz przypisać maksymalnie {MAX_CLASSIFICATION_LABELS} etykiety.")
+        raise ValueError(
+            tr(
+                "core.classification.you_can_assign_up_to_labels",
+                MAX_CLASSIFICATION_LABELS=MAX_CLASSIFICATION_LABELS,
+            )
+        )
     if len(set(selected)) != len(selected):
-        raise ValueError("Etykiety nie mogą się powtarzać.")
+        raise ValueError(tr("core.classification.labels_must_be_unique"))
     if row.category_source != "user":
         row.model_category = row.category
         row.model_review_reasons = list(row.review_reasons)
@@ -446,9 +492,15 @@ def write_classification_report(path: Path, batch: ClassificationBatch) -> None:
         )
         return
     with path.open("w", encoding="utf-8-sig", newline="") as handle:
-        columns = [*ClassificationRow.__dataclass_fields__,
-                   "model_label", "preparation_s", "model_loading_s",
-                   "model_inference_s", "model_total_s", "batch_total_s"]
+        columns = [
+            *ClassificationRow.__dataclass_fields__,
+            "model_label",
+            "preparation_s",
+            "model_loading_s",
+            "model_inference_s",
+            "model_total_s",
+            "batch_total_s",
+        ]
         writer = csv.DictWriter(handle, columns, delimiter=";")
         writer.writeheader()
         for row in batch.rows:

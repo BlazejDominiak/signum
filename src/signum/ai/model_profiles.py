@@ -9,6 +9,7 @@ from pathlib import Path
 
 from signum.config import AppConfig
 from signum.core.decision import probability
+from signum.i18n import tr
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
 API_FORMATS = {
@@ -37,7 +38,7 @@ class ModelProfile:
 
     @property
     def label(self) -> str:
-        return self.name.strip() or self.model or Path(self.model_dir).name or "Nowy model"
+        return self.name.strip() or self.model or Path(self.model_dir).name or tr("core.new_model")
 
     @property
     def local(self) -> bool:
@@ -56,18 +57,20 @@ class ModelProfile:
             if value is not None:
                 probability(value)
         if not self.id or self.provider not in {"ollama", "api", "jevk5"}:
-            raise ValueError("Wybierz rodzaj połączenia.")
+            raise ValueError(tr("core.model_profiles.select_a_connection_type"))
         if self.provider == "jevk5":
             if not all((self.python, self.model_dir, self.runtime, self.packages)):
-                raise ValueError("Przygotuj JevK5: Składniki AI → JevK5 → Instaluj / napraw.")
+                raise ValueError(
+                    tr("core.model_profiles.prepare_jevk5_ai_components_jevk5_install_repair")
+                )
             return
         if not self.model.strip():
-            raise ValueError("Wpisz nazwę modelu.")
+            raise ValueError(tr("core.model_profiles.enter_a_model_name"))
         if not self.url.strip():
-            raise ValueError("Wpisz adres API.")
+            raise ValueError(tr("core.model_profiles.enter_the_api_address"))
         self.url = normalize_ai_endpoint(self.url, "", "AI")
         if self.api_format not in API_FORMATS:
-            raise ValueError("Wybierz format API.")
+            raise ValueError(tr("core.model_profiles.select_an_api_format"))
 
 
 def load_profiles(config: AppConfig) -> list[ModelProfile]:
@@ -75,23 +78,23 @@ def load_profiles(config: AppConfig) -> list[ModelProfile]:
         try:
             raw = json.loads(config.classification_models)
             if not isinstance(raw, list):
-                raise ValueError("Nieprawidłowa lista modeli.")
+                raise ValueError(tr("core.model_profiles.invalid_model_list"))
             result = []
             allowed = {f.name for f in fields(ModelProfile)}
             for item in raw:
                 if not isinstance(item, dict):
-                    raise ValueError("Nieprawidłowa konfiguracja modelu.")
+                    raise ValueError(tr("core.model_profiles.invalid_model_configuration"))
                 profile = ModelProfile(**{k: v for k, v in item.items() if k in allowed})
                 if any(
                     type(getattr(profile, f.name)) is not (bool if f.name == "enabled" else str)
                     for f in fields(ModelProfile)
                     if f.name not in {"threshold", "hitl_margin"}
                 ):
-                    raise ValueError("Nieprawidłowe pola konfiguracji modelu.")
+                    raise ValueError(tr("core.model_profiles.invalid_model_configuration_fields"))
                 profile.validate()
                 result.append(profile)
             if len({p.id for p in result}) != len(result):
-                raise ValueError("Powtórzone identyfikatory modeli.")
+                raise ValueError(tr("core.model_profiles.duplicate_model_ids"))
             return result
         except (ValueError, TypeError, KeyError):
             # Never silently enable a remote service from a damaged profile list.
@@ -144,9 +147,13 @@ def dump_profiles(profiles: list[ModelProfile]) -> str:
 def default_decision_values(profile: ModelProfile) -> tuple[float, float]:
     """Display bundled defaults without claiming calibration for a custom task."""
     family = (
-        "jevk5" if profile.provider == "jevk5" else
-        "venice" if profile.provider == "api" and profile.api_format == "decisions" else
-        "gemma" if profile.provider == "ollama" and profile.model == "gemma4:12b" else ""
+        "jevk5"
+        if profile.provider == "jevk5"
+        else "venice"
+        if profile.provider == "api" and profile.api_format == "decisions"
+        else "gemma"
+        if profile.provider == "ollama" and profile.model == "gemma4:12b"
+        else ""
     )
     source = resources.files("signum.core") / "classification_profiles.json"
     for policy in json.loads(source.read_text(encoding="utf-8")):

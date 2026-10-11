@@ -31,6 +31,7 @@ from signum.core.rendering import (
     open_pages,
     render_pdf_page,
 )
+from signum.i18n import tr
 
 # Ile razy ponawiamy analizę strony po błędnej odpowiedzi modelu
 # (błędy połączenia NIE są ponawiane — przerywają całą partię).
@@ -159,7 +160,8 @@ class DocumentAnalyzer:
             requests_after = self._model.request_seconds
             request_time = (
                 max(0.0, requests_after - requests_before)
-                if requests_before is not None and requests_after is not None else duration
+                if requests_before is not None and requests_after is not None
+                else duration
             )
             result.inference_s += max(0.0, min(duration, request_time) - loading)
         if analysis.signature_probability is not None:
@@ -208,11 +210,9 @@ class DocumentAnalyzer:
                 raise
             except AIError as exc:
                 last_error = exc
-        raise last_error if last_error else AIError("Nieznany błąd modelu")
+        raise last_error if last_error else AIError(tr("core.pipeline.unknown_model_error"))
 
-    def _digital_findings(
-        self, path: Path, result: DocumentResult, cancel: CancelToken
-    ) -> None:
+    def _digital_findings(self, path: Path, result: DocumentResult, cancel: CancelToken) -> None:
         scan = scan_digital_signatures(path)
         if scan.notes:
             result.error = _safe_document_error(DocumentReadError("; ".join(scan.notes)), path)
@@ -244,10 +244,18 @@ class DocumentAnalyzer:
             if page.page_size_pt is None:
                 return None, None
             crop = crop_pdf_rect(
-                page.image, sig.rect_pt, page.page_size_pt, page.page_bbox_pt, page.rotation,
+                page.image,
+                sig.rect_pt,
+                page.page_size_pt,
+                page.page_bbox_pt,
+                page.rotation,
             )
             overview = overview_pdf_rect(
-                page.image, sig.rect_pt, page.page_size_pt, page.page_bbox_pt, page.rotation,
+                page.image,
+                sig.rect_pt,
+                page.page_size_pt,
+                page.page_bbox_pt,
+                page.rotation,
             )
             return (
                 to_png_bytes(crop) if crop is not None else None,
@@ -293,7 +301,7 @@ def run_batch(
                 partial.status = DocumentStatus.CANCELLED
                 batch.results.append(partial)
             batch.results.extend(
-                DocumentResult(path=p, status=DocumentStatus.CANCELLED) for p in files[index + 1:]
+                DocumentResult(path=p, status=DocumentStatus.CANCELLED) for p in files[index + 1 :]
             )
             break
         except Exception as exc:

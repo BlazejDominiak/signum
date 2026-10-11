@@ -10,6 +10,7 @@ from PIL import Image
 
 from signum.core.decision import near_threshold, review_reason
 from signum.core.models import SignatureKind
+from signum.i18n import tr
 
 
 class AIError(Exception):
@@ -83,29 +84,38 @@ class VisionModel(ABC):
         """
         # Import lokalny — parsing importuje typy z tego modułu (cykl importów).
         from signum.ai.parsing import parse_page_analysis  # noqa: PLC0415
-        from signum.ai.prompts import PAGE_PROMPT  # noqa: PLC0415
+        from signum.ai.prompts import build_page_prompt  # noqa: PLC0415
 
-        raw = self._generate(image_jpeg, prompt or PAGE_PROMPT)
+        raw = self._generate(image_jpeg, prompt or build_page_prompt())
         analysis = parse_page_analysis(raw)
         reasons = tuple(
-            review_reason(item.kind.label_pl, item.confidence / 100,
-                          self.finding_threshold, self.finding_hitl_margin)
+            review_reason(
+                item.kind.label_pl,
+                item.confidence / 100,
+                self.finding_threshold,
+                self.finding_hitl_margin,
+            )
             for item in analysis.signatures
-            if item.kind != SignatureKind.STAMP and self.finding_hitl_margin > 0
-            and near_threshold(item.confidence / 100,
-                               self.finding_threshold, self.finding_hitl_margin)
+            if item.kind != SignatureKind.STAMP
+            and self.finding_hitl_margin > 0
+            and near_threshold(
+                item.confidence / 100, self.finding_threshold, self.finding_hitl_margin
+            )
         )
         return replace(
             analysis,
-            signatures=tuple(item for item in analysis.signatures
-                             if item.confidence / 100 >= self.finding_threshold),
+            signatures=tuple(
+                item
+                for item in analysis.signatures
+                if item.confidence / 100 >= self.finding_threshold
+            ),
             signature_threshold=self.finding_threshold,
             review_reasons=reasons,
         )
 
     def stop_local(self) -> str:
         """Zwalnia pamięć lokalnego modelu, jeśli dostawca obsługuje zarządzanie."""
-        raise AIResponseError("Ten dostawca nie obsługuje zatrzymywania lokalnego modelu.")
+        raise AIResponseError(tr("ai.stop_unsupported"))
 
     def release_resources(self) -> None:
         """Po partii dostawca może zwolnić własny lokalny runtime."""

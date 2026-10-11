@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
 
 from signum.ai import create_vision_model
 from signum.ai.jev_prompts import JEV_PROMPT_INSTRUCTIONS
-from signum.ai.prompts import PROMPT_INSTRUCTIONS
+from signum.ai.prompts import PROMPT_INSTRUCTIONS, default_instructions
 from signum.config import (
     MAX_CUSTOM_PROMPT_LENGTH,
     PROVIDERS,
@@ -42,6 +42,7 @@ from signum.config import (
     get_api_key,
     set_api_key,
 )
+from signum.i18n import tr
 from signum.local_components import repair_instructions
 from signum.network import normalize_ai_endpoint, processing_is_local
 from signum.ui.components_dialog import ComponentsDialog
@@ -49,15 +50,13 @@ from signum.ui.worker import ConnectionTestWorker, ModelListWorker
 
 _PROVIDER_ORDER = ("ollama", "api", "vjev")
 _PROVIDER_LABELS = {
-    "ollama": "Ollama (lokalna lub zdalna)",
-    "api": "AI od dostawcy",
-    "openai": "AI od dostawcy",
-    "anthropic": "AI od dostawcy",
-    "vjev": "vjev-vision (on-prem / API)",
+    "ollama": "settings.provider_ollama",
+    "api": "settings.provider_api",
+    "openai": "settings.provider_api",
+    "anthropic": "settings.provider_api",
+    "vjev": "settings.provider_jev",
 }
-_OLLAMA_INSTALL_HELP = (
-    "Otwórz Składniki AI, zaznacz Ollamę i wybrany model, następnie użyj Instaluj / napraw."
-)
+_OLLAMA_INSTALL_HELP = "settings.ollama_install_help"
 
 
 class _ProviderStack(QStackedWidget):
@@ -85,13 +84,13 @@ class SettingsDialog(QDialog):
         self._decision_edits: dict[str, QDoubleSpinBox] = {}
         self._prompt_family: str | None = None
         self._prompt_drafts = {
-            "llm": config.custom_prompt or PROMPT_INSTRUCTIONS,
+            "llm": config.custom_prompt or default_instructions(),
             "jev": config.jev_custom_prompt or JEV_PROMPT_INSTRUCTIONS,
         }
         self._test_worker: ConnectionTestWorker | None = None
         self._models_worker: ModelListWorker | None = None
         self._auto_refresh_started = False
-        self.setWindowTitle("Ustawienia AI")
+        self.setWindowTitle(tr("settings.title"))
         self.setMinimumWidth(520)
         self._build_ui()
         self._load_config()
@@ -103,7 +102,13 @@ class SettingsDialog(QDialog):
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
-        self.components_button = QPushButton("Składniki AI — instaluj / napraw…")
+        language_form = QFormLayout()
+        self.language_combo = QComboBox()
+        self.language_combo.addItem(tr("settings.language_polish"), "pl")
+        self.language_combo.addItem(tr("settings.language_english"), "en")
+        language_form.addRow(tr("settings.language"), self.language_combo)
+        outer.addLayout(language_form)
+        self.components_button = QPushButton(tr("settings.components_button"))
         self.components_button.clicked.connect(self._components)
         outer.addWidget(self.components_button)
         scroll = QScrollArea()
@@ -119,16 +124,16 @@ class SettingsDialog(QDialog):
         provider_form = QFormLayout()
         self.provider_combo = QComboBox()
         for key in _PROVIDER_ORDER:
-            self.provider_combo.addItem(_PROVIDER_LABELS[key], userData=key)
+            self.provider_combo.addItem(tr(_PROVIDER_LABELS[key]), userData=key)
         self.provider_combo.currentIndexChanged.connect(self._on_provider_changed)
-        provider_form.addRow("Połączenie:", self.provider_combo)
+        provider_form.addRow(tr("settings.connection"), self.provider_combo)
         self.api_format = QComboBox()
-        self.api_format.addItem("Chat Completions (OpenAI-compatible)", "openai")
-        self.api_format.addItem("Messages (Anthropic)", "anthropic")
+        self.api_format.addItem(tr("settings.chat_api"), "openai")
+        self.api_format.addItem(tr("settings.messages_api"), "anthropic")
         self.api_format.currentIndexChanged.connect(
             lambda: self._on_provider_changed(self.provider_combo.currentIndex())
         )
-        provider_form.addRow("Format API:", self.api_format)
+        provider_form.addRow(tr("settings.api_format"), self.api_format)
         self.provider_form = provider_form
         layout.addLayout(provider_form)
 
@@ -141,7 +146,7 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.stack)
 
         test_row = QHBoxLayout()
-        self.test_button = QPushButton("Testuj połączenie")
+        self.test_button = QPushButton(tr("settings.test_connection"))
         self.test_button.clicked.connect(self._on_test_clicked)
         self.test_result = QLabel("")
         self.test_result.setTextFormat(Qt.TextFormat.PlainText)
@@ -156,8 +161,8 @@ class SettingsDialog(QDialog):
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
         )
-        self.buttons.button(QDialogButtonBox.StandardButton.Save).setText("Zapisz")
-        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Anuluj")
+        self.buttons.button(QDialogButtonBox.StandardButton.Save).setText(tr("settings.save"))
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(tr("settings.cancel"))
         self.buttons.accepted.connect(self._on_save)
         self.buttons.rejected.connect(self.reject)
         outer.addWidget(self.buttons)
@@ -168,27 +173,27 @@ class SettingsDialog(QDialog):
         form = QFormLayout(page)
         self.ollama_url = QLineEdit()
         self.ollama_url.setPlaceholderText("http://localhost:11434")
-        form.addRow("Adres API:", self.ollama_url)
+        form.addRow(tr("settings.api_address"), self.ollama_url)
 
         model_row = QHBoxLayout()
         self.ollama_model = QComboBox()
         self.ollama_model.setEditable(True)
-        self.refresh_models = QPushButton("Odśwież listę")
+        self.refresh_models = QPushButton(tr("settings.refresh_models"))
         self.refresh_models.clicked.connect(self._on_refresh_models)
         model_row.addWidget(self.ollama_model, stretch=1)
         model_row.addWidget(self.refresh_models)
-        form.addRow("Model:", model_row)
-        self.ollama_additional_analysis = QCheckBox("Dodatkowa analiza")
+        form.addRow(tr("settings.model"), model_row)
+        self.ollama_additional_analysis = QCheckBox(tr("settings.additional_analysis"))
         self.ollama_additional_analysis.setToolTip(
-            "Opis dokumentu i wycinki oznaczeń. Po wyłączeniu: tylko obecność podpisu i pieczątki."
+            tr("settings.additional_analysis_hint")
         )
         form.addRow("", self.ollama_additional_analysis)
-        basic = self._decision_group("Progi — podstawowa (0–1)", (
-            ("ollama_threshold", "Próg podpisu:"),
-            ("ollama_stamp_threshold", "Próg pieczątki:"),
+        basic = self._decision_group(tr("settings.basic_thresholds"), (
+            ("ollama_threshold", tr("settings.signature_threshold")),
+            ("ollama_stamp_threshold", tr("settings.stamp_threshold")),
         ))
-        full = self._decision_group("Progi — dodatkowa (0–1)", (
-            ("ollama_full_threshold", "Próg znaleziska:"),
+        full = self._decision_group(tr("settings.extra_thresholds"), (
+            ("ollama_full_threshold", tr("settings.finding_threshold")),
         ))
         form.addRow(basic)
         form.addRow(full)
@@ -196,20 +201,20 @@ class SettingsDialog(QDialog):
         self.ollama_additional_analysis.toggled.connect(full.setVisible)
         basic.setVisible(not self._config.ollama_additional_analysis)
         full.setVisible(self._config.ollama_additional_analysis)
-        form.addRow(self._decision_group("HITL", (
-            ("ollama_hitl_margin", "Margines HITL (±):"),
+        form.addRow(self._decision_group(tr("settings.hitl"), (
+            ("ollama_hitl_margin", tr("settings.hitl_margin")),
         )))
         self.ollama_key = self._password_edit()
         self._key_edits["ollama"] = self.ollama_key
-        form.addRow("Klucz API (opcjonalny):", self._with_reveal(self.ollama_key))
+        form.addRow(tr("settings.optional_key"), self._with_reveal(self.ollama_key))
         form.addRow(
-            "", _hint_label("Model musi obsługiwać obrazy (np. gemma4:12b, llava, qwen-vl).")
+            "", _hint_label(tr("settings.vision_required"))
         )
         self.ollama_status = QLabel("")
         self.ollama_status.setTextFormat(Qt.TextFormat.PlainText)
         self.ollama_status.setWordWrap(True)
-        form.addRow("Stan usługi:", self.ollama_status)
-        self.ollama_install_help = QLabel(_OLLAMA_INSTALL_HELP)
+        form.addRow(tr("settings.service_status"), self.ollama_status)
+        self.ollama_install_help = QLabel(tr(_OLLAMA_INSTALL_HELP))
         self.ollama_install_help.setWordWrap(True)
         self.ollama_install_help.setOpenExternalLinks(True)
         self.ollama_install_help.setVisible(False)
@@ -218,8 +223,8 @@ class SettingsDialog(QDialog):
         self.ollama_num_ctx = QSpinBox()
         self.ollama_num_ctx.setRange(2048, 262144)
         self.ollama_num_ctx.setSingleStep(2048)
-        self.ollama_num_ctx.setSuffix(" tokenów")
-        form.addRow("Okno kontekstu (num_ctx):", self.ollama_num_ctx)
+        self.ollama_num_ctx.setSuffix(tr("settings.tokens"))
+        form.addRow(tr("settings.context_window"), self.ollama_num_ctx)
         return page
 
     def _build_openai_page(self) -> QWidget:
@@ -227,18 +232,18 @@ class SettingsDialog(QDialog):
         form = QFormLayout(page)
         self.openai_base_url = QLineEdit()
         self.openai_base_url.setPlaceholderText("https://api.openai.com/v1")
-        form.addRow("Adres API:", self.openai_base_url)
+        form.addRow(tr("settings.api_address"), self.openai_base_url)
         self.openai_model = QLineEdit()
         self.openai_model.setPlaceholderText("gpt-4o")
-        form.addRow("Model:", self.openai_model)
+        form.addRow(tr("settings.model"), self.openai_model)
         self.openai_key = self._password_edit()
         self._key_edits["openai"] = self.openai_key
         self._url_edits["openai"] = self.openai_base_url
         self._model_edits["openai"] = self.openai_model
-        form.addRow("Klucz API:", self._with_reveal(self.openai_key))
-        form.addRow(self._decision_group("Progi (0–1)", (
-            ("openai_threshold", "Próg znaleziska:"),
-            ("openai_hitl_margin", "Margines HITL (±):"),
+        form.addRow(tr("settings.api_key"), self._with_reveal(self.openai_key))
+        form.addRow(self._decision_group(tr("settings.thresholds"), (
+            ("openai_threshold", tr("settings.finding_threshold")),
+            ("openai_hitl_margin", tr("settings.hitl_margin")),
         )))
         return page
 
@@ -247,18 +252,18 @@ class SettingsDialog(QDialog):
         form = QFormLayout(page)
         self.anthropic_base_url = QLineEdit()
         self.anthropic_base_url.setPlaceholderText(AppConfig().anthropic_base_url)
-        form.addRow("Adres API:", self.anthropic_base_url)
+        form.addRow(tr("settings.api_address"), self.anthropic_base_url)
         self.anthropic_model = QLineEdit()
         self.anthropic_model.setPlaceholderText("claude-sonnet-5")
-        form.addRow("Model:", self.anthropic_model)
+        form.addRow(tr("settings.model"), self.anthropic_model)
         self.anthropic_key = self._password_edit()
         self._key_edits["anthropic"] = self.anthropic_key
         self._url_edits["anthropic"] = self.anthropic_base_url
         self._model_edits["anthropic"] = self.anthropic_model
-        form.addRow("Klucz API:", self._with_reveal(self.anthropic_key))
-        form.addRow(self._decision_group("Progi (0–1)", (
-            ("anthropic_threshold", "Próg znaleziska:"),
-            ("anthropic_hitl_margin", "Margines HITL (±):"),
+        form.addRow(tr("settings.api_key"), self._with_reveal(self.anthropic_key))
+        form.addRow(self._decision_group(tr("settings.thresholds"), (
+            ("anthropic_threshold", tr("settings.finding_threshold")),
+            ("anthropic_hitl_margin", tr("settings.hitl_margin")),
         )))
         return page
 
@@ -274,33 +279,32 @@ class SettingsDialog(QDialog):
         self._url_edits[provider] = url
         self._model_edits[provider] = model
         self._key_edits[provider] = key
-        form.addRow("Adres API:", url)
-        form.addRow("Model:", model)
-        form.addRow("Klucz API (opcjonalny):", self._with_reveal(key))
+        form.addRow(tr("settings.api_address"), url)
+        form.addRow(tr("settings.model"), model)
+        form.addRow(tr("settings.optional_key"), self._with_reveal(key))
         self.vjev_runtime_dir = QLineEdit()
-        form.addRow("Katalog lokalnego Jev:", self.vjev_runtime_dir)
-        self.vjev_additional_analysis = QCheckBox("Dodatkowa analiza")
+        form.addRow(tr("settings.jev_directory"), self.vjev_runtime_dir)
+        self.vjev_additional_analysis = QCheckBox(tr("settings.additional_analysis"))
         self.vjev_additional_analysis.setToolTip(
-            "Eksperymentalny wybór kategorii dokumentu i przybliżone wycinki oznaczeń. "
-            "Wydłuża analizę; podstawowa ocena obecności podpisu pozostaje bez zmian."
+            tr("settings.jev_extra_hint")
         )
         form.addRow("", self.vjev_additional_analysis)
-        form.addRow(self._decision_group("Progi (0–1)", (
-            ("vjev_threshold", "Próg podpisu:"),
-            ("vjev_hitl_margin", "Margines HITL (±):"),
-            ("vjev_stamp_threshold", "Próg pieczątki:"),
+        form.addRow(self._decision_group(tr("settings.thresholds"), (
+            ("vjev_threshold", tr("settings.signature_threshold")),
+            ("vjev_hitl_margin", tr("settings.hitl_margin")),
+            ("vjev_stamp_threshold", tr("settings.stamp_threshold")),
         )))
         self.vjev_hitl_margin = self._decision_edits["vjev_hitl_margin"]
-        extra = self._decision_group("Progi — dodatkowa (0–1)", (
-            ("vjev_category_threshold", "Próg kategorii:"),
-            ("vjev_candidate_threshold", "Próg obszaru:"),
-            ("vjev_verify_threshold", "Próg weryfikacji:"),
-            ("vjev_single_threshold", "Próg pojedynczego podpisu:"),
+        extra = self._decision_group(tr("settings.extra_thresholds"), (
+            ("vjev_category_threshold", tr("settings.category_threshold")),
+            ("vjev_candidate_threshold", tr("settings.region_threshold")),
+            ("vjev_verify_threshold", tr("settings.verification_threshold")),
+            ("vjev_single_threshold", tr("settings.single_threshold")),
         ))
         form.addRow(extra)
         self.vjev_additional_analysis.toggled.connect(extra.setVisible)
         extra.setVisible(self._config.vjev_additional_analysis)
-        self.stop_jev_button = QPushButton("Zatrzymaj lokalny Jev / zwolnij GPU")
+        self.stop_jev_button = QPushButton(tr("settings.stop_jev"))
         self.stop_jev_button.clicked.connect(lambda: self._on_test_clicked(stop_local=True))
         form.addRow("", self.stop_jev_button)
         return page
@@ -315,7 +319,7 @@ class SettingsDialog(QDialog):
             edit.setSingleStep(0.01)
             self._decision_edits[name] = edit
             form.addRow(label, edit)
-        reset = QPushButton("Domyślne progi")
+        reset = QPushButton(tr("settings.default_thresholds"))
         reset.clicked.connect(lambda: self._reset_decisions(fields))
         form.addRow("", reset)
         return group
@@ -326,28 +330,28 @@ class SettingsDialog(QDialog):
             self._decision_edits[name].setValue(getattr(defaults, name))
 
     def _build_processing_group(self) -> QGroupBox:
-        group = QGroupBox("Przetwarzanie")
+        group = QGroupBox(tr("settings.processing"))
         form = QFormLayout(group)
         self.max_pages = QSpinBox()
         self.max_pages.setRange(1, 500)
-        self.max_pages.setSuffix(" stron")
-        form.addRow("Limit stron na dokument:", self.max_pages)
+        self.max_pages.setSuffix(tr("settings.pages"))
+        form.addRow(tr("settings.page_limit"), self.max_pages)
 
         self.image_side = QComboBox()
         for value in (768, 1024, 1120, 1400, 1600, 2048):
             self.image_side.addItem(f"{value} px", userData=value)
-        form.addRow("Rozmiar obrazu dla modelu:", self.image_side)
+        form.addRow(tr("settings.image_size"), self.image_side)
         self.timeout = QSpinBox()
         self.timeout.setRange(30, 3600)
         self.timeout.setSuffix(" s")
-        form.addRow("Limit czasu odpowiedzi:", self.timeout)
+        form.addRow(tr("settings.response_timeout"), self.timeout)
 
-        self.recursive = QCheckBox("Przeszukuj podfoldery przy dodawaniu folderu")
+        self.recursive = QCheckBox(tr("settings.recursive"))
         form.addRow("", self.recursive)
         return group
 
     def _build_prompt_group(self) -> QGroupBox:
-        group = QGroupBox("Prompt programu — zaawansowane")
+        group = QGroupBox(tr("settings.advanced_prompt"))
         group.setCheckable(True)
         group.setChecked(False)
         outer = QVBoxLayout(group)
@@ -364,7 +368,7 @@ class SettingsDialog(QDialog):
         box.addWidget(self.prompt_edit)
         reset_row = QHBoxLayout()
         reset_row.addStretch(1)
-        reset = QPushButton("Przywróć domyślny")
+        reset = QPushButton(tr("settings.restore_default"))
         reset.clicked.connect(lambda: self.prompt_edit.setPlainText(self._default_prompt()))
         reset_row.addWidget(reset)
         box.addLayout(reset_row)
@@ -382,18 +386,18 @@ class SettingsDialog(QDialog):
         wrapper = QWidget()
         row = QHBoxLayout(wrapper)
         row.setContentsMargins(0, 0, 0, 0)
-        toggle = QPushButton("Pokaż")
+        toggle = QPushButton(tr("settings.show"))
         toggle.setCheckable(True)
         toggle.setFixedWidth(60)
 
         def on_toggle(checked: bool) -> None:
             edit.setEchoMode(QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password)
-            toggle.setText("Ukryj" if checked else "Pokaż")
+            toggle.setText(tr("settings.hide") if checked else tr("settings.show"))
 
         toggle.toggled.connect(on_toggle)
         row.addWidget(edit, stretch=1)
         row.addWidget(toggle)
-        clear = QPushButton("Wyczyść")
+        clear = QPushButton(tr("settings.clear"))
         clear.clicked.connect(edit.clear)
         row.addWidget(clear)
         return wrapper
@@ -402,6 +406,7 @@ class SettingsDialog(QDialog):
 
     def _load_config(self) -> None:
         cfg = self._config
+        self.language_combo.setCurrentIndex(max(0, self.language_combo.findData(cfg.language)))
         self.api_format.setCurrentIndex(max(0, self.api_format.findData(cfg.provider)))
         self.provider_combo.setCurrentIndex(
             _PROVIDER_ORDER.index(
@@ -432,9 +437,10 @@ class SettingsDialog(QDialog):
     def _collect_config(self) -> AppConfig:
         """Zbiera ustawienia z formularza (bez zapisywania)."""
         cfg = replace(self._config)
+        cfg.language = self.language_combo.currentData()
         cfg.provider = self._provider()
         cfg.ollama_url = normalize_ai_endpoint(
-            self.ollama_url.text(), "http://localhost:11434", "Ollamy"
+            self.ollama_url.text(), "http://localhost:11434", tr("settings.ollama_name")
         )
         cfg.ollama_model = self.ollama_model.currentText().strip() or "gemma4:12b"
         defaults = AppConfig()
@@ -444,7 +450,7 @@ class SettingsDialog(QDialog):
                 cfg,
                 name,
                 normalize_ai_endpoint(
-                    edit.text(), getattr(defaults, name), _PROVIDER_LABELS[provider]
+                    edit.text(), getattr(defaults, name), tr(_PROVIDER_LABELS[provider])
                 ),
             )
         for provider, edit in self._model_edits.items():
@@ -464,13 +470,16 @@ class SettingsDialog(QDialog):
             self._prompt_drafts[self._prompt_family] = self.prompt_edit.toPlainText().strip()
         if any(len(text) > MAX_CUSTOM_PROMPT_LENGTH for text in self._prompt_drafts.values()):
             raise ValueError(
-                f"Prompt programu może mieć najwyżej {MAX_CUSTOM_PROMPT_LENGTH} znaków."
+                tr("settings.prompt_limit", limit=MAX_CUSTOM_PROMPT_LENGTH)
             )
         # Domyślną treść zapisujemy jako pustą — aktualizacja programu może
         # wtedy poprawić prompt bez ręcznej interwencji użytkownika.
         llm_text = self._prompt_drafts["llm"].strip()
         jev_text = self._prompt_drafts["jev"].strip()
-        cfg.custom_prompt = "" if llm_text in ("", PROMPT_INSTRUCTIONS.strip()) else llm_text
+        cfg.custom_prompt = (
+            "" if llm_text in ("", PROMPT_INSTRUCTIONS.strip(), default_instructions().strip())
+            else llm_text
+        )
         cfg.jev_custom_prompt = (
             "" if jev_text in ("", JEV_PROMPT_INSTRUCTIONS.strip()) else jev_text
         )
@@ -499,11 +508,11 @@ class SettingsDialog(QDialog):
         self.prompt_edit.setPlainText(self._prompt_drafts[self._prompt_family])
         self.image_side.setEnabled(self._prompt_family != "jev")
         self.image_side.setToolTip(
-            "Jev używa stałych widoków 1120 px zgodnie ze sprawdzoną regułą."
+            tr("settings.jev_fixed_size")
             if self._prompt_family == "jev"
             else ""
         )
-        self.prompt_hint.setText("Instrukcje analizy strony.")
+        self.prompt_hint.setText(tr("settings.page_instructions"))
         basic_ollama = (
             self.provider_combo.currentData() == "ollama"
             and not self.ollama_additional_analysis.isChecked()
@@ -511,25 +520,26 @@ class SettingsDialog(QDialog):
         self.prompt_edit.setEnabled(not basic_ollama)
         if basic_ollama:
             self.prompt_hint.setText(
-                "Analiza podstawowa używa stałych pytań o podpis i pieczątkę. "
-                "Zapisany tutaj prompt będzie używany po włączeniu dodatkowej analizy."
+                tr("settings.basic_prompt_hint")
             )
 
     def _default_prompt(self) -> str:
-        return JEV_PROMPT_INSTRUCTIONS if self._prompt_family == "jev" else PROMPT_INSTRUCTIONS
+        return JEV_PROMPT_INSTRUCTIONS if self._prompt_family == "jev" else default_instructions()
 
     def _on_refresh_models(self) -> None:
         if self._models_worker is not None:
             return
         try:
-            url = normalize_ai_endpoint(self.ollama_url.text(), "http://localhost:11434", "Ollamy")
+            url = normalize_ai_endpoint(
+                self.ollama_url.text(), "http://localhost:11434", tr("settings.ollama_name")
+            )
         except ValueError as exc:
             self.ollama_status.setText(str(exc))
             self.ollama_install_help.setVisible(False)
             return
         self.refresh_models.setEnabled(False)
-        self.ollama_status.setText("Sprawdzanie Ollamy i listy modeli…")
-        self.ollama_install_help.setText(_OLLAMA_INSTALL_HELP)
+        self.ollama_status.setText(tr("settings.checking_ollama"))
+        self.ollama_install_help.setText(tr(_OLLAMA_INSTALL_HELP))
         self.ollama_install_help.setVisible(False)
         self._models_worker = ModelListWorker(url, self, api_key=self.ollama_key.text().strip())
         self._models_worker.finished_with_result.connect(self._on_models_loaded)
@@ -549,12 +559,12 @@ class SettingsDialog(QDialog):
         if current:
             self.ollama_model.setEditText(current)
         if models:
-            self.ollama_status.setText(f"Ollama działa — znaleziono {len(models)} modeli.")
+            self.ollama_status.setText(tr("settings.models_found", count=len(models)))
             self.ollama_install_help.setVisible(False)
         else:
-            self.ollama_status.setText("Ollama działa, ale nie ma pobranego żadnego modelu.")
+            self.ollama_status.setText(tr("settings.ollama_empty"))
             self.ollama_install_help.setText(
-                "Otwórz Składniki AI i wybierz model do pobrania, następnie odśwież listę."
+                tr("settings.download_model_hint")
             )
             self.ollama_install_help.setVisible(True)
 
@@ -570,11 +580,11 @@ class SettingsDialog(QDialog):
             return
         self.test_button.setEnabled(False)
         self.test_result.setText(
-            "Zatrzymywanie lokalnego Jev…"
+            tr("settings.stopping_jev")
             if stop_local
-            else "Łączenie / ładowanie lokalnego modelu…"
+            else tr("settings.loading_local")
             if self.provider_combo.currentData() == "vjev"
-            else "Łączenie…"
+            else tr("settings.connecting")
         )
         try:
             config = self._collect_config()
@@ -615,7 +625,7 @@ class SettingsDialog(QDialog):
         try:
             config = self._collect_config()
         except ValueError as exc:
-            QMessageBox.critical(self, "Niepoprawne ustawienia AI", str(exc))
+            QMessageBox.critical(self, tr("settings.invalid_settings"), str(exc))
             return
         if self._initial_local and not processing_is_local(config.provider, config.api_base_url):
             warning = OnlineWarningDialog(self)
@@ -627,9 +637,8 @@ class SettingsDialog(QDialog):
         except Exception:
             QMessageBox.warning(
                 self,
-                "Magazyn poświadczeń",
-                "Nie udało się zapisać klucza API w magazynie poświadczeń systemu.\n"
-                "Nie zapisano wszystkich kluczy. Sprawdź dostęp do magazynu i spróbuj ponownie.",
+                tr("settings.credential_store"),
+                tr("settings.credential_error"),
             )
             return
         config.save()
@@ -662,8 +671,8 @@ class SettingsDialog(QDialog):
         if self._test_worker is not None or self._models_worker is not None:
             QMessageBox.information(
                 self,
-                "Trwa sprawdzanie połączenia",
-                "Zaczekaj na zakończenie bieżącego testu usługi AI, a następnie zamknij okno.",
+                tr("settings.connection_in_progress"),
+                tr("settings.wait_connection"),
             )
             event.ignore()
             return
@@ -687,17 +696,11 @@ class OnlineWarningDialog(QDialog):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Uwaga: model online")
+        self.setWindowTitle(tr("settings.online_title"))
         self.setModal(True)
         layout = QVBoxLayout(self)
         message = QLabel(
-            "<b>Dane opuszczą ten komputer.</b><br><br>"
-            "Wybrana konfiguracja nie jest lokalna — każda analizowana strona "
-            "dokumentu będzie wysyłana przez sieć do zewnętrznej usługi AI "
-            "(dostawcy chmurowego albo zdalnej Ollamy). Jeżeli dokumenty zawierają "
-            "dane osobowe lub poufne, "
-            "upewnij się, że masz do tego podstawę (np. zgodę administratora "
-            "danych)."
+            tr("settings.online_warning")
         )
         message.setWordWrap(True)
         message.setStyleSheet("color: #c62828;")
@@ -705,7 +708,7 @@ class OnlineWarningDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.addStretch(1)
-        cancel = QPushButton("Anuluj")
+        cancel = QPushButton(tr("settings.cancel"))
         cancel.clicked.connect(self.reject)
         buttons.addWidget(cancel)
         self.accept_button = QPushButton()
@@ -728,10 +731,12 @@ class OnlineWarningDialog(QDialog):
 
     def _refresh_accept_button(self) -> None:
         if self._remaining > 0:
-            self.accept_button.setText(f"Rozumiem zagrożenie ({self._remaining})")
+            self.accept_button.setText(
+                tr("settings.accept_risk_countdown", seconds=self._remaining)
+            )
             self.accept_button.setEnabled(False)
         else:
-            self.accept_button.setText("Rozumiem zagrożenie")
+            self.accept_button.setText(tr("settings.accept_risk"))
             self.accept_button.setEnabled(True)
 
 
@@ -744,8 +749,7 @@ def _hint_label(text: str) -> QLabel:
 
 def _online_warning_label() -> QLabel:
     label = QLabel(
-        "⚠ Model online — analizowane dokumenty będą wysyłane przez internet "
-        "do zewnętrznego dostawcy."
+        tr("settings.online_notice")
     )
     label.setWordWrap(True)
     label.setStyleSheet("color: #c62828; font-weight: 600;")

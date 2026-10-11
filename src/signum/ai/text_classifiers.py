@@ -24,6 +24,7 @@ from signum.ai.parsing import extract_first_json_object
 from signum.config import AppConfig, get_api_key
 from signum.core.classification import check_cancel
 from signum.core.decision import label_questions, probability
+from signum.i18n import tr, translate_error
 from signum.local_components import jevk5_files
 from signum.network import is_loopback_endpoint, normalize_ai_endpoint
 
@@ -34,13 +35,13 @@ _CONNECTION_QUESTION = {"type": "noul", "instructions": "The input is a connecti
 def _check_connection_decision(answer: dict[str, Any]) -> None:
     # Verify the protocol, not whether the model agreed with the probe statement.
     if answer.get("type") != "noul":
-        raise ValueError("Model nie zwrócił odpowiedzi w formacie Decisions.")
+        raise ValueError(tr("ai.missing_decisions"))
     probability(answer.get("noul"))
 
 
 def _check_connection_text(content: Any) -> None:
     if not isinstance(content, str) or not content.strip():
-        raise ValueError("Model nie zwrócił treści odpowiedzi na test połączenia.")
+        raise ValueError(tr("ai.missing_test_response"))
 
 
 def venice_key(config: AppConfig) -> str:
@@ -53,7 +54,7 @@ def venice_key(config: AppConfig) -> str:
             name, _, value = line.partition("=")
             if name.strip() == "VENICE_API_KEY":
                 return value.strip().strip("\"'")
-    raise ValueError("Brak klucza Venice. Uzupełnij połączenie lub wybierz plik .env.")
+    raise ValueError(tr("ai.missing_venice_key"))
 
 
 class VeniceTextClassifier:
@@ -80,9 +81,11 @@ class VeniceTextClassifier:
         self.timeout = config.timeout_s
 
     def classify(self, text: str, question: dict[str, Any]) -> dict[str, Any]:
-        questions = label_questions(question) if question["type"] == "multilabel" else {
-            "document_type": question
-        }
+        questions = (
+            label_questions(question)
+            if question["type"] == "multilabel"
+            else {"document_type": question}
+        )
         waiting = 0.0
         for attempt in range(3):
             check_cancel(self.cancel)
@@ -111,28 +114,28 @@ class VeniceTextClassifier:
                 waiting += self._wait(max(61, min(seconds, 3600)))
                 continue
             if response.status_code != 200:
-                raise ValueError(f"API zwróciło HTTP {response.status_code}.")
+                raise ValueError(tr("ai.api_http_period", status=response.status_code))
             answers = response.json().get("answers", {})
             if question["type"] == "multilabel":
                 if not isinstance(answers, dict) or set(answers) != set(questions):
-                    raise ValueError("Brak kompletu ocen etykiet JEV.")
+                    raise ValueError(tr("ai.incomplete_jev_scores"))
                 scores = {}
                 for key in questions:
                     answer = answers[key]
                     if not isinstance(answer, dict) or answer.get("type") != "noul":
-                        raise ValueError("Niepoprawna ocena etykiety JEV.")
+                        raise ValueError(tr("ai.invalid_jev_score"))
                     scores[key] = probability(answer.get("noul"))
                 return {"label_scores": scores, "wait_s": waiting}
             result = answers.get("document_type", {})
             return {**result, "wait_s": waiting}
-        raise ValueError("API: przekroczono limit żądań.")
+        raise ValueError(tr("ai.api_rate_limit"))
 
     def check_connection(self) -> None:
         answer = self.classify(_CONNECTION_TEXT, _CONNECTION_QUESTION)
         _check_connection_decision(answer)
 
     def _wait(self, seconds: float) -> float:
-        self.progress(f"Limit API: oczekiwanie {seconds:.0f} s.")
+        self.progress(tr("ai.api_wait", seconds=seconds))
         started = time.perf_counter()
         self.cancel.wait(seconds)
         check_cancel(self.cancel)
@@ -195,7 +198,7 @@ class GemmaTextClassifier:
             allow_redirects=False,
         )
         if response.status_code != 200:
-            raise ValueError(f"Ollama zwróciła HTTP {response.status_code}.")
+            raise ValueError(tr("ai.ollama_http_period", status=response.status_code))
         _check_connection_text(response.json().get("message", {}).get("content"))
 
     def prepare_model(self) -> None:
@@ -214,12 +217,15 @@ class GemmaTextClassifier:
                 "think": False,
                 "keep_alive": "10m",
                 "messages": [
-                    {"role": "system", "content": question["instructions"]
-                     + '\nReturn only JSON {"label_scores": {"category ID": number}}. '
-                     'For EVERY category, estimate your confidence from 0 to 1 that it applies '
-                     'to the document. Assess each category independently; scores need not sum '
-                     'to 1. Use scores near 0.5 when uncertain, near 1 when clearly supported, '
-                     'and near 0 when clearly unsupported. Include every category ID once.'},
+                    {
+                        "role": "system",
+                        "content": question["instructions"]
+                        + '\nReturn only JSON {"label_scores": {"category ID": number}}. '
+                        "For EVERY category, estimate your confidence from 0 to 1 that it applies "
+                        "to the document. Assess each category independently; scores need not sum "
+                        "to 1. Use scores near 0.5 when uncertain, near 1 when clearly supported, "
+                        "and near 0 when clearly unsupported. Include every category ID once.",
+                    },
                     {
                         "role": "user",
                         "content": json.dumps(
@@ -245,27 +251,30 @@ class GemmaTextClassifier:
                     "additionalProperties": False,
                 },
                 "options": {
-                    "temperature": 0, "seed": 20261007, "num_ctx": 8192, "num_predict": 512,
+                    "temperature": 0,
+                    "seed": 20261007,
+                    "num_ctx": 8192,
+                    "num_predict": 512,
                 },
             },
         )
         if response.status_code != 200:
-            raise ValueError(f"Ollama zwróciła HTTP {response.status_code}.")
+            raise ValueError(tr("ai.ollama_http_period", status=response.status_code))
         result = response.json()
         if is_loopback_endpoint(self.url) and not self.model.lower().endswith("cloud"):
             self.loading_s = max(0.0, float(result.get("load_duration", 0)) / 1e9)
         if result.get("done_reason") == "length":
-            raise ValueError("Model nie dokończył odpowiedzi.")
+            raise ValueError(tr("ai.unfinished_response"))
         if result.get("prompt_eval_count", 0) >= 8100:
-            raise ValueError(
-                "Tekst zbliża się do granicy kontekstu modelu; skróć dokument lub prompt."
-            )
+            raise ValueError(tr("ai.context_limit"))
         parsed = json.loads(result.get("message", {}).get("content", ""))
         scores = parsed.get("label_scores")
         if not isinstance(scores, dict) or set(scores) != set(question["criteria"]):
-            raise ValueError("Model nie zwrócił ocen wszystkich etykiet z podanej listy.")
-        return {"label_scores": {key: probability(value) for key, value in scores.items()},
-                "score_source": "declared"}
+            raise ValueError(tr("ai.missing_label_scores"))
+        return {
+            "label_scores": {key: probability(value) for key, value in scores.items()},
+            "score_source": "declared",
+        }
 
     def close(self) -> None:
         self.manager.release_resources()
@@ -382,14 +391,16 @@ class JevK5TextClassifier:
                         detail = log.read().decode("utf-8", errors="replace")
                 except OSError:
                     detail = ""
-                raise ValueError(f"JevK5 zakończył pracę. Log: {log_path}\n{detail}")
+                raise ValueError(tr("ai.jevk5_exited", path=log_path, detail=detail))
             response = json.loads(line)
             if not response.get("ok"):
-                raise ValueError(response.get("error", "Błąd lokalnego JevK5"))
+                raise ValueError(
+                    translate_error(str(response.get("error", tr("ai.local_jevk5_error"))))
+                )
             result: dict[str, Any] = response["result"]
             return result
         self.close()
-        raise TimeoutError("JevK5: przekroczono czas oczekiwania na odpowiedź.")
+        raise TimeoutError(tr("ai.jevk5_timeout"))
 
     def check_connection(self) -> None:
         answer = self._request("classify", _CONNECTION_TEXT, _CONNECTION_QUESTION)
@@ -411,11 +422,11 @@ class JevK5TextClassifier:
         check_cancel(self.cancel)
         answers = response.get("answers")
         if not isinstance(answers, dict) or set(answers) != set(questions):
-            raise ValueError("Brak kompletu ocen etykiet JevK5.")
+            raise ValueError(tr("ai.incomplete_jevk5_scores"))
         scores = {}
         for key, answer in answers.items():
             if not isinstance(answer, dict) or answer.get("type") != "noul":
-                raise ValueError("Niepoprawna ocena etykiety JevK5.")
+                raise ValueError(tr("ai.invalid_jevk5_score"))
             scores[key] = probability(answer.get("noul"))
         return {"label_scores": scores}
 
@@ -441,7 +452,7 @@ def conservative_text_limit(text: str, question: dict[str, Any]) -> str:
     """Offline fallback without the local tokenizer: bound UTF-8 bytes, including instructions."""
     remaining = 7000 - len(json.dumps(question, ensure_ascii=False).encode())
     if remaining < 512:
-        raise ValueError("Skróć prompt lub opisy kategorii, aby zmieścić tekst dokumentu.")
+        raise ValueError(tr("ai.prompt_too_long"))
     return text.encode()[:remaining].decode("utf-8", errors="ignore")
 
 
@@ -475,7 +486,7 @@ class APITextClassifier:
             self.url + route, json=payload, timeout=(15, self.timeout), allow_redirects=False
         )
         if response.status_code != 200:
-            raise ValueError(f"API zwróciło HTTP {response.status_code}.")
+            raise ValueError(tr("ai.api_http_period", status=response.status_code))
         data = response.json()
         content: Any
         if self.profile.api_format == "anthropic":
@@ -489,9 +500,8 @@ class APITextClassifier:
 
     def classify(self, text: str, question: dict[str, Any]) -> dict[str, Any]:
         instructions = (
-            question["instructions"]
-            + '\nReturn only JSON: {"categories": ["category IDs"]}; '
-            'up to 3 matching IDs, highest relevance first, or [].'
+            question["instructions"] + '\nReturn only JSON: {"categories": ["category IDs"]}; '
+            "up to 3 matching IDs, highest relevance first, or []."
         )
         evidence = json.dumps(
             {"evidence": text, "categories": question["criteria"]}, ensure_ascii=False
@@ -514,18 +524,18 @@ class APITextClassifier:
             self.url + route, json=payload, timeout=(15, self.timeout), allow_redirects=False
         )
         if response.status_code != 200:
-            raise ValueError(f"API zwróciło HTTP {response.status_code}.")
+            raise ValueError(tr("ai.api_http_period", status=response.status_code))
         data = response.json()
         if self.profile.api_format == "anthropic":
             if data.get("stop_reason") == "max_tokens":
-                raise ValueError("Model nie dokończył odpowiedzi.")
+                raise ValueError(tr("ai.unfinished_response"))
             content = "\n".join(
                 block["text"] for block in data.get("content", []) if block.get("type") == "text"
             )
         else:
             choice = data["choices"][0]
             if choice.get("finish_reason") == "length":
-                raise ValueError("Model nie dokończył odpowiedzi.")
+                raise ValueError(tr("ai.unfinished_response"))
             content = choice["message"]["content"]
         parsed = extract_first_json_object(content)
         return {"choices": parsed.get("categories")}

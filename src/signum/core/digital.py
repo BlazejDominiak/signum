@@ -20,12 +20,14 @@ from typing import Any
 from pypdf import PdfReader
 from pypdf.generic import ArrayObject, DictionaryObject, IndirectObject
 
+from signum.i18n import tr
+
 _SUBFILTER_LABELS = {
     "/ETSI.CAdES.detached": "PAdES / CAdES (ETSI.CAdES.detached)",
     "/adbe.pkcs7.detached": "CMS / PKCS#7 (adbe.pkcs7.detached)",
     "/adbe.pkcs7.sha1": "PKCS#7 SHA-1 (adbe.pkcs7.sha1)",
     "/adbe.x509.rsa_sha1": "X.509 RSA-SHA1 (adbe.x509.rsa_sha1)",
-    "/ETSI.RFC3161": "znacznik czasu (ETSI.RFC3161)",
+    "/ETSI.RFC3161": "core.digital.timestamp",
 }
 MAX_FIELD_DEPTH = 64
 MAX_FIELD_OBJECTS = 5000
@@ -50,13 +52,13 @@ class DigitalSignature:
     def detail(self) -> str:
         parts = [self.kind_label]
         if self.certification:
-            parts.append("podpis certyfikujący (DocMDP)")
+            parts.append(tr("core.digital.certification_signature_docmdp"))
         if self.signer:
-            parts.append(f"podpisał(a): {self.signer}")
+            parts.append(tr("core.digital.signed_by", value0=self.signer))
         if self.signing_time:
-            parts.append(f"data: {self.signing_time}")
+            parts.append(tr("core.digital.date", value0=self.signing_time))
         if self.reason:
-            parts.append(f"powód: {self.reason}")
+            parts.append(tr("core.digital.reason", value0=self.reason))
         return "; ".join(parts)
 
 
@@ -89,11 +91,11 @@ def scan_digital_signatures(path: Path) -> DigitalScanResult:
             try:
                 reader.decrypt("")
             except Exception:
-                result.notes.append("PDF zaszyfrowany — pominięto analizę struktury")
+                result.notes.append(tr("core.digital.encrypted_pdf_structure_analysis_skipped"))
                 return result
         _scan_reader(reader, result)
     except Exception as exc:
-        result.notes.append(f"Nie udało się przeanalizować struktury PDF: {exc}")
+        result.notes.append(tr("core.digital.could_not_analyze_the_pdf_structure", exc=exc))
     return result
 
 
@@ -122,7 +124,9 @@ def _scan_reader(reader: PdfReader, result: DigitalScanResult) -> None:
     perms = _resolve(root.get("/Perms"))
     if isinstance(perms, DictionaryObject) and _resolve(perms.get("/UR3")) is not None:
         result.signatures.append(
-            DigitalSignature(field_name="(UR3)", kind_label="podpis praw użycia (UR3)")
+            DigitalSignature(
+                field_name="(UR3)", kind_label=tr("core.digital.usage_rights_signature_ur3")
+            )
         )
 
 
@@ -137,7 +141,7 @@ def _walk_field(
 ) -> None:
     if depth > MAX_FIELD_DEPTH or state.object_count >= MAX_FIELD_OBJECTS:
         if not state.limit_reported:
-            result.notes.append("ograniczono analizę nadmiernie złożonej hierarchii pól PDF")
+            result.notes.append(tr("core.digital.analysis_of_an_excessively_complex_pdf_field"))
             state.limit_reported = True
         return
     if isinstance(field_ref, IndirectObject):
@@ -198,21 +202,27 @@ def _has_signature_data(value: DictionaryObject) -> bool:
             return False
     ranges = _resolve(value.get("/ByteRange"))
     return (
-        isinstance(contents, bytes) and bool(contents) and any(contents)
-        and isinstance(ranges, ArrayObject) and len(ranges) == 4
+        isinstance(contents, bytes)
+        and bool(contents)
+        and any(contents)
+        and isinstance(ranges, ArrayObject)
+        and len(ranges) == 4
         and all(isinstance(n, int) and n >= 0 for n in ranges)
-        and ranges[0] == 0 and ranges[1] > 0
-        and ranges[2] > ranges[1] and ranges[3] > 0
+        and ranges[0] == 0
+        and ranges[1] > 0
+        and ranges[2] > ranges[1]
+        and ranges[3] > 0
     )
 
 
 def _classify_subfilter(value: DictionaryObject) -> str:
     subfilter = str(value.get("/SubFilter", "")).strip()[:200]
     if subfilter in _SUBFILTER_LABELS:
-        return _SUBFILTER_LABELS[subfilter]
+        label = _SUBFILTER_LABELS[subfilter]
+        return tr(label) if subfilter == "/ETSI.RFC3161" else label
     if subfilter:
-        return f"podpis cyfrowy ({subfilter.lstrip('/')})"
-    return "podpis cyfrowy (nieokreślony podtyp)"
+        return tr("core.digital.signature_subtype", subtype=subfilter.lstrip("/"))
+    return tr("core.digital.digital_signature_unspecified_subtype")
 
 
 def _is_certification(value: DictionaryObject) -> bool:

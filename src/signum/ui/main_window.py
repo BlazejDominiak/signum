@@ -48,6 +48,7 @@ from signum.config import AppConfig, get_api_key
 from signum.core.discovery import collect_documents
 from signum.core.models import DocumentResult, DocumentStatus
 from signum.core.pipeline import BatchResult, DocumentAnalyzer
+from signum.i18n import set_language, tr
 from signum.local_components import repair_instructions
 from signum.network import processing_is_local
 from signum.report import write_csv, write_html
@@ -70,9 +71,9 @@ _GRAY = QColor("#757575")
 _RED = QColor("#c62828")
 _BLUE = QColor("#1565c0")
 
-_FILE_DIALOG_FILTER = (
-    "Dokumenty (*.pdf *.jpg *.jpeg *.png *.tif *.tiff *.bmp *.webp);;Wszystkie pliki (*.*)"
-)
+
+def _file_dialog_filter() -> str:
+    return tr("main.main_window.documents_pdf_jpg_jpeg_png_tif_tiff")
 
 
 class MainWindow(QMainWindow):
@@ -81,6 +82,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self._config = AppConfig.load()
+        set_language(self._config.language)
         self._files: list[Path] = []
         self._results: dict[int, DocumentResult] = {}
         self._worker: BatchWorker | SignatureComparisonWorker | None = None
@@ -107,25 +109,25 @@ class MainWindow(QMainWindow):
     # -- budowa UI ---------------------------------------------------------
 
     def _build_actions(self) -> None:
-        self.act_add_files = QAction("Dodaj pliki…", self)
+        self.act_add_files = QAction(tr("main.main_window.add_files"), self)
         self.act_add_files.triggered.connect(self._on_add_files)
-        self.act_add_folder = QAction("Dodaj folder…", self)
+        self.act_add_folder = QAction(tr("main.main_window.add_folder"), self)
         self.act_add_folder.triggered.connect(self._on_add_folder)
-        self.act_process = QAction("Przetwórz", self)
+        self.act_process = QAction(tr("main.main_window.process"), self)
         self.act_process.triggered.connect(self._on_process)
-        self.act_compare = QAction("Porównaj Ollama + Jev", self)
+        self.act_compare = QAction(tr("main.main_window.compare_ollama_jev"), self)
         self.act_compare.triggered.connect(self._on_compare)
-        self.act_cancel = QAction("Anuluj", self)
+        self.act_cancel = QAction(tr("main.main_window.cancel"), self)
         self.act_cancel.triggered.connect(self._on_cancel)
-        self.act_export = QAction("Zapisz raport…", self)
+        self.act_export = QAction(tr("main.main_window.save_report"), self)
         self.act_export.triggered.connect(self._on_export)
-        self.act_clear = QAction("Wyczyść", self)
+        self.act_clear = QAction(tr("main.main_window.clear"), self)
         self.act_clear.triggered.connect(self._on_clear)
-        self.act_settings = QAction("Ustawienia AI…", self)
+        self.act_settings = QAction(tr("main.main_window.ai_settings"), self)
         self.act_settings.triggered.connect(self._on_settings)
-        self.act_components = QAction("Składniki AI…", self)
+        self.act_components = QAction(tr("main.main_window.ai_components"), self)
         self.act_components.triggered.connect(self._on_components)
-        self.act_about = QAction("O programie", self)
+        self.act_about = QAction(tr("main.main_window.about"), self)
         self.act_about.triggered.connect(self._on_about)
         for action, icon in (
             (self.act_add_files, QStyle.StandardPixmap.SP_FileIcon),
@@ -135,7 +137,7 @@ class MainWindow(QMainWindow):
             action.setIcon(self.style().standardIcon(icon))
 
     def _build_toolbar(self) -> None:
-        self.signature_toolbar = QToolBar("Główne")
+        self.signature_toolbar = QToolBar(tr("main.main_window.main"))
         self.signature_toolbar.hide()
 
     def _action_button(self, action: QAction, role: str = "") -> QPushButton:
@@ -158,13 +160,21 @@ class MainWindow(QMainWindow):
         self._left_stack = QStackedLayout(left)
         self._left_stack.setContentsMargins(8, 8, 8, 8)
 
-        hint = QLabel("Przeciągnij tutaj pliki PDF lub skany")
+        hint = QLabel(tr("main.main_window.drop_pdf_files_or_scans_here"))
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hint.setProperty("role", "muted")
         self._left_stack.addWidget(hint)
 
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Plik", "Opis / nazwa", "Podpisy", "Ocena", "Status"])
+        self.table.setHorizontalHeaderLabels(
+            [
+                tr("main.main_window.file"),
+                tr("main.main_window.description_name"),
+                tr("main.main_window.signatures"),
+                tr("main.main_window.score"),
+                tr("main.main_window.status"),
+            ]
+        )
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
@@ -196,7 +206,7 @@ class MainWindow(QMainWindow):
         for action in (self.act_add_files, self.act_add_folder, self.act_clear, self.act_export):
             files_layout.addWidget(self._action_button(action))
         files_layout.addStretch()
-        self.signature_file_count = QLabel("0 plików")
+        self.signature_file_count = QLabel(tr("main.main_window.0_files"))
         self.signature_file_count.setProperty("role", "muted")
         files_layout.addWidget(self.signature_file_count)
         signature_layout.addWidget(file_bar)
@@ -217,14 +227,12 @@ class MainWindow(QMainWindow):
         signature_layout.addWidget(model_bar)
         self.signature_layout = signature_layout
         history_bar = QHBoxLayout()
-        history_bar.addWidget(QLabel("Wyniki przebiegu:"))
+        history_bar.addWidget(QLabel(tr("main.main_window.run_results")))
         self.signature_runs = QComboBox()
         self.signature_runs.setMinimumContentsLength(25)
         self.signature_runs.currentIndexChanged.connect(self._show_signature_run)
         history_bar.addWidget(self.signature_runs, 1)
-        history_bar.addWidget(QLabel(
-            "Raport zawiera wszystkie przebiegi do wyczyszczenia kolejki."
-        ))
+        history_bar.addWidget(QLabel(tr("main.main_window.the_report_includes_all_runs_until_the")))
         signature_layout.addLayout(history_bar)
         self.signature_comparison = QLabel()
         self.signature_comparison.setTextFormat(Qt.TextFormat.PlainText)
@@ -232,9 +240,9 @@ class MainWindow(QMainWindow):
         signature_layout.addWidget(self.signature_comparison)
         signature_layout.addWidget(splitter, 1)
         self.mode_tabs = QTabWidget()
-        self.mode_tabs.addTab(signature_page, "Sprawdzanie podpisów")
+        self.mode_tabs.addTab(signature_page, tr("main.main_window.signature_detection"))
         self.classification = ClassificationPanel(self)
-        self.mode_tabs.addTab(self.classification, "Kategoryzowanie dokumentów")
+        self.mode_tabs.addTab(self.classification, tr("main.main_window.document_classification"))
         self.classification.busy_changed.connect(self._classification_busy_changed)
         self.classification.settings_changed.connect(self._reload_config)
         self.classification.files_moved.connect(self._files_moved)
@@ -291,7 +299,7 @@ class MainWindow(QMainWindow):
         self.signature_layout.addWidget(self.progress)
         controls = QHBoxLayout()
         info = QVBoxLayout()
-        self.status_label = QLabel("AI: połączenie niesprawdzone")
+        self.status_label = QLabel(tr("main.main_window.ai_connection_not_checked"))
         self.status_label.setTextFormat(Qt.TextFormat.PlainText)
         self.status_label.setWordWrap(True)
         info.addWidget(self.status_label)
@@ -323,8 +331,13 @@ class MainWindow(QMainWindow):
                 batch.duration_s,
             )
         self.signature_elapsed.setText(
-            f"Przygotowanie: {preparation:.2f} s   ·   Ładowanie: {loading:.2f} s   ·   "
-            f"Działanie: {inference:.2f} s   ·   Łącznie: {total:.2f} s"
+            tr(
+                "main.main_window.preparation_s_loading_s_inference_s_total",
+                arg0=preparation,
+                arg1=loading,
+                arg2=inference,
+                arg3=total,
+            )
         )
 
     def _refresh_online_badge(self) -> None:
@@ -334,7 +347,7 @@ class MainWindow(QMainWindow):
             not processing_is_local(cfg.provider, cfg.api_base_url)
             or (cfg.provider == "ollama" and cfg.ollama_model.lower().endswith("cloud"))
         )
-        provider = "Ollama" if cfg.provider == "ollama" else "AI od dostawcy"
+        provider = "Ollama" if cfg.provider == "ollama" else tr("main.main_window.ai_provider")
         self.signature_model.setText(f"{provider} · {getattr(cfg, cfg.provider + '_model')}")
 
     # -- drag & drop ---------------------------------------------------------
@@ -358,7 +371,10 @@ class MainWindow(QMainWindow):
 
     def _on_add_files(self) -> None:
         files, _ = QFileDialog.getOpenFileNames(
-            self, "Wybierz dokumenty", self._config.last_dir, _FILE_DIALOG_FILTER
+            self,
+            tr("main.main_window.choose_documents"),
+            self._config.last_dir,
+            _file_dialog_filter(),
         )
         if files:
             self._remember_dir(Path(files[0]).parent)
@@ -366,7 +382,7 @@ class MainWindow(QMainWindow):
 
     def _on_add_folder(self) -> None:
         folder = QFileDialog.getExistingDirectory(
-            self, "Wybierz folder z dokumentami", self._config.last_dir
+            self, tr("main.main_window.choose_a_document_folder"), self._config.last_dir
         )
         if folder:
             self._remember_dir(Path(folder))
@@ -379,7 +395,7 @@ class MainWindow(QMainWindow):
         existing = set(self._files)
         new_files = [f for f in found if f not in existing]
         if not new_files:
-            self.status_label.setText("Nie znaleziono nowych obsługiwanych dokumentów.")
+            self.status_label.setText(tr("main.main_window.no_new_supported_documents_found"))
             return
         for path in new_files:
             row = self.table.rowCount()
@@ -390,10 +406,10 @@ class MainWindow(QMainWindow):
             self.table.setItem(row, _COL_TITLE, QTableWidgetItem(""))
             self.table.setItem(row, _COL_SIGNATURES, QTableWidgetItem(""))
             self.table.setItem(row, _COL_CONFIDENCE, QTableWidgetItem(""))
-            self.table.setItem(row, _COL_STATUS, QTableWidgetItem("Oczekuje"))
+            self.table.setItem(row, _COL_STATUS, QTableWidgetItem(tr("main.main_window.pending")))
         self._files.extend(new_files)
         self._left_stack.setCurrentIndex(1)
-        self.status_label.setText(f"W kolejce: {len(self._files)} plików.")
+        self.status_label.setText(tr("main.main_window.queued_files", arg0=len(self._files)))
         self._update_action_states()
 
     def _on_process(self) -> None:
@@ -402,7 +418,7 @@ class MainWindow(QMainWindow):
         if not self._ensure_ai_ready():
             return
         if not self._confirm_batch_risk():
-            self.status_label.setText("Analiza nie została uruchomiona.")
+            self.status_label.setText(tr("main.main_window.analysis_was_not_started"))
             return
         self._preflight_started = time.perf_counter()
         self._preflight_loading = 0
@@ -413,10 +429,10 @@ class MainWindow(QMainWindow):
             model = create_vision_model(self._config)
         except ValueError as exc:
             self._signature_timer.stop()
-            QMessageBox.critical(self, "Ustawienia AI", str(exc))
+            QMessageBox.critical(self, tr("main.main_window.ai_settings_112"), str(exc))
             return
         self._pending_model = model
-        self.status_label.setText("Sprawdzanie usługi AI i dostępności modelu…")
+        self.status_label.setText(tr("main.main_window.checking_ai_service_and_model_availability"))
         self._preflight_worker = ConnectionTestWorker(model, self)
         self._preflight_worker.finished_with_result.connect(self._on_preflight_result)
         self._preflight_worker.finished.connect(self._on_preflight_finished)
@@ -427,11 +443,20 @@ class MainWindow(QMainWindow):
         if self._is_busy() or not self._files:
             return
         configs = [replace(self._config, provider=provider) for provider in ("ollama", "vjev")]
-        remote_targets = [cfg.api_base_url for cfg in configs if not processing_is_local(
-            cfg.provider, cfg.api_base_url, cfg.ollama_model,
-        )]
+        remote_targets = [
+            cfg.api_base_url
+            for cfg in configs
+            if not processing_is_local(
+                cfg.provider,
+                cfg.api_base_url,
+                cfg.ollama_model,
+            )
+        ]
         dialog = BatchRiskDialog(
-            self._config, len(self._files), self, remote_targets=remote_targets,
+            self._config,
+            len(self._files),
+            self,
+            remote_targets=remote_targets,
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
@@ -455,11 +480,13 @@ class MainWindow(QMainWindow):
         for row in range(self.table.rowCount()):
             for column in (_COL_TITLE, _COL_SIGNATURES, _COL_CONFIDENCE):
                 self._cell(row, column).setText("")
-            self._set_status_cell(row, "Oczekuje", _GRAY)
+            self._set_status_cell(row, tr("main.main_window.pending"), _GRAY)
         self.progress.setRange(0, len(self._files))
         self.progress.setValue(0)
         self._signature_timer.start(200)
-        self.status_label.setText(f"Porównanie — {name}: sprawdzanie i uruchamianie modelu…")
+        self.status_label.setText(
+            tr("main.main_window.comparison_checking_and_starting_the_model", arg0=name)
+        )
 
     def _show_signature_run(self, index: int) -> None:
         if self._is_busy() or not 0 <= index < len(self._signature_runs):
@@ -476,7 +503,7 @@ class MainWindow(QMainWindow):
             else:
                 for column in (_COL_TITLE, _COL_SIGNATURES, _COL_CONFIDENCE):
                     self._cell(row, column).setText("")
-                self._set_status_cell(row, "Brak wyniku", _GRAY)
+                self._set_status_cell(row, tr("main.main_window.no_result"), _GRAY)
         self._refresh_signature_time()
         self._on_selection_changed()
 
@@ -494,7 +521,7 @@ class MainWindow(QMainWindow):
         self._results.clear()
         self._last_batch = None
         for row in range(self.table.rowCount()):
-            self._set_status_cell(row, "Oczekuje", _GRAY)
+            self._set_status_cell(row, tr("main.main_window.pending"), _GRAY)
             self._cell(row, _COL_TITLE).setText("")
             self._cell(row, _COL_SIGNATURES).setText("")
             self._cell(row, _COL_CONFIDENCE).setText("")
@@ -531,8 +558,8 @@ class MainWindow(QMainWindow):
             self._signature_timer.stop()
             self._refresh_signature_time()
             detail = repair_instructions(message, self._config.provider)
-            QMessageBox.critical(self, "Usługa AI niedostępna", detail)
-            self.status_label.setText("Usługa AI niedostępna — sprawdź ustawienia.")
+            QMessageBox.critical(self, tr("main.main_window.ai_service_unavailable"), detail)
+            self.status_label.setText(tr("main.main_window.ai_service_unavailable_check_settings"))
             self._pending_model = None
             return
         self.status_label.setText(message)
@@ -556,8 +583,8 @@ class MainWindow(QMainWindow):
         if self._config.requires_api_key and not get_api_key(self._config.provider):
             answer = QMessageBox.question(
                 self,
-                "Brak klucza API",
-                "Nie zapisano klucza API dla wybranego dostawcy.\nOtworzyć ustawienia AI?",
+                tr("main.main_window.missing_api_key"),
+                tr("main.main_window.no_api_key_is_saved_for_the"),
             )
             if answer == QMessageBox.StandardButton.Yes:
                 self._on_settings()
@@ -567,7 +594,9 @@ class MainWindow(QMainWindow):
     def _on_cancel(self) -> None:
         if self._worker is not None:
             self._worker.cancel()
-            self.status_label.setText("Anulowanie — czekam na zakończenie bieżącej strony…")
+            self.status_label.setText(
+                tr("main.main_window.cancelling_waiting_for_the_current_page_to")
+            )
             self.act_cancel.setEnabled(False)
 
     def _on_clear(self) -> None:
@@ -584,7 +613,7 @@ class MainWindow(QMainWindow):
         self._show_details_placeholder()
         self.progress.setValue(0)
         self.signature_elapsed.clear()
-        self.status_label.setText("Dodaj dokumenty")
+        self.status_label.setText(tr("main.main_window.add_documents"))
         self._update_action_states()
 
     def _on_components(self) -> None:
@@ -601,7 +630,7 @@ class MainWindow(QMainWindow):
         self.classification.reload_models()
         if accepted:
             self._config = AppConfig.load()
-            self.status_label.setText("Zapisano ustawienia AI.")
+            self.status_label.setText(tr("main.main_window.ai_settings_saved"))
         else:
             # Dialog mógł zmodyfikować obiekt konfiguracji (np. test połączenia)
             # bez zapisu — wracamy do stanu z dysku.
@@ -611,24 +640,23 @@ class MainWindow(QMainWindow):
     def _on_export(self) -> None:
         if not self._signature_runs:
             QMessageBox.information(
-                self, "Raport", "Najpierw przetwórz dokumenty — raport powstaje z wyników."
+                self,
+                tr("main.main_window.report"),
+                tr("main.main_window.process_documents_first_the_report_is_created"),
             )
             return
         answer = QMessageBox.question(
             self,
-            "Poufność raportu",
-            "Raport zawiera nazwy dokumentów i informacje uzyskane z ich treści. "
-            "Raport HTML zawiera również wycinki podpisów i miniatury stron.\n\n"
-            "Przed przekazaniem raportu innej osobie sprawdź uprawnienia, poufność "
-            "oraz miejsce zapisu. Kontynuować?",
+            tr("main.main_window.report_confidentiality"),
+            tr("main.main_window.the_report_contains_document_names_and_information"),
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
         path_str, selected_filter = QFileDialog.getSaveFileName(
             self,
-            "Zapisz raport",
-            str(Path(self._config.last_dir or ".") / "raport_podpisy.html"),
-            "Raport HTML (*.html);;Raport CSV (*.csv)",
+            tr("main.main_window.save_report_51"),
+            str(Path(self._config.last_dir or ".") / tr("main.main_window.signature_report_html")),
+            tr("main.main_window.html_report_html_csv_report_csv"),
         )
         if not path_str:
             return
@@ -640,31 +668,33 @@ class MainWindow(QMainWindow):
             else:
                 write_html(path, self._signature_runs)
         except OSError as exc:
-            QMessageBox.critical(self, "Raport", f"Nie udało się zapisać raportu:\n{exc}")
+            QMessageBox.critical(
+                self,
+                tr("main.main_window.report"),
+                tr("main.main_window.could_not_save_the_report", arg0=exc),
+            )
             return
-        self.status_label.setText(f"Zapisano raport: {path}")
+        self.status_label.setText(tr("main.main_window.report_saved", arg0=path))
 
     def _on_about(self) -> None:
         QMessageBox.about(
             self,
-            "O programie",
-            f"<b>{APP_DISPLAY_NAME}</b><br>wersja {__version__}<br><br>"
-            "Dwie osobne funkcje: kategoryzowanie tekstu PDF do własnych kategorii "
-            "oraz sprawdzanie podpisów.<br><br>"
-            "Wykrywa podpisy odręczne, parafki, pieczątki i podpisy cyfrowe "
-            "w dokumentach PDF i skanach przy użyciu wizyjnych modeli AI "
-            "(lokalnie przez Ollamę albo przez API chmurowe).<br><br>"
-            "Program stwierdza wyłącznie <i>obecność</i> podpisów — nie weryfikuje "
-            "ich autentyczności, ważności prawnej ani kryptograficznej. Wyniki AI "
-            "mogą być błędne lub niepełne i wymagają ręcznej weryfikacji.",
+            tr("main.main_window.about"),
+            tr(
+                "main.main_window.version_two_separate_workspaces_classifying_pdf_text",
+                arg0=APP_DISPLAY_NAME,
+                arg1=__version__,
+            ),
         )
 
     # -- zdarzenia wątku roboczego --------------------------------------------
 
     def _on_file_started(self, index: int, total: int, name: str) -> None:
         eta = self._format_eta(index, total)
-        self.status_label.setText(f"Przetwarzanie {index + 1}/{total}: {name}{eta}")
-        self._set_status_cell(index, "Analiza…", _BLUE)
+        self.status_label.setText(
+            tr("main.main_window.processing", arg0=index + 1, arg1=total, arg2=name, arg3=eta)
+        )
+        self._set_status_cell(index, tr("main.main_window.analyzing"), _BLUE)
         self.table.scrollToItem(self._cell(index, _COL_FILE))
 
     def _on_file_done(self, index: int, result: DocumentResult) -> None:
@@ -684,29 +714,43 @@ class MainWindow(QMainWindow):
         self.signature_runs.addItem(f"{len(self._signature_runs)}. {batch.model_name}")
         self.signature_runs.setCurrentIndex(len(self._signature_runs) - 1)
         self.signature_runs.blockSignals(False)
-        self.signature_comparison.setText("\n".join(
-            f"{i}. {run.model_name} — przygotowanie: {run.preparation_s:.2f} s · "
-            f"ładowanie: {run.loading_s:.2f} s · działanie: {run.inference_s:.2f} s · "
-            f"łącznie: {run.duration_s:.2f} s"
-            for i, run in enumerate(self._signature_runs, 1)
-        ))
+        self.signature_comparison.setText(
+            "\n".join(
+                tr(
+                    "main.main_window.preparation_s_loading_s_inference_s_total_121",
+                    arg0=i,
+                    arg1=run.model_name,
+                    arg2=run.preparation_s,
+                    arg3=run.loading_s,
+                    arg4=run.inference_s,
+                    arg5=run.duration_s,
+                )
+                for i, run in enumerate(self._signature_runs, 1)
+            )
+        )
         self._signature_timer.stop()
         self._refresh_signature_time()
         self.progress.setValue(self.progress.maximum())
-        summary = (
-            f"Zakończono: {len(batch.results)} plików w {batch.duration_s:.0f} s — "
-            f"z podpisami: {batch.signed_count}, błędy: {batch.error_count}."
+        summary = tr(
+            "main.main_window.finished_files_in_s_with_signatures_errors",
+            arg0=len(batch.results),
+            arg1=batch.duration_s,
+            arg2=batch.signed_count,
+            arg3=batch.error_count,
         )
         self.status_label.setText(summary)
         # Uzupełnij wiersze anulowane (worker nie wysłał dla nich file_done).
         for index, result in enumerate(batch.results):
             self._results[index] = result
             self._fill_result_row(index, result)
-        if (batch.abort_error and not self._close_when_finished
-                and not isinstance(self._worker, SignatureComparisonWorker)):
+        if (
+            batch.abort_error
+            and not self._close_when_finished
+            and not isinstance(self._worker, SignatureComparisonWorker)
+        ):
             QMessageBox.critical(
                 self,
-                "Przetwarzanie przerwane",
+                tr("main.main_window.processing_interrupted"),
                 repair_instructions(batch.abort_error, self._config.provider),
             )
         self._update_action_states()
@@ -727,7 +771,7 @@ class MainWindow(QMainWindow):
     def _cell(self, row: int, col: int) -> QTableWidgetItem:
         item = self.table.item(row, col)
         if item is None:  # wiersze zawsze tworzymy z kompletem komórek
-            raise RuntimeError(f"Brak komórki tabeli ({row}, {col})")
+            raise RuntimeError(tr("main.main_window.missing_table_cell", arg0=row, arg1=col))
         return item
 
     def _fill_result_row(self, row: int, result: DocumentResult) -> None:
@@ -748,7 +792,7 @@ class MainWindow(QMainWindow):
                 item = self._cell(row, _COL_CONFIDENCE)
                 item.setText(f"{max(result.page_signature_probabilities.values()) * 100:.1f}%")
                 item.setToolTip(
-                    "Najwyższe prawdopodobieństwo obecności podpisu na analizowanych stronach."
+                    tr("main.main_window.highest_probability_of_signature_presence_across_analyzed")
                 )
             self._set_status_cell(
                 row, "HITL" if result.hitl else "OK", QColor("#946000") if result.hitl else _GREEN
@@ -758,12 +802,12 @@ class MainWindow(QMainWindow):
             if result.hitl:
                 signatures_item.setForeground(QColor("#946000"))
         elif result.status == DocumentStatus.ERROR:
-            self._set_status_cell(row, "Błąd", _RED)
+            self._set_status_cell(row, tr("main.main_window.error"), _RED)
             self._cell(row, _COL_STATUS).setToolTip(
                 repair_instructions(result.error or "", self._config.provider)
             )
         elif result.status == DocumentStatus.CANCELLED:
-            self._set_status_cell(row, "Anulowano", _GRAY)
+            self._set_status_cell(row, tr("main.main_window.cancelled"), _GRAY)
 
     def _set_status_cell(self, row: int, text: str, color: QColor) -> None:
         if row >= self.table.rowCount():
@@ -778,7 +822,7 @@ class MainWindow(QMainWindow):
         elapsed = time.monotonic() - self._batch_started
         remaining = elapsed / done * (total - done)
         minutes, seconds = divmod(int(remaining), 60)
-        return f" (pozostało ok. {minutes}:{seconds:02d})"
+        return tr("main.main_window.about_remaining", arg0=minutes, arg1=seconds)
 
     def _is_processing(self) -> bool:
         return self._worker is not None
@@ -794,7 +838,7 @@ class MainWindow(QMainWindow):
         busy = self._is_busy()
         self.mode_tabs.setTabEnabled(0, not self.classification.is_busy())
         self.mode_tabs.setTabEnabled(1, not (processing or self._is_preflighting()))
-        self.signature_file_count.setText(f"{len(self._files)} plików")
+        self.signature_file_count.setText(tr("main.main_window.files", arg0=len(self._files)))
         has_files = bool(self._files)
         self.act_add_files.setEnabled(not busy)
         self.act_add_folder.setEnabled(not busy)
@@ -823,7 +867,7 @@ class MainWindow(QMainWindow):
 
     def _show_details_placeholder(self) -> None:
         self._clear_details()
-        label = QLabel("Wybierz dokument")
+        label = QLabel(tr("main.main_window.select_a_document"))
         label.setWordWrap(True)
         label.setStyleSheet("color: #888;")
         self.details_layout.addWidget(label)
@@ -844,13 +888,15 @@ class MainWindow(QMainWindow):
         path_label.setWordWrap(True)
         path_label.setStyleSheet("color: #666; font-size: 11px;")
         self.details_layout.addWidget(path_label)
-        open_source = QPushButton("Otwórz dokument źródłowy")
+        open_source = QPushButton(tr("main.main_window.open_source_document"))
         open_source.clicked.connect(lambda: self._open_source_document(result.path))
         self.details_layout.addWidget(open_source)
 
         if result.status == DocumentStatus.ERROR:
             error = QLabel(
-                repair_instructions(result.error or "Błąd dokumentu", self._config.provider)
+                repair_instructions(
+                    result.error or tr("main.main_window.document_error"), self._config.provider
+                )
             )
             error.setTextFormat(Qt.TextFormat.PlainText)
             error.setWordWrap(True)
@@ -858,45 +904,48 @@ class MainWindow(QMainWindow):
             self.details_layout.addWidget(error)
             return
         if result.status == DocumentStatus.CANCELLED:
-            self.details_layout.addWidget(QLabel("Plik pominięty (anulowano)."))
+            self.details_layout.addWidget(QLabel(tr("main.main_window.file_skipped_cancelled")))
             return
 
         meta = QLabel(
-            f"Przeanalizowano {result.pages_analyzed}/{result.page_count} stron "
-            f"w {result.duration_s:.1f} s."
+            tr(
+                "main.main_window.analyzed_pages_in_s",
+                arg0=result.pages_analyzed,
+                arg1=result.page_count,
+                arg2=result.duration_s,
+            )
         )
         meta.setStyleSheet("color: #666;")
         self.details_layout.addWidget(meta)
 
         if result.pages_analyzed < result.page_count:
-            partial = QLabel(
-                "Analiza obejmuje tylko część dokumentu. Pozostałe strony mogą "
-                "zawierać podpisy. Zwiększ limit stron w ustawieniach AI."
-            )
+            partial = QLabel(tr("main.main_window.only_part_of_the_document_was_analyzed"))
             partial.setWordWrap(True)
             self.details_layout.addWidget(partial)
         if result.hitl:
-            review = QLabel("Sprawdź dokument — " + result.review_summary)
+            review = QLabel(tr("main.main_window.review_document") + result.review_summary)
             review.setTextFormat(Qt.TextFormat.PlainText)
             review.setWordWrap(True)
             review.setStyleSheet("color: #946000;")
             self.details_layout.addWidget(review)
         if result.page_signature_probabilities and not result.is_signed:
             values = "; ".join(
-                f"strona {page}: {probability * 100:.1f}%"
+                tr("main.main_window.page", arg0=page, arg1=probability * 100)
                 for page, probability in result.page_signature_probabilities.items()
             )
-            probability_label = QLabel("Prawdopodobieństwo obecności podpisu: " + values)
+            probability_label = QLabel(
+                tr("main.main_window.signature_presence_probability") + values
+            )
             probability_label.setTextFormat(Qt.TextFormat.PlainText)
             probability_label.setWordWrap(True)
             self.details_layout.addWidget(probability_label)
 
         if not result.findings:
-            none_label = QLabel("<b>Nie wykryto podpisów.</b>")
+            none_label = QLabel(tr("main.main_window.no_signatures_detected"))
             self.details_layout.addWidget(none_label)
             return
 
-        header = QLabel(f"<b>Wykryto: {result.kinds_summary}</b>")
+        header = QLabel(tr("main.main_window.detected", arg0=result.kinds_summary))
         header.setWordWrap(True)
         self.details_layout.addWidget(header)
         for finding in result.findings:
@@ -907,8 +956,12 @@ class MainWindow(QMainWindow):
         frame.setFrameShape(QFrame.Shape.StyledPanel)
         layout = QVBoxLayout(frame)
         caption = QLabel(
-            f"<b>{finding.kind.label_pl.capitalize()}</b> — strona {finding.page}, "
-            f"pewność {finding.confidence}%"
+            tr(
+                "main.main_window.page_confidence",
+                arg0=finding.kind.label_pl.capitalize(),
+                arg1=finding.page,
+                arg2=finding.confidence,
+            )
         )
         caption.setWordWrap(True)
         layout.addWidget(caption)
@@ -928,7 +981,9 @@ class MainWindow(QMainWindow):
     def _open_source_document(self, path: Path) -> None:
         if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve()))):
             QMessageBox.warning(
-                self, "Dokument źródłowy", "Nie udało się otworzyć dokumentu w domyślnym programie."
+                self,
+                tr("main.main_window.source_document"),
+                tr("main.main_window.could_not_open_the_document_in_the"),
             )
 
     def _clear_details(self) -> None:
@@ -959,12 +1014,14 @@ class MainWindow(QMainWindow):
                 return
             answer = QMessageBox.question(
                 self,
-                "Trwa sprawdzanie usługi AI",
-                "Poczekać na zakończenie sprawdzania i zamknąć program?",
+                tr("main.main_window.checking_ai_service"),
+                tr("main.main_window.wait_for_the_check_to_finish_and"),
             )
             if answer == QMessageBox.StandardButton.Yes:
                 self._close_when_finished = True
-                self.status_label.setText("Zamykanie po zakończeniu sprawdzania usługi AI…")
+                self.status_label.setText(
+                    tr("main.main_window.closing_after_the_ai_service_check_finishes")
+                )
                 self.setEnabled(False)
             event.ignore()
             return
@@ -974,8 +1031,8 @@ class MainWindow(QMainWindow):
                 return
             answer = QMessageBox.question(
                 self,
-                "Trwa przetwarzanie",
-                "Trwa analiza dokumentów. Przerwać i zamknąć program?",
+                tr("main.main_window.processing_in_progress"),
+                tr("main.main_window.documents_are_being_analyzed_cancel_and_close"),
             )
             if answer != QMessageBox.StandardButton.Yes:
                 event.ignore()
@@ -984,7 +1041,7 @@ class MainWindow(QMainWindow):
                 self._worker.cancel()
                 self._close_when_finished = True
                 self.status_label.setText(
-                    "Zamykanie po bezpiecznym zakończeniu bieżącego żądania AI…"
+                    tr("main.main_window.closing_after_the_current_ai_request_finishes")
                 )
                 self.setEnabled(False)
                 event.ignore()
@@ -1010,12 +1067,12 @@ class _ClickableLabel(QLabel):
             )
         self.setPixmap(preview)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setToolTip("Kliknij, aby powiększyć")
+        self.setToolTip(tr("main.main_window.click_to_enlarge"))
         self.setStyleSheet("border: 1px solid #ccc; background: white; padding: 2px;")
 
     def mousePressEvent(self, event) -> None:  # type: ignore[no-untyped-def] # noqa: N802 — API Qt
         dialog = QDialog(self.window())
-        dialog.setWindowTitle("Wycinek podpisu")
+        dialog.setWindowTitle(tr("main.main_window.signature_crop"))
         layout = QVBoxLayout(dialog)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -1049,13 +1106,8 @@ class _OnlineBadge(QFrame):
         icon = QLabel()
         icon.setPixmap(_transfer_arrows_pixmap())
         row.addWidget(icon)
-        row.addWidget(QLabel("Model online"))
-        self.setToolTip(
-            "Aktywna usługa AI nie działa na tym komputerze — analizowane dokumenty "
-            "są wysyłane przez sieć poza ten komputer.\n"
-            "Trybem lokalnym jest API pod adresem pętli zwrotnej "
-            "tego komputera (np. http://localhost:8800/v1)."
-        )
+        row.addWidget(QLabel(tr("main.main_window.online_model")))
+        self.setToolTip(tr("main.main_window.the_active_ai_service_runs_outside_this"))
 
 
 def _transfer_arrows_pixmap(size: int = 18) -> QPixmap:

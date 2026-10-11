@@ -12,67 +12,74 @@ from PIL import Image
 from signum.ai.base import AIResponseError, PageAnalysis, VisualSignature
 from signum.core.models import SignatureKind
 from signum.core.rendering import to_model_jpeg
+from signum.i18n import tr
 
 # Independent membership questions: a medical consent can match both labels.
 # These are task scores, not a distribution across mutually exclusive classes.
 CATEGORIES: dict[str, tuple[str, str]] = {
-    "contract": ("contract or agreement", "Umowa"),
-    "amendment": ("amendment or annex to an agreement", "Aneks"),
-    "consent": ("consent form or authorization of consent", "Zgoda"),
-    "application": ("application or request form", "Wniosek"),
-    "declaration": ("signed declaration or statement", "Oświadczenie"),
-    "report": ("report presenting findings or results", "Raport"),
-    "minutes": ("meeting minutes or a formal record of proceedings", "Protokół"),
-    "invoice": ("invoice or credit note", "Faktura"),
-    "receipt": ("receipt or confirmation of payment", "Potwierdzenie płatności"),
-    "order": ("purchase order or order confirmation", "Zamówienie"),
-    "offer": ("commercial offer or quotation", "Oferta"),
-    "letter": ("formal correspondence or letter", "Pismo"),
-    "decision": ("formal administrative decision", "Decyzja"),
-    "certificate": ("certificate or attestation", "Zaświadczenie"),
+    "contract": ("contract or agreement", "ai.category.contract"),
+    "amendment": ("amendment or annex to an agreement", "ai.category.amendment"),
+    "consent": ("consent form or authorization of consent", "ai.category.consent"),
+    "application": ("application or request form", "ai.category.application"),
+    "declaration": ("signed declaration or statement", "ai.category.declaration"),
+    "report": ("report presenting findings or results", "ai.category.report"),
+    "minutes": ("meeting minutes or a formal record of proceedings", "ai.category.minutes"),
+    "invoice": ("invoice or credit note", "ai.category.invoice"),
+    "receipt": ("receipt or confirmation of payment", "ai.category.receipt"),
+    "order": ("purchase order or order confirmation", "ai.category.order"),
+    "offer": ("commercial offer or quotation", "ai.category.offer"),
+    "letter": ("formal correspondence or letter", "ai.category.letter"),
+    "decision": ("formal administrative decision", "ai.category.decision"),
+    "certificate": ("certificate or attestation", "ai.category.certificate"),
     "power_of_attorney": (
         "power of attorney or authorization to represent someone",
-        "Pełnomocnictwo",
+        "ai.category.power_of_attorney",
     ),
-    "regulations": ("regulations, terms or internal rules", "Regulamin"),
-    "instructions": ("instructions or a procedural manual", "Instrukcja"),
-    "resolution": ("resolution adopted by a board or committee", "Uchwała"),
-    "complaint": ("complaint or warranty claim", "Reklamacja"),
-    "appeal": ("appeal against a decision", "Odwołanie"),
-    "notice": ("official notice or notification", "Zawiadomienie"),
-    "questionnaire": ("questionnaire or survey form", "Kwestionariusz"),
-    "register": ("register, ledger or attendance list", "Rejestr lub lista"),
-    "delivery": ("delivery, handover or acceptance document", "Dokument odbioru"),
-    "medical": ("medical or patient healthcare documentation", "Dokumentacja medyczna"),
+    "regulations": ("regulations, terms or internal rules", "ai.category.regulations"),
+    "instructions": ("instructions or a procedural manual", "ai.category.instructions"),
+    "resolution": ("resolution adopted by a board or committee", "ai.category.resolution"),
+    "complaint": ("complaint or warranty claim", "ai.category.complaint"),
+    "appeal": ("appeal against a decision", "ai.category.appeal"),
+    "notice": ("official notice or notification", "ai.category.notice"),
+    "questionnaire": ("questionnaire or survey form", "ai.category.questionnaire"),
+    "register": ("register, ledger or attendance list", "ai.category.register"),
+    "delivery": ("delivery, handover or acceptance document", "ai.category.delivery"),
+    "medical": ("medical or patient healthcare documentation", "ai.category.medical"),
     "education": (
         "document concerning a school, university, course or training",
-        "Edukacja i kursy",
+        "ai.category.education",
     ),
-    "employment": ("employment or human resources document", "Sprawy pracownicze"),
-    "accounting": ("accounting or financial reporting document", "Księgowość"),
-    "tax": ("tax declaration or tax administration document", "Sprawy podatkowe"),
-    "banking": ("banking, credit or loan document", "Bankowość"),
-    "insurance": ("insurance policy or insurance claim document", "Ubezpieczenia"),
-    "property": ("real estate, tenancy or property management document", "Nieruchomości"),
-    "construction": ("construction or building works document", "Budownictwo"),
-    "procurement": ("public procurement or tender document", "Zamówienia publiczne"),
-    "legal": ("court, litigation or legal proceedings document", "Postępowanie sądowe"),
-    "administration": ("public administration or government affairs document", "Administracja"),
-    "transport": ("transport, shipment or logistics document", "Transport i logistyka"),
-    "technical": ("technical, engineering or maintenance documentation", "Dokumentacja techniczna"),
-    "research": ("scientific research or research project document", "Badania naukowe"),
-    "grant": ("grant, subsidy or funding application document", "Dotacje i finansowanie"),
-    "privacy": ("personal data protection or privacy document", "Ochrona danych"),
-    "safety": ("occupational health, safety or fire protection document", "BHP i bezpieczeństwo"),
-    "environment": ("environmental protection or waste management document", "Ochrona środowiska"),
-    "social": ("social welfare or social benefits document", "Pomoc społeczna"),
-    "travel": ("travel, tourism or business trip document", "Podróże"),
-    "it": ("information technology or software services document", "Usługi IT"),
+    "employment": ("employment or human resources document", "ai.category.employment"),
+    "accounting": ("accounting or financial reporting document", "ai.category.accounting"),
+    "tax": ("tax declaration or tax administration document", "ai.category.tax"),
+    "banking": ("banking, credit or loan document", "ai.category.banking"),
+    "insurance": ("insurance policy or insurance claim document", "ai.category.insurance"),
+    "property": ("real estate, tenancy or property management document", "ai.category.property"),
+    "construction": ("construction or building works document", "ai.category.construction"),
+    "procurement": ("public procurement or tender document", "ai.category.procurement"),
+    "legal": ("court, litigation or legal proceedings document", "ai.category.legal"),
+    "administration": (
+        "public administration or government affairs document",
+        "ai.category.administration",
+    ),
+    "transport": ("transport, shipment or logistics document", "ai.category.transport"),
+    "technical": ("technical, engineering or maintenance documentation", "ai.category.technical"),
+    "research": ("scientific research or research project document", "ai.category.research"),
+    "grant": ("grant, subsidy or funding application document", "ai.category.grant"),
+    "privacy": ("personal data protection or privacy document", "ai.category.privacy"),
+    "safety": ("occupational health, safety or fire protection document", "ai.category.safety"),
+    "environment": (
+        "environmental protection or waste management document",
+        "ai.category.environment",
+    ),
+    "social": ("social welfare or social benefits document", "ai.category.social"),
+    "travel": ("travel, tourism or business trip document", "ai.category.travel"),
+    "it": ("information technology or software services document", "ai.category.it"),
     "association": (
         "association, foundation or non-profit organization document",
-        "Organizacje społeczne",
+        "ai.category.association",
     ),
-    "other": ("document that does not fit any recognizable specific category", "Inny dokument"),
+    "other": ("document that does not fit any recognizable specific category", "ai.category.other"),
 }
 CATEGORY_THRESHOLD = 0.6
 GRID_COLUMNS, GRID_ROWS = 4, 5
@@ -124,12 +131,12 @@ PixelBox = tuple[int, int, int, int]  # left, top, right, bottom
 def read_nouls(data: dict[str, Any], keys: list[str]) -> dict[str, float]:
     answers = data.get("answers")
     if not isinstance(answers, dict):
-        raise AIResponseError("Brak odpowiedzi dodatkowej analizy Jev.")
+        raise AIResponseError(tr("ai.jev_missing_additional"))
     scores = {}
     for key in keys:
         answer = answers.get(key)
         if not isinstance(answer, dict) or answer.get("type") != "noul":
-            raise AIResponseError(f"Brak poprawnej odpowiedzi dodatkowej analizy: {key}")
+            raise AIResponseError(tr("ai.additional_invalid_response", field=key))
         value = answer.get("noul")
         if (
             isinstance(value, bool)
@@ -137,7 +144,7 @@ def read_nouls(data: dict[str, Any], keys: list[str]) -> dict[str, float]:
             or not math.isfinite(value)
             or not 0 <= value <= 1
         ):
-            raise AIResponseError(f"Niepoprawna ocena dodatkowej analizy: {key}")
+            raise AIResponseError(tr("ai.additional_invalid_score", field=key))
         scores[key] = float(value)
     return scores
 
@@ -223,7 +230,9 @@ def enrich_analysis(
     selected = [key for key in ranked if key != "other" and categories[key] >= category_threshold][
         :2
     ]
-    description = "; ".join(CATEGORIES[key][1] for key in selected) or "Rodzaj nierozpoznany"
+    description = "; ".join(tr(CATEGORIES[key][1]) for key in selected) or tr(
+        "ai.unrecognized_type"
+    )
     if not basic.signatures:
         return replace(basic, description=description)
 
@@ -273,9 +282,9 @@ def enrich_analysis(
                 math.ceil(bottom * 1000 / height),
                 math.ceil(right * 1000 / width),
             )
-            detail = "Przybliżony obszar oznaczenia (dodatkowa analiza)."
+            detail = tr("ai.approximate_region")
             if not is_stamp and region_scores["single_signature"] < single_threshold:
-                detail = "Przybliżony obszar; może obejmować kilka podpisów."
+                detail = tr("ai.multiple_signature_region")
             localized.append(
                 VisualSignature(
                     original.kind, round(region_scores[verify_key] * 100), normalized, detail

@@ -1,0 +1,30 @@
+{
+  "runtime.cuda_unavailable": {
+    "pl": "CUDA niedostępna: sprawdź kartę NVIDIA i jej sterownik.",
+    "en": "CUDA unavailable: check your NVIDIA GPU and its driver."
+  },
+  "runtime.gpu_memory_required": {
+    "pl": "Ten pakiet wymaga karty NVIDIA z 16 GB pamięci GPU.",
+    "en": "This package requires an NVIDIA GPU with 16 GB of GPU memory."
+  },
+  "runtime.missing_weights": {
+    "pl": "Brak plików wag modelu.",
+    "en": "Model weight files are missing."
+  },
+  "runtime.empty_weights": {
+    "pl": "Plik wag modelu jest pusty.",
+    "en": "A model weight file is empty."
+  },
+  "runtime.independent_questions_required": {
+    "pl": "Pakiet etykiet wymaga niezależnych pytań tak/nie.",
+    "en": "The label batch requires independent yes/no questions."
+  },
+  "runtime.missing_questions": {
+    "pl": "Brak pytań do oceny.",
+    "en": "No questions to evaluate."
+  },
+  "runtime.prompt_too_long": {
+    "pl": "Skróć prompt lub opisy kategorii — są zbyt długie.",
+    "en": "Shorten the prompt or category descriptions — they are too long."
+  }
+}

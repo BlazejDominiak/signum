@@ -36,6 +36,7 @@ from signum.ai.model_profiles import (
 )
 from signum.ai.text_classifiers import create_text_classifier, venice_key
 from signum.config import AppConfig, get_api_key, set_api_key
+from signum.i18n import tr
 from signum.local_components import repair_instructions
 from signum.network import normalize_ai_endpoint
 from signum.ui.components_dialog import ComponentsDialog
@@ -59,7 +60,7 @@ class TextConnectionTestWorker(QThread):
                 api_key=self.key if self.key or self.profile.key_slot != "venice" else None,
             )
             client.check_connection()
-            ok, message = True, "Połączenie działa. Model odpowiada."
+            ok, message = True, tr("classification.connection_ok")
         except Exception as exc:
             ok, message = False, repair_instructions(str(exc), self.profile.provider)
         finally:
@@ -89,25 +90,25 @@ class ModelsDialog(QDialog):
         self.current = -1
         self._loading = False
         self.worker: QThread | None = None
-        self.setWindowTitle("Ustawienia AI")
+        self.setWindowTitle(tr("classification.ai_settings"))
         self.resize(860, 660)
         outer = QVBoxLayout(self)
-        self.components = QPushButton("Składniki AI — instaluj / napraw…")
+        self.components = QPushButton(tr("classification.components_repair"))
         self.components.clicked.connect(self._components)
         outer.addWidget(self.components)
         split = QSplitter()
         outer.addWidget(split, 1)
         sidebar = QWidget()
         sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.addWidget(QLabel("Modele do porównania"))
+        sidebar_layout.addWidget(QLabel(tr("classification.models_heading")))
         self.list = QListWidget()
         self.list.currentRowChanged.connect(self._select)
         sidebar_layout.addWidget(self.list)
         actions = QHBoxLayout()
         for title, callback in (
-            ("Dodaj", self._add),
-            ("Duplikuj", self._duplicate),
-            ("Usuń", self._remove),
+            (tr("classification.add"), self._add),
+            (tr("classification.duplicate"), self._duplicate),
+            (tr("classification.remove"), self._remove),
         ):
             button = QPushButton(title)
             button.clicked.connect(callback)
@@ -120,65 +121,67 @@ class ModelsDialog(QDialog):
         self.form = QFormLayout(self.editor)
         self.form.setFieldGrowthPolicy(QFormLayout.FieldGrowthPolicy.AllNonFixedFieldsGrow)
         self.name = QLineEdit()
-        self.form.addRow("Nazwa konfiguracji:", self.name)
+        self.form.addRow(tr("classification.configuration_name"), self.name)
         self.provider = QComboBox()
         for label, value in (
             ("Ollama", "ollama"),
-            ("AI od dostawcy", "api"),
-            ("JevK5 — lokalnie, PyTorch", "jevk5"),
+            (tr("classification.ai_provider"), "api"),
+            (tr("classification.jevk5_provider"), "jevk5"),
         ):
             self.provider.addItem(label, value)
         self.provider.currentIndexChanged.connect(self._visibility)
-        self.form.addRow("Połączenie:", self.provider)
+        self.form.addRow(tr("classification.connection"), self.provider)
         self.protocol = QComboBox()
         for value, label in API_FORMATS.items():
             self.protocol.addItem(label, value)
-        self.form.addRow("Format API:", self.protocol)
+        self.form.addRow(tr("classification.api_format"), self.protocol)
         self.url = QLineEdit()
         self.url.setPlaceholderText("https://api.example.com/v1")
-        self.form.addRow("Adres API:", self.url)
+        self.form.addRow(tr("classification.api_url"), self.url)
         self.model_row = QWidget()
         row = QHBoxLayout(self.model_row)
         row.setContentsMargins(0, 0, 0, 0)
         self.model = QComboBox()
         self.model.setEditable(True)
         self.model.setMinimumWidth(170)
-        self.refresh = QPushButton("Odśwież listę")
+        self.refresh = QPushButton(tr("classification.refresh_list"))
         self.refresh.clicked.connect(self._refresh)
         row.addWidget(self.model, 1)
         row.addWidget(self.refresh)
-        self.form.addRow("Model:", self.model_row)
+        self.form.addRow(tr("classification.model"), self.model_row)
         self.key = QLineEdit()
         self.key.setEchoMode(QLineEdit.EchoMode.Password)
-        self.form.addRow("Klucz API:", self.key)
+        self.form.addRow(tr("classification.api_key"), self.key)
         self.paths: dict[str, QLineEdit] = {}
         for key, title in (
-            ("python", "Python z CUDA:"),
-            ("model_dir", "Katalog modelu:"),
-            ("runtime", "Katalog runtime:"),
-            ("packages", "Biblioteki:"),
+            ("python", tr("classification.python_cuda")),
+            ("model_dir", tr("classification.model_directory")),
+            ("runtime", tr("classification.runtime_directory")),
+            ("packages", tr("classification.libraries")),
         ):
             edit = QLineEdit()
             self.paths[key] = edit
             self.form.addRow(title, edit)
-        self.custom_thresholds = QCheckBox("Własne progi")
+        self.custom_thresholds = QCheckBox(tr("classification.custom_thresholds"))
         self.form.addRow("", self.custom_thresholds)
         self.threshold = QDoubleSpinBox()
         self.hitl_margin = QDoubleSpinBox()
-        for spin, label in ((self.threshold, "Próg decyzji (0–1):"),
-                            (self.hitl_margin, "Margines HITL (±):")):
+        for spin, label in (
+            (self.threshold, tr("classification.decision_threshold")),
+            (self.hitl_margin, tr("classification.hitl_margin")),
+        ):
             spin.setRange(0, 1)
             spin.setDecimals(3)
             spin.setSingleStep(0.01)
             self.form.addRow(label, spin)
-        self.reset_thresholds = QPushButton("Domyślne progi")
+        self.reset_thresholds = QPushButton(tr("classification.default_thresholds"))
         self.reset_thresholds.clicked.connect(lambda: self.custom_thresholds.setChecked(False))
         self.form.addRow("", self.reset_thresholds)
         self.custom_thresholds.toggled.connect(self._threshold_defaults)
         self.provider.currentIndexChanged.connect(self._threshold_defaults)
         self.protocol.currentIndexChanged.connect(self._threshold_defaults)
         self.model.currentTextChanged.connect(self._threshold_defaults)
-        self.test = QPushButton("Testuj połączenie")
+        self.test = QPushButton(tr("classification.test_connection"))
         self.test.clicked.connect(self._test)
         self.form.addRow("", self.test)
         self.message = QLabel()
@@ -192,8 +195,10 @@ class ModelsDialog(QDialog):
         self.buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
         )
-        self.buttons.button(QDialogButtonBox.StandardButton.Save).setText("Zapisz")
-        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText("Anuluj")
+        self.buttons.button(QDialogButtonBox.StandardButton.Save).setText(tr("classification.save"))
+        self.buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(
+            tr("classification.cancel")
+        )
         self.buttons.accepted.connect(self._save)
         self.buttons.rejected.connect(self.reject)
         outer.addWidget(self.buttons)
@@ -262,8 +267,10 @@ class ModelsDialog(QDialog):
         self.hitl_margin.setEnabled(custom)
         if not custom:
             profile = ModelProfile(
-                id="preview", provider=self.provider.currentData(),
-                model=self.model.currentText(), api_format=self.protocol.currentData(),
+                id="preview",
+                provider=self.provider.currentData(),
+                model=self.model.currentText(),
+                api_format=self.protocol.currentData(),
             )
             threshold, margin = default_decision_values(profile)
             self.threshold.setValue(threshold)
@@ -314,7 +321,12 @@ class ModelsDialog(QDialog):
         self._store()
         self._remember_checks()
         original = self.profiles[self.current]
-        p = replace(original, id=uuid.uuid4().hex, name=original.label + " — kopia", key_slot="")
+        p = replace(
+            original,
+            id=uuid.uuid4().hex,
+            name=original.label + tr("classification.copy_suffix"),
+            key_slot="",
+        )
         self.keys[p.id] = self.keys.get(original.id, "")
         self.profiles.append(p)
         self._rebuild(len(self.profiles) - 1)
@@ -334,7 +346,9 @@ class ModelsDialog(QDialog):
 
     def _refresh(self) -> None:
         try:
-            url = normalize_ai_endpoint(self.url.text(), "http://localhost:11434", "Ollamy")
+            url = normalize_ai_endpoint(
+                self.url.text(), "http://localhost:11434", tr("classification.ollama_endpoint")
+            )
         except ValueError as exc:
             self.message.setText(str(exc))
             return
@@ -350,7 +364,7 @@ class ModelsDialog(QDialog):
         self.model.clear()
         self.model.addItems(list(payload))  # type: ignore[call-overload]
         self.model.setEditText(current)
-        self.message.setText(f"Dostępne modele: {self.model.count()}.")
+        self.message.setText(tr("classification.available_models", count=self.model.count()))
 
     def _test(self) -> None:
         self._store()
@@ -362,7 +376,7 @@ class ModelsDialog(QDialog):
             return
         worker = TextConnectionTestWorker(profile, self.config, self.key.text().strip(), self)
         worker.result.connect(lambda ok, text: self.message.setText(("✔ " if ok else "✘ ") + text))
-        self.message.setText("Testowanie…")
+        self.message.setText(tr("classification.testing"))
         self._start_worker(worker)
 
     def _start_worker(self, worker: QThread) -> None:
@@ -394,7 +408,7 @@ class ModelsDialog(QDialog):
                 p.key_slot = ""
                 set_api_key(p.credential_slot, key)
         except Exception as exc:
-            QMessageBox.warning(self, "Ustawienia AI", str(exc))
+            QMessageBox.warning(self, tr("classification.ai_settings"), str(exc))
             return
         self.accept()
 

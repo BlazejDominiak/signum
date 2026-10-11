@@ -21,14 +21,15 @@ from pathlib import Path
 import requests
 from PIL import Image
 
-from signum.config import AppConfig
+from signum.config import AppConfig, config_file
+from signum.i18n import get_language, set_language, tr
 from signum.local_components import (
-    THIRD_PARTY_NOTICE,
     find_ollama,
     jevk5_files,
     probe_runtime,
     repair_instructions,
     require_nvidia_gpu,
+    third_party_notice,
 )
 from signum.network import is_loopback_endpoint
 
@@ -51,7 +52,7 @@ class SetupCancelledError(Exception):
 def parse_components(value: str) -> set[str]:
     components = set(filter(None, value.split(",")))
     if not components <= VALID_COMPONENTS:
-        raise ValueError("Nieznany składnik instalacji AI")
+        raise ValueError(tr("settings.unknown_component"))
     if components & MODELS.keys():
         components.add("ollama")
     return components - {"app"}
@@ -60,14 +61,14 @@ def parse_components(value: str) -> set[str]:
 def validate_storage(directory: str, components: set[str]) -> Path:
     root = Path(directory)
     if not root.is_absolute():
-        raise ValueError("Katalog AI musi mieć pełną ścieżkę")
+        raise ValueError(tr("settings.absolute_ai_folder"))
     root.mkdir(parents=True, exist_ok=True)
     # Downloads, unpacked packages and temporary wheels must fit on this drive.
     needed_gb = 35 * len(components & {"jev", "jevk5"})
     if "ollama" in components:
         needed_gb += 28 if len(components & MODELS.keys()) > 1 else 20
     if shutil.disk_usage(root).free < needed_gb * 1024**3:
-        raise ValueError(f"Na tym dysku potrzeba co najmniej {needed_gb} GB wolnego miejsca")
+        raise ValueError(tr("settings.space_required", space=needed_gb))
     return root
 
 
@@ -77,7 +78,7 @@ def _safe_extract(archive: Path, destination: Path) -> None:
     with zipfile.ZipFile(archive) as zipped:
         for item in zipped.infolist():
             if not (destination / item.filename).resolve().is_relative_to(target):
-                raise ValueError("Archiwum zawiera ścieżkę spoza katalogu instalacji")
+                raise ValueError(tr("settings.archive_escape"))
         zipped.extractall(destination)
 
 
@@ -115,7 +116,7 @@ class LocalAIPreparer:
     def check_cancelled(self) -> None:
         if self.cancelled.is_set():
             raise SetupCancelledError(
-                "Przygotowanie AI anulowane. Pobrane pliki pozostają na dysku."
+                tr("settings.setup_cancelled")
             )
 
     def status(self, text: str, percent: int = -1) -> None:
@@ -158,16 +159,16 @@ class LocalAIPreparer:
                     return target
                 partial.unlink(missing_ok=True)
                 metadata.unlink(missing_ok=True)
-                raise ValueError("Nieaktualna część pliku — ponów pobieranie")
+                raise ValueError(tr("settings.stale_partial"))
             response.raise_for_status()
             if response.status_code == 206:
                 match = re.fullmatch(r"bytes (\d+)-(\d+)/(\d+)",
                                      response.headers.get("Content-Range", ""))
                 if not match or int(match[1]) != offset or int(match[2]) < offset:
-                    raise ValueError("Serwer zwrócił niepoprawny zakres pobierania")
+                    raise ValueError(tr("settings.invalid_range"))
                 total = int(match[3])
                 if int(match[2]) + 1 != total:
-                    raise ValueError("Niepełny zakres odpowiedzi serwera")
+                    raise ValueError(tr("settings.incomplete_range"))
             else:
                 offset = 0  # Server ignored Range or If-Range no longer matches.
                 total = int(response.headers.get("Content-Length", 0))
@@ -176,7 +177,7 @@ class LocalAIPreparer:
             )
             if (response.status_code == 206 and validator and current_validator
                     and current_validator != validator and not expected_hash):
-                raise ValueError("Źródło pliku zmieniło się; ponów pobieranie od początku")
+                raise ValueError(tr("settings.source_changed"))
             if current_validator and current_validator.startswith("W/"):
                 current_validator = response.headers.get("Last-Modified", "")
             metadata.write_text(json.dumps({"url": url, "validator": current_validator or ""}),
@@ -204,11 +205,11 @@ class LocalAIPreparer:
                 file.flush()
                 os.fsync(file.fileno())
         if total and downloaded != total:
-            raise ValueError(f"Niepełne pobranie pliku {target.name}; ponów pobieranie")
+            raise ValueError(tr("settings.incomplete_download", name=target.name))
         if expected_hash and digest.hexdigest() != expected_hash:
             partial.unlink(missing_ok=True)
             metadata.unlink(missing_ok=True)
-            raise ValueError(f"Niepoprawna suma kontrolna pliku {target.name}")
+            raise ValueError(tr("settings.invalid_checksum", name=target.name))
         partial.replace(target)
         metadata.unlink(missing_ok=True)
         return target
@@ -264,7 +265,7 @@ class LocalAIPreparer:
                 while process.poll() is None:
                     self.check_cancelled()
                     if time.monotonic() > deadline:
-                        raise TimeoutError("Przekroczono czas przygotowania składnika")
+                        raise TimeoutError(tr("settings.setup_timeout"))
                     time.sleep(0.2)
             except BaseException:
                 process.terminate()
@@ -275,7 +276,7 @@ class LocalAIPreparer:
                     stream.seek(max(0, self.log.stat().st_size - 2500))
                     detail = stream.read().decode("utf-8", errors="replace")
                 raise RuntimeError(
-                    f"Instalacja bibliotek nie powiodła się. Log: {self.log}\n{detail}"
+                    tr("settings.libraries_failed", path=self.log, detail=detail)
                 )
 
     def prepare_ollama(self, components: set[str], config: AppConfig) -> None:
@@ -289,10 +290,10 @@ class LocalAIPreparer:
         local.trust_env = False
         url = self.existing_ollama_url or "http://127.0.0.1:11434"
         if not is_loopback_endpoint(url):
-            raise ValueError("Przygotowanie Ollamy wymaga lokalnego adresu API")
+            raise ValueError(tr("settings.local_endpoint_required"))
         try:
             local.get(f"{url}/api/version", timeout=3).raise_for_status()
-            self.status("Korzystam z już działającej Ollamy i jej katalogu modeli.")
+            self.status(tr("settings.existing_ollama"))
             runtime = config.ollama_runtime_dir
         except requests.RequestException:
             runtime_path = (
@@ -333,26 +334,27 @@ class LocalAIPreparer:
             if model_root is None:
                 if not self.ollama_model_directory:
                     raise ValueError(
-                        "Ollama nie udostępnia ścieżki swojego magazynu. Wskaż folder modeli "
-                        "w Składniki AI → Szczegóły instalacji lub przez --ollama-model-directory."
+                        tr("settings.ollama_folder_unknown")
                     )
                 model_root = Path(self.ollama_model_directory)
             if not model_root.is_absolute():
-                raise ValueError("Folder modeli Ollamy musi mieć pełną ścieżkę")
-            self.status(f"Folder modeli Ollamy: {model_root}")
+                raise ValueError(tr("settings.absolute_ollama_folder"))
+            self.status(tr("settings.ollama_folder", path=model_root))
             check_root = model_root
             while not check_root.exists() and check_root.parent != check_root:
                 check_root = check_root.parent
             needed = sum(8 if m == "gemma4:e2b" else 20 for m in missing) * 1024**3
             if shutil.disk_usage(check_root).free < needed:
-                raise ValueError(f"Za mało miejsca w {model_root}: potrzeba {needed // 1024**3} GB")
+                raise ValueError(
+                    tr("settings.model_space_required", path=model_root, space=needed // 1024**3)
+                )
         for model in selected:
             if model in self.verified_models:
                 continue
             if model not in installed and self.check_only:
-                raise ValueError(f"Brak modelu {model}. Użyj Instaluj / napraw.")
+                raise ValueError(tr("settings.missing_model", model=model))
             if (model not in installed or self.repair) and not self.check_only:
-                self.status(f"Pobieram {model}. Pobieranie może potrwać kilkanaście minut.")
+                self.status(tr("settings.downloading_model", model=model))
                 with local.post(
                     f"{url}/api/pull",
                     json={"model": model, "stream": True},
@@ -373,14 +375,14 @@ class LocalAIPreparer:
                             f"{model}: {item.get('status', '')}",
                             min(100, completed * 100 // total) if total else -1,
                         )
-            self.status(f"Sprawdzam model {model}.")
+            self.status(tr("settings.checking_model", model=model))
             if model in MODELS.values():
                 client = OllamaVisionModel(url, model)
                 try:
                     client.check_connection()
                     analysis = client.analyze_image(Image.new("RGB", (320, 400), "white"), 1120)
                     if analysis.signatures:
-                        raise RuntimeError(f"{model} wskazał podpis na pustym obrazie testowym")
+                        raise RuntimeError(tr("settings.blank_image_failed", model=model))
                 finally:
                     client.release_resources()
             from signum.ai.text_classifiers import GemmaTextClassifier  # noqa: PLC0415
@@ -416,7 +418,7 @@ class LocalAIPreparer:
 
     def install_ollama(self, runtime_path: Path) -> None:
         validate_storage(str(self.root), {"ollama"})
-        self.status("Pobieram Ollamę z oficjalnego wydania GitHub.")
+        self.status(tr("settings.download_ollama"))
         response = self.session.get(
             f"https://api.github.com/repos/ollama/ollama/releases/tags/v{OLLAMA_VERSION}",
             timeout=30,
@@ -427,11 +429,11 @@ class LocalAIPreparer:
         )
         checksum = str(asset.get("digest") or "").removeprefix("sha256:")
         if len(checksum) != 64:
-            raise ValueError("Wydanie Ollamy nie udostępnia sumy SHA-256")
+            raise ValueError(tr("settings.ollama_hash_missing"))
         archive = self.download(
             asset["browser_download_url"], self.downloads / asset["name"], checksum
         )
-        self.status("Rozpakowuję Ollamę i biblioteki obsługi GPU.")
+        self.status(tr("settings.unpack_ollama"))
         _safe_extract(archive, runtime_path)
         # This is our managed launcher metadata, never external program files.
         manifest = runtime_path / "runtime.json"
@@ -467,7 +469,7 @@ class LocalAIPreparer:
         python = python_root / "python.exe"
         packages = runtime / "packages"
         packages.mkdir(exist_ok=True)
-        self.status(f"Przygotowuję Python i biblioteki: {kind}.")
+        self.status(tr("settings.prepare_libraries", kind=kind))
         archive = self.download(
             "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip",
             self.downloads / "python-3.11.9-embed-amd64.zip",
@@ -550,7 +552,7 @@ class LocalAIPreparer:
         return python, packages
 
     def download_model(self, repo: str, revision: str, model_dir: Path) -> None:
-        self.status(f"Sprawdzam i pobieram pliki modelu {repo}.")
+        self.status(tr("settings.fetch_model_files", repo=repo))
         metadata = self.session.get(
             f"https://huggingface.co/api/models/{repo}/revision/{revision}",
             params={"blobs": "true"},
@@ -562,10 +564,10 @@ class LocalAIPreparer:
             if Path(name).suffix not in {".json", ".safetensors", ".pt", ".jinja", ".txt"}:
                 continue
             if Path(name).is_absolute() or ".." in Path(name).parts or ":" in name:
-                raise ValueError("Niepoprawna ścieżka pliku modelu")
+                raise ValueError(tr("settings.invalid_model_path"))
             checksum = (item.get("lfs") or {}).get("sha256", "")
             if Path(name).suffix in {".safetensors", ".pt"} and len(checksum) != 64:
-                raise ValueError(f"Brak sumy SHA-256 dla wag {name}; pobieranie wstrzymane.")
+                raise ValueError(tr("settings.weights_hash_missing", name=name))
             self.download(
                 f"https://huggingface.co/{repo}/resolve/{revision}/{name}",
                 model_dir / name,
@@ -588,7 +590,7 @@ class LocalAIPreparer:
                 self.cancelled,
             )
         )
-        self.status("Ładuję Jev i sprawdzam analizę obrazu.")
+        self.status(tr("settings.test_jev"))
         client = JevVisionModel(
             base_url="http://127.0.0.1:8800/v1",
             model="vjev-vision",
@@ -600,7 +602,7 @@ class LocalAIPreparer:
             client.check_connection()
             analysis = client.analyze_image(Image.new("RGB", (320, 400), "white"), 1120)
             if analysis.signature_probability is None or analysis.signatures:
-                raise RuntimeError("Jev nie przeszedł sprawdzenia na pustym obrazie")
+                raise RuntimeError(tr("settings.jev_blank_failed"))
         finally:
             client.release_resources()
 
@@ -616,13 +618,14 @@ class LocalAIPreparer:
                 for term in (
                     "out of memory",
                     "cuda niedostępna",
+                    "cuda unavailable",
                     "16 gb",
                     "driver",
                     "kernel image",
                 )
             ):
                 raise
-            self.status(f"Jev wymaga przygotowania: {exc}")
+            self.status(tr("settings.jev_needs_setup", error=exc))
             runtime = self.root / "jev"
             python, packages = self.python_runtime(runtime, "jev")
             model_dir = runtime / "models/vjev-vision"
@@ -664,7 +667,7 @@ class LocalAIPreparer:
                 self.cancelled,
             )
         )
-        self.status("Ładuję JevK5 i sprawdzam odpowiedź modelu.")
+        self.status(tr("settings.test_jevk5"))
         client = JevK5TextClassifier(config, self.cancelled)
         try:
             client.check_connection()
@@ -696,13 +699,14 @@ class LocalAIPreparer:
                 for term in (
                     "out of memory",
                     "cuda niedostępna",
+                    "cuda unavailable",
                     "16 gb",
                     "driver",
                     "kernel image",
                 )
             ):
                 raise
-            self.status(f"JevK5 wymaga przygotowania: {exc}")
+            self.status(tr("settings.jevk5_needs_setup", error=exc))
             runtime = self.root / "jevk5"
             python, packages = self.python_runtime(runtime, "jevk5")
             model_dir = runtime / "models/JevK5"
@@ -783,7 +787,7 @@ class LocalAIPreparer:
                     self.prepare_jev(config)
                 else:
                     self.prepare_jevk5(config)
-                self.status(f"{kind}: test zakończony poprawnie.")
+                self.status(tr("settings.component_test_passed", kind=kind))
                 self.completed_components.add(kind)
                 self.component_results[kind] = "ready"
             except SetupCancelledError:
@@ -800,7 +804,7 @@ class LocalAIPreparer:
             if "jev" in components and "ollama" not in components:
                 config.provider = "vjev"
             config.save()
-        self.status("Wybrane składniki przeszły test działania.", 100)
+        self.status(tr("settings.selected_tests_passed"), 100)
 
 
 def perform_setup(
@@ -811,7 +815,7 @@ def perform_setup(
     except Exception as exc:
         ok, message = False, repair_instructions(str(exc))
     else:
-        ok, message = True, "Wybrane składniki działają."
+        ok, message = True, tr("settings.selected_ready")
     target = result_file or preparer.root / "setup-result.json"
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -823,7 +827,7 @@ def perform_setup(
         }, ensure_ascii=False), encoding="utf-8")
         temporary.replace(target)
     except OSError as exc:
-        return False, f"Nie zapisano wyniku przygotowania: {exc}"
+        return False, tr("settings.result_write_failed", error=exc)
     return ok, message
 
 
@@ -849,16 +853,17 @@ def run_setup_dialog(arguments: list[str]) -> int:
     parser.add_argument("--existing-ollama-url", default="")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--result-file", default="")
-    parser.add_argument("--language", choices=("pl", "en"), default="pl")
+    parser.add_argument("--language", choices=("pl", "en"), default=get_language())
     parser.add_argument("--ollama-model-directory", default="")
     parser.add_argument("--repair", action="store_true")
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--ollama-model", default="")
     options = parser.parse_args(arguments)
+    set_language(options.language)
     components = parse_components(options.ai_components)
+    if "--language" in arguments and not config_file().exists() and not options.check_only:
+        AppConfig(language=options.language).save()
     cancelled = threading.Event()
-    def tr(pl: str, en: str) -> str:
-        return en if options.language == "en" else pl
 
     result_file = Path(options.result_file) if options.result_file else None
 
@@ -914,7 +919,7 @@ def run_setup_dialog(arguments: list[str]) -> int:
         def reject(self) -> None:
             if worker.isRunning():
                 cancelled.set()
-                status.setText("Zatrzymuję przygotowanie. Poczekaj na zakończenie bieżącego kroku.")
+                status.setText(tr("settings.stopping_setup"))
                 button.setEnabled(False)
             else:
                 super().reject()
@@ -923,34 +928,26 @@ def run_setup_dialog(arguments: list[str]) -> int:
 
     dialog = Dialog()
     dialog.setStyleSheet(SIGNUM_STYLE)
-    dialog.setWindowTitle(tr("Signum — przygotowanie lokalnego AI", "Signum — local AI setup"))
+    dialog.setWindowTitle(tr("settings.setup_title"))
     dialog.resize(720, 300)
     layout = QVBoxLayout(dialog)
     layout.setContentsMargins(18, 18, 18, 18)
     layout.setSpacing(10)
-    heading = QLabel(tr("Przygotowanie AI", "AI setup"))
+    heading = QLabel(tr("settings.setup_heading"))
     heading.setProperty("role", "title")
     layout.addWidget(heading)
-    intro = QLabel(f"Folder: {options.ai_directory}")
+    intro = QLabel(tr("settings.folder_value", path=options.ai_directory))
     intro.setWordWrap(True)
     layout.addWidget(intro)
-    sources = QLabel(
-        'Źródła i licencje: <a href="https://github.com/ollama/ollama">Ollama</a> · '
-        '<a href="https://ollama.com/library/gemma4">Gemma</a> · '
-        '<a href="https://huggingface.co/yah01/vjev-vision">Jev</a> · '
-        '<a href="https://huggingface.co/alibiserikbay/JevK5">JevK5</a> · '
-        '<a href="https://www.python.org/downloads/">Python</a> · '
-        '<a href="https://pytorch.org/">PyTorch</a> · '
-        '<a href="https://github.com/huggingface/transformers">Transformers</a>'
-    )
+    sources = QLabel(tr("settings.sources"))
     sources.setOpenExternalLinks(True)
     layout.addWidget(sources)
     sources.hide()
-    notice = QLabel(THIRD_PARTY_NOTICE)
+    notice = QLabel(third_party_notice())
     notice.setWordWrap(True)
     layout.addWidget(notice)
     notice.hide()
-    status = QLabel(tr("Rozpoczynam przygotowanie…", "Preparing…"))
+    status = QLabel(tr("settings.preparing"))
     status.setWordWrap(True)
     layout.addWidget(status)
     bar = QProgressBar()
@@ -961,7 +958,7 @@ def run_setup_dialog(arguments: list[str]) -> int:
     messages.setMaximumBlockCount(300)
     layout.addWidget(messages)
     messages.hide()
-    details = QPushButton(tr("Szczegóły", "Details"))
+    details = QPushButton(tr("settings.details"))
     details.setCheckable(True)
     def show_details(visible: bool) -> None:
         for widget in (messages, sources, notice):
@@ -971,7 +968,7 @@ def run_setup_dialog(arguments: list[str]) -> int:
     actions = QHBoxLayout()
     actions.addWidget(details)
     details.setProperty("role", "quiet")
-    log_button = QPushButton(tr("Otwórz szczegółowy log", "Open log"))
+    log_button = QPushButton(tr("settings.open_log"))
     log_button.clicked.connect(
         lambda: QDesktopServices.openUrl(
             QUrl.fromLocalFile(str(Path(options.ai_directory) / "setup.log")),
@@ -980,10 +977,10 @@ def run_setup_dialog(arguments: list[str]) -> int:
     actions.addWidget(log_button)
     log_button.setProperty("role", "quiet")
     actions.addStretch()
-    button = QPushButton(tr("Anuluj przygotowanie", "Cancel setup"))
+    button = QPushButton(tr("settings.cancel_setup"))
     button.clicked.connect(dialog.reject)
     actions.addWidget(button)
-    retry_button = QPushButton(tr("Spróbuj ponownie", "Retry failed components"))
+    retry_button = QPushButton(tr("settings.retry"))
     retry_button.hide()
     actions.insertWidget(3, retry_button)
     retry_button.setProperty("role", "primary")
@@ -1004,15 +1001,15 @@ def run_setup_dialog(arguments: list[str]) -> int:
     def outcome(ok: bool, message: str) -> None:
         success[0] = ok
         status.setText(
-            tr("Wybrane składniki działają.", "Selected components are ready.") if ok
-            else tr("Nie udało się zakończyć. Zobacz szczegóły.", "Setup incomplete. See details.")
+            tr("settings.selected_ready") if ok
+            else tr("settings.setup_incomplete")
         )
         messages.appendPlainText(message)
         if not ok:
             details.setChecked(True)
         bar.setRange(0, 100)
         bar.setValue(100 if ok else 0)
-        button.setText(tr("Zamknij", "Close"))
+        button.setText(tr("settings.close"))
         button.setEnabled(True)
         retry_button.setVisible(not ok)
         retry_button.setEnabled(False)
@@ -1020,8 +1017,8 @@ def run_setup_dialog(arguments: list[str]) -> int:
     def retry() -> None:
         cancelled.clear()
         retry_button.hide()
-        button.setText(tr("Anuluj przygotowanie", "Cancel setup"))
-        status.setText(tr("Ponawiam przygotowanie…", "Retrying…"))
+        button.setText(tr("settings.cancel_setup"))
+        status.setText(tr("settings.retrying"))
         bar.setRange(0, 0)
         worker.start()
 

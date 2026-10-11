@@ -22,12 +22,12 @@ def decide_many(model: Any, text: str, questions: dict[str, Any]) -> dict[str, A
     for key, question in questions.items():
         options = decision_options(question)
         if question["type"] != "noul":
-            raise ValueError("Pakiet etykiet wymaga niezależnych pytań tak/nie.")
+            raise ValueError("runtime.independent_questions_required")
         ids = model.encode(text, question["instructions"], [value for _, value in options])
         items.append((key, question, options, ids))
 
     if not items:
-        raise ValueError("Brak pytań do oceny.")
+        raise ValueError("runtime.missing_questions")
     prefix_length = 0
     for tokens in zip(*(item[3] for item in items), strict=False):
         if len(set(tokens)) != 1:
@@ -106,7 +106,7 @@ def prepare_text(tokenizer: Any, text: str, questions: list[dict[str, Any]]) -> 
 
         budget = 4080
         if count("") >= budget - 128:
-            raise ValueError("Skróć prompt lub opisy kategorii — są zbyt długie.")
+            raise ValueError("runtime.prompt_too_long")
         low, high = 0, len(text)
         if count(text) > budget:
             while low < high:

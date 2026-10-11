@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from signum.config import AppConfig
+from signum.i18n import tr
 from signum.network import processing_is_local
 
 
@@ -45,45 +46,44 @@ class BatchRiskDialog(QDialog):
         remote_targets: list[str] | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setWindowTitle("Przed uruchomieniem analizy")
+        self.setWindowTitle(tr("main.batch_risk_dialog.before_starting_analysis"))
         self.setModal(True)
         self.setMinimumWidth(640)
 
         layout = QVBoxLayout(self)
-        heading = QLabel(f"<b>Do analizy wybrano {file_count} dokumentów.</b>")
+        heading = QLabel(
+            tr("main.batch_risk_dialog.documents_selected_for_analysis", arg0=file_count)
+        )
         layout.addWidget(heading)
 
         limitations = QLabel(
-            "Wyniki kategoryzacji mogą być błędne lub niepełne. Sprawdź je przed użyciem."
+            tr("main.batch_risk_dialog.classification_results_may_be_incorrect_or_incomplete")
             if classification
-            else "Signum służy do nauki i eksperymentów z wykrywaniem podpisów. "
-            "Wyniki AI mogą być błędne lub niepełne. Program nie potwierdza "
-            "autentyczności ani ważności podpisu."
+            else tr("main.batch_risk_dialog.signum_is_intended_for_learning_and_experimenting")
         )
         limitations.setWordWrap(True)
         layout.addWidget(limitations)
 
         is_local = processing_is_local(
-            config.provider, config.api_base_url, config.ollama_model,
+            config.provider,
+            config.api_base_url,
+            config.ollama_model,
         )
         if remote_targets is not None:
             is_local = not remote_targets
         if is_local:
-            processing_text = (
-                "Tryb lokalny: wybrane dokumenty będą analizowane przez model AI na tym komputerze."
+            processing_text = tr(
+                "main.batch_risk_dialog.local_mode_selected_documents_will_be_analyzed"
             )
-            processing_ack_text = (
-                "Rozumiem, że treść wybranych dokumentów będzie przetwarzana "
-                "przez lokalny model AI."
+            processing_ack_text = tr(
+                "main.batch_risk_dialog.i_understand_that_the_content_of_selected"
             )
         else:
-            processing_text = (
-                "Tryb zdalny: wybrane dokumenty opuszczą komputer. Ich treść będzie "
-                "przetwarzana przez zewnętrzną usługę AI."
+            processing_text = tr(
+                "main.batch_risk_dialog.remote_mode_selected_documents_will_leave_this"
             )
-            processing_ack_text = (
-                "Rozumiem, że treść wybranych dokumentów będzie przesyłana przez "
-                "internet do usług stron trzecich i tam przetwarzana."
+            processing_ack_text = tr(
+                "main.batch_risk_dialog.i_understand_that_the_content_of_selected_161"
             )
 
         if remote_targets:
@@ -95,7 +95,7 @@ class BatchRiskDialog(QDialog):
         layout.addWidget(processing)
 
         self.purpose_ack = QCheckBox(
-            "Rozumiem, że narzędzie jest edukacyjne i nie nadaje się do użytku w organizacjach."
+            tr("main.batch_risk_dialog.i_understand_that_this_tool_is_educational")
         )
         self.processing_ack = QCheckBox(processing_ack_text)
         self._acknowledgements = (
@@ -119,10 +119,10 @@ class BatchRiskDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         self.accept_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
-        self.accept_button.setText("Rozumiem — uruchom analizę")
+        self.accept_button.setText(tr("main.batch_risk_dialog.i_understand_start_analysis"))
         self.accept_button.setEnabled(False)
         cancel_button = buttons.button(QDialogButtonBox.StandardButton.Cancel)
-        cancel_button.setText("Anuluj")
+        cancel_button.setText(tr("main.batch_risk_dialog.cancel"))
         cancel_button.setDefault(True)
         layout.addWidget(buttons)
 
